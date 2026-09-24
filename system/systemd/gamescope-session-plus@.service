@@ -1,0 +1,12 @@
+[Unit]
+Description=Gamescope Session Plus
+BindsTo=graphical-session.target
+Before=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
+
+[Service]
+ExecStart=/usr/lib/ubuntu-gaming-mode/gamescope-session-plus-runtime %i
+KillMode=mixed
+Environment=SRT_LOG_TO_JOURNAL=1
+Environment=GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope
