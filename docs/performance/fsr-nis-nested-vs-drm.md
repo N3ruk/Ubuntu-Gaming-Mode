@@ -6,7 +6,8 @@ Reference system:
 
 - GPU: NVIDIA GeForce RTX 2060
 - Desktop: Ubuntu / GNOME / Mutter / Wayland
-- Gamescope: `3.16.28-3-g0d07f6e`
+- Gamescope: `3.16.28-3-g0d07f6e` custom UGM build
+- NIS workflow: [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin
 - Game: Dragon Ball Z: Kakarot
 - Internal resolution: 1920×1080
 - Output resolution: 2560×1440
@@ -139,6 +140,8 @@ That adds:
 - extra work after the FSR/NIS processing has already completed.
 
 FSR and NIS therefore still have their own processing cost, but in nested mode that processed frame also has to traverse the desktop compositor path.
+
+In UGM Gaming Mode, NIS is exposed/unlocked through the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin. The Gamescope binary bundled with 1.0.0-3 also contains project-specific integration work for that workflow. The exact Gamescope-side source changes are no longer available and are therefore not described here.
 
 ## What the measurements show
 
