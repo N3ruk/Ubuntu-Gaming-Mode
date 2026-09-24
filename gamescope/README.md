@@ -37,6 +37,10 @@ The modified Gamescope source tree used to produce the validated 1.0.0-3 binary 
 
 For 1.0.0-3, the validated binary and SHA256 above are therefore the canonical integrity reference.
 
+One concrete historical behavior is known even though the exact patch is lost: before the final validated build, the RTX 2060 reference system suffered severe 4K DRM scan-out corruption, with the image split into misplaced sections and strong blue/cyan, pink/magenta and purple corruption. The current 1.0.0-3 Gamescope build no longer reproduces that failure on the validated system and its 4K path is stable.
+
+This is intentionally documented as an observed before/after result, not as a claim about the exact underlying fix or universal NVIDIA behavior.
+
 There is no plan to reverse-engineer or approximate the lost patch set merely for documentation. When UGM eventually needs to update Gamescope to a newer version, the necessary 4K behavior and Sharp Filter Selector integration will be implemented again from the new source base and documented as part of that future release.
 
 Do not replace this binary in a 1.0.0-3 package without changing the package version and re-running the physical acceptance tests.
