@@ -18,6 +18,7 @@ source "$CONFIG_FILE"
 
 DESKTOP_SESSION="$UGM_DESKTOP_SESSION"
 
+
 LOG="$HOME/.local/state/gamescope-session/session-switch.log"
 
 mkdir -p "$(dirname "$LOG")"
@@ -63,6 +64,10 @@ case "$mode" in
             log "ERROR: no se pudo preparar el autologin; no se cierra Steam"
             exit 1
         }
+
+        # ----------------------------------------------------
+        # Cerrar Steam
+        # ----------------------------------------------------
 
         steam -shutdown >>"$LOG" 2>&1 &
         log "steam -shutdown enviado"
