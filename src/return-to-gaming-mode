@@ -25,7 +25,10 @@ DESKTOP_SESSION_ID="$UGM_DESKTOP_SESSION"
 SESSION_FILE="/usr/share/wayland-sessions/${GAMING_SESSION}.desktop"
 
 fail() {
-    zenity         --error         --title="Steam Gaming Mode"         --text="$1" 2>/dev/null || true
+    zenity \
+        --error \
+        --title="Steam Gaming Mode" \
+        --text="$1" 2>/dev/null || true
 
     echo "ERROR: $1" >&2
     exit 1
@@ -44,9 +47,15 @@ fi
 # Confirmación
 # ------------------------------------------------------------
 
-zenity     --question     --title="Steam Gaming Mode"     --width=420     --text="¿Quieres entrar en Steam Gaming Mode?
+zenity \
+    --question \
+    --title="Steam Gaming Mode" \
+    --width=420 \
+    --text="¿Quieres entrar en Steam Gaming Mode?
 
-Se cerrará la sesión actual de Ubuntu."     --ok-label="Entrar en Gaming Mode"     --cancel-label="Cancelar"
+Se cerrará la sesión actual de Ubuntu." \
+    --ok-label="Entrar en Gaming Mode" \
+    --cancel-label="Cancelar"
 
 # Cancelar = no hacer absolutamente nada
 if [[ $? -ne 0 ]]; then
@@ -70,7 +79,11 @@ command -v gnome-session-quit >/dev/null ||
 # Seleccionar Gaming Mode para el siguiente login de GDM
 # ------------------------------------------------------------
 
-busctl call     org.freedesktop.Accounts     "$ACCOUNTS_PATH"     org.freedesktop.Accounts.User     SetSession s "$GAMING_SESSION" ||
+busctl call \
+    org.freedesktop.Accounts \
+    "$ACCOUNTS_PATH" \
+    org.freedesktop.Accounts.User \
+    SetSession s "$GAMING_SESSION" ||
     fail "No se pudo seleccionar Steam Gaming Mode."
 
 # ------------------------------------------------------------
@@ -78,7 +91,11 @@ busctl call     org.freedesktop.Accounts     "$ACCOUNTS_PATH"     org.freedeskto
 # ------------------------------------------------------------
 
 CURRENT_SESSION="$(
-    busctl get-property         org.freedesktop.Accounts         "$ACCOUNTS_PATH"         org.freedesktop.Accounts.User         Session 2>/dev/null |
+    busctl get-property \
+        org.freedesktop.Accounts \
+        "$ACCOUNTS_PATH" \
+        org.freedesktop.Accounts.User \
+        Session 2>/dev/null |
     sed -n 's/^s "\(.*\)"$/\1/p'
 )"
 

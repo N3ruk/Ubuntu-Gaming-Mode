@@ -30,13 +30,21 @@ log() {
 set_desktop_session() {
     log "Intentando SetSession -> $DESKTOP_SESSION"
 
-    busctl call         org.freedesktop.Accounts         "$ACCOUNTS_PATH"         org.freedesktop.Accounts.User         SetSession s "$DESKTOP_SESSION" >>"$LOG" 2>&1 || {
+    busctl call \
+        org.freedesktop.Accounts \
+        "$ACCOUNTS_PATH" \
+        org.freedesktop.Accounts.User \
+        SetSession s "$DESKTOP_SESSION" >>"$LOG" 2>&1 || {
             log "ERROR SetSession"
             return 1
         }
 
     CURRENT_SESSION="$(
-        busctl get-property             org.freedesktop.Accounts             "$ACCOUNTS_PATH"             org.freedesktop.Accounts.User             Session 2>/dev/null |
+        busctl get-property \
+            org.freedesktop.Accounts \
+            "$ACCOUNTS_PATH" \
+            org.freedesktop.Accounts.User \
+            Session 2>/dev/null |
         sed -n 's/^s "\(.*\)"$/\1/p'
     )"
 

@@ -5,8 +5,7 @@ CONFIG="/etc/ubuntu-gaming-mode/session.conf"
 ACTION="${1:-remove}"
 
 log() {
-    printf 'ubuntu-gaming-mode: %s
-' "$*"
+    printf 'ubuntu-gaming-mode: %s\n' "$*"
 }
 
 get_account_session() {
@@ -15,11 +14,14 @@ get_account_session() {
     path="/org/freedesktop/Accounts/User${uid}"
 
     out="$(
-        busctl get-property             org.freedesktop.Accounts             "$path"             org.freedesktop.Accounts.User             Session 2>/dev/null
+        busctl get-property \
+            org.freedesktop.Accounts \
+            "$path" \
+            org.freedesktop.Accounts.User \
+            Session 2>/dev/null
     )" || return 1
 
-    printf '%s
-' "$out" |
+    printf '%s\n' "$out" |
         sed -n 's/^s "\(.*\)"$/\1/p'
 }
 
@@ -29,7 +31,13 @@ set_account_session() {
 
     path="/org/freedesktop/Accounts/User${uid}"
 
-    busctl call         org.freedesktop.Accounts         "$path"         org.freedesktop.Accounts.User         SetSession         s "$value"         >/dev/null
+    busctl call \
+        org.freedesktop.Accounts \
+        "$path" \
+        org.freedesktop.Accounts.User \
+        SetSession \
+        s "$value" \
+        >/dev/null
 }
 
 case "$ACTION" in
@@ -62,7 +70,9 @@ if [ "$current" = "$UGM_GAMING_SESSION" ]; then
 
     log "Gaming Mode está seleccionado; pasando a $UGM_DESKTOP_SESSION antes de retirar el paquete."
 
-    set_account_session         "$UGM_UID"         "$UGM_DESKTOP_SESSION" ||
+    set_account_session \
+        "$UGM_UID" \
+        "$UGM_DESKTOP_SESSION" ||
     {
         echo "ubuntu-gaming-mode: ERROR: no se pudo seleccionar la sesión Desktop" >&2
         exit 1

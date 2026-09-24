@@ -29,7 +29,11 @@ REAL_UID="$(id -u "$TARGET_USER" 2>/dev/null || true)"
 }
 
 read_selected_session() {
-    busctl get-property         org.freedesktop.Accounts         "$ACCOUNTS_PATH"         org.freedesktop.Accounts.User         Session 2>/dev/null |
+    busctl get-property \
+        org.freedesktop.Accounts \
+        "$ACCOUNTS_PATH" \
+        org.freedesktop.Accounts.User \
+        Session 2>/dev/null |
     sed -n 's/^s "\(.*\)"$/\1/p'
 }
 
@@ -104,12 +108,18 @@ for ((attempt=0; attempt<60; attempt++)); do
             # un arranque pendiente. GNOME rechaza arrancar en ese estado.
             # No reiniciar el gestor de usuario ni sus servicios no gráficos.
             user_systemctl() {
-                runuser -u "$TARGET_USER" -- env                     XDG_RUNTIME_DIR="$RUNTIME_DIR"                     DBUS_SESSION_BUS_ADDRESS="$USER_BUS"                     /usr/bin/systemctl --user "$@"
+                runuser -u "$TARGET_USER" -- env \
+                    XDG_RUNTIME_DIR="$RUNTIME_DIR" \
+                    DBUS_SESSION_BUS_ADDRESS="$USER_BUS" \
+                    /usr/bin/systemctl --user "$@"
             }
 
             echo "Limpiando estado gráfico residual antes de iniciar $DESKTOP_SESSION_ID"
 
-            timeout 10s runuser -u "$TARGET_USER" -- env                 XDG_RUNTIME_DIR="$RUNTIME_DIR"                 DBUS_SESSION_BUS_ADDRESS="$USER_BUS"                 /usr/bin/systemctl --user --job-mode=replace stop graphical-session.target
+            timeout 10s runuser -u "$TARGET_USER" -- env \
+                XDG_RUNTIME_DIR="$RUNTIME_DIR" \
+                DBUS_SESSION_BUS_ADDRESS="$USER_BUS" \
+                /usr/bin/systemctl --user --job-mode=replace stop graphical-session.target
 
             state=$(user_systemctl show graphical-session.target -p ActiveState --value)
 

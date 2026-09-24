@@ -239,7 +239,25 @@ if [ -z "$GAMESCOPECMD" ]; then
 		HDR_OPTIONS="$HDR_OPTIONS --hdr-itm-sdr-nits $GAMESCOPE_HDR_NITS --hdr-sdr-content-nits $GAMESCOPE_HDR_NITS"
 	fi
 
-	GAMESCOPECMD="$(get_gamescope_binary) 		$CURSOR 		$RESOLUTION 		$INTERNAL_RESOLUTION 		$ORIENTATION_OPTION 		$DRM_MODE_OPTION 		$ADAPTIVE_SYNC_OPTION 		$PANEL_TYPE_OPTION 		$CUSTOM_REFRESH_RATES_OPTION 		$USE_ROTATION_SHADER_OPTION 		$BACKEND_OPTION 		$HDR_OPTIONS 		$MAX_SCALE_OPTION 		--prefer-output $OUTPUT_CONNECTOR 		--xwayland-count $XWAYLAND_COUNT 		--default-touch-mode $TOUCH_MODE 		--hide-cursor-delay $HIDE_CURSOR_DELAY_MS 		--fade-out-duration $FADE_OUT_DURATION_MS 		--steam"
+	GAMESCOPECMD="$(get_gamescope_binary) \
+		$CURSOR \
+		$RESOLUTION \
+		$INTERNAL_RESOLUTION \
+		$ORIENTATION_OPTION \
+		$DRM_MODE_OPTION \
+		$ADAPTIVE_SYNC_OPTION \
+		$PANEL_TYPE_OPTION \
+		$CUSTOM_REFRESH_RATES_OPTION \
+		$USE_ROTATION_SHADER_OPTION \
+		$BACKEND_OPTION \
+		$HDR_OPTIONS \
+		$MAX_SCALE_OPTION \
+		--prefer-output $OUTPUT_CONNECTOR \
+		--xwayland-count $XWAYLAND_COUNT \
+		--default-touch-mode $TOUCH_MODE \
+		--hide-cursor-delay $HIDE_CURSOR_DELAY_MS \
+		--fade-out-duration $FADE_OUT_DURATION_MS \
+		--steam"
 fi
 
 # Add socket and stats read
