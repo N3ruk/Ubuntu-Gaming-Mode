@@ -1,0 +1,90 @@
+#!/bin/bash
+
+set -u
+
+mode="${1:-}"
+
+USER_ID="$(id -u)"
+ACCOUNTS_PATH="/org/freedesktop/Accounts/User${USER_ID}"
+CONFIG_FILE="/etc/ubuntu-gaming-mode/session.conf"
+
+[[ -r "$CONFIG_FILE" ]] || {
+    echo "ERROR: no existe $CONFIG_FILE" >&2
+    exit 1
+}
+
+# shellcheck disable=SC1090
+source "$CONFIG_FILE"
+
+DESKTOP_SESSION="$UGM_DESKTOP_SESSION"
+
+LOG="$HOME/.local/state/gamescope-session/session-switch.log"
+
+mkdir -p "$(dirname "$LOG")"
+
+log() {
+    echo "$(date '+%F %T') os-session-select: $*" >> "$LOG"
+}
+
+set_desktop_session() {
+    log "Intentando SetSession -> $DESKTOP_SESSION"
+
+    busctl call         org.freedesktop.Accounts         "$ACCOUNTS_PATH"         org.freedesktop.Accounts.User         SetSession s "$DESKTOP_SESSION" >>"$LOG" 2>&1 || {
+            log "ERROR SetSession"
+            return 1
+        }
+
+    CURRENT_SESSION="$(
+        busctl get-property             org.freedesktop.Accounts             "$ACCOUNTS_PATH"             org.freedesktop.Accounts.User             Session 2>/dev/null |
+        sed -n 's/^s "\(.*\)"$/\1/p'
+    )"
+
+    log "Session actual tras SetSession: $CURRENT_SESSION"
+
+    [[ "$CURRENT_SESSION" == "$DESKTOP_SESSION" ]]
+}
+
+log "Invocado con modo='$mode' usuario=$(id -un) uid=$(id -u)"
+
+case "$mode" in
+
+    desktop|plasma)
+
+        log "Solicitud Gaming Mode -> Ubuntu"
+
+        if ! set_desktop_session; then
+            log "ABORTANDO: no se pudo seleccionar Ubuntu"
+            exit 1
+        fi
+
+        log "Ubuntu seleccionado correctamente"
+
+        sudo -n /usr/bin/systemctl start --no-block gaming-autologin-rearm.service || {
+            log "ERROR: no se pudo preparar el autologin; no se cierra Steam"
+            exit 1
+        }
+
+        steam -shutdown >>"$LOG" 2>&1 &
+        log "steam -shutdown enviado"
+
+        sleep 3
+
+        if pgrep -x steam >/dev/null; then
+            log "Steam sigue vivo, enviando TERM"
+            pkill -TERM -x steam 2>/dev/null || true
+        fi
+
+        if pgrep -x steamwebhelper >/dev/null; then
+            log "steamwebhelper sigue vivo, enviando TERM"
+            pkill -TERM -x steamwebhelper 2>/dev/null || true
+        fi
+
+        log "Fin de transición desktop"
+        exit 0
+        ;;
+
+    *)
+        log "Modo no soportado: ${mode:-<ninguno>}"
+        exit 1
+        ;;
+esac
