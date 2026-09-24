@@ -34,4 +34,11 @@ For UGM 1.0.0-3, `build-deb.sh` refuses a Gamescope binary whose SHA256 differs 
 
 The repository is now suitable as the source of future UGM package revisions, but **1.0.0-3 is not claimed to be byte-for-byte reproducible from Git alone**.
 
-The exact custom Gamescope build recipe and provenance are still a tracked future improvement. The already validated GOLD release remains the canonical 1.0.0-3 binary artifact.
+The Gamescope binary bundled with 1.0.0-3 was modified during UGM development for two project-specific requirements:
+
+- correct 4K operation in the validated UGM environment;
+- integration with the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin through a small connector used by the NIS workflow.
+
+The modified Gamescope source tree and exact patch set were deleted after the validated binary had been produced. Because those sources no longer exist, this repository **does not claim to know the exact code changes** and will not attempt to recreate them from memory.
+
+The current 1.0.0-3 binary and its SHA256 therefore remain the canonical reference. If a future UGM release requires a newer Gamescope version, the required 4K and Decky/NIS integration work will be recreated from the new upstream source and documented at that time.
