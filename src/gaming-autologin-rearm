@@ -1,0 +1,111 @@
+#!/bin/bash
+set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+CONFIG_FILE="/etc/ubuntu-gaming-mode/session.conf"
+
+[[ -r "$CONFIG_FILE" ]] || {
+    echo "ERROR: no existe $CONFIG_FILE" >&2
+    exit 1
+}
+
+# shellcheck disable=SC1090
+source "$CONFIG_FILE"
+
+TARGET_USER="$UGM_USER"
+TARGET_UID="$UGM_UID"
+DESKTOP_SESSION_ID="$UGM_DESKTOP_SESSION"
+GAMING_SESSION_ID="$UGM_GAMING_SESSION"
+
+ACCOUNTS_PATH="/org/freedesktop/Accounts/User${TARGET_UID}"
+RUNTIME_DIR="/run/user/${TARGET_UID}"
+USER_BUS="unix:path=${RUNTIME_DIR}/bus"
+
+# Protección contra una configuración usuario/UID incoherente
+REAL_UID="$(id -u "$TARGET_USER" 2>/dev/null || true)"
+[[ "$REAL_UID" == "$TARGET_UID" ]] || {
+    echo "ERROR: $TARGET_USER tiene UID '$REAL_UID', se esperaba '$TARGET_UID'" >&2
+    exit 1
+}
+
+read_selected_session() {
+    busctl get-property         org.freedesktop.Accounts         "$ACCOUNTS_PATH"         org.freedesktop.Accounts.User         Session 2>/dev/null |
+    sed -n 's/^s "\(.*\)"$/\1/p'
+}
+
+selected=""
+
+for ((attempt=0; attempt<20; attempt++)); do
+    selected="$(read_selected_session || true)"
+
+    case "$selected" in
+        "$DESKTOP_SESSION_ID"|"$GAMING_SESSION_ID")
+            break
+            ;;
+    esac
+
+    sleep 0.1
+done
+
+case "$selected" in
+    "$DESKTOP_SESSION_ID"|"$GAMING_SESSION_ID")
+        echo "Sesión destino capturada: $selected"
+        ;;
+    *)
+        echo "No se pudo capturar una sesión destino válida ($selected)" >&2
+        exit 1
+        ;;
+esac
+
+has_graphical_session() {
+    local sessions sid rest props
+
+    sessions=$(loginctl list-sessions --no-legend --no-pager) || return 2
+
+    while read -r sid rest; do
+        [[ -n $sid ]] || continue
+
+        props=$(loginctl show-session "$sid" -p Class -p Type) || return 2
+
+        if grep -Eq '^Class=user(-early)?$' <<< "$props" &&
+           grep -Eq '^Type=(wayland|x11)$' <<< "$props"; then
+            return 0
+        fi
+    done <<< "$sessions"
+
+    return 1
+}
+
+for ((attempt=0; attempt<60; attempt++)); do
+    if has_graphical_session; then
+        sleep 1
+    else
+        result=$?
+        [[ $result -eq 1 ]] || exit "$result"
+
+        if [[ "$selected" == "$DESKTOP_SESSION_ID" ]]; then
+            user_systemctl() {
+                runuser -u "$TARGET_USER" -- env                     XDG_RUNTIME_DIR="$RUNTIME_DIR"                     DBUS_SESSION_BUS_ADDRESS="$USER_BUS"                     /usr/bin/systemctl --user "$@"
+            }
+
+            echo "Limpiando estado gráfico residual antes de iniciar $DESKTOP_SESSION_ID"
+
+            timeout 10s runuser -u "$TARGET_USER" -- env                 XDG_RUNTIME_DIR="$RUNTIME_DIR"                 DBUS_SESSION_BUS_ADDRESS="$USER_BUS"                 /usr/bin/systemctl --user --job-mode=replace stop graphical-session.target
+
+            state=$(user_systemctl show graphical-session.target -p ActiveState --value)
+
+            [[ "$state" == inactive ]] || {
+                echo "Estado gráfico aún $state; se aborta sin reiniciar GDM" >&2
+                exit 1
+            }
+
+            echo "graphical-session.target inactivo; preparando autologin $DESKTOP_SESSION_ID"
+        fi
+
+        echo "Reiniciando GDM para autologin en $selected"
+        exec systemctl restart gdm.service
+    fi
+done
+
+echo 'La sesión no ha terminado en 60 segundos; no se reinicia GDM.' >&2
+exit 1
