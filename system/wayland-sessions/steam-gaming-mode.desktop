@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Steam Gaming Mode
+Comment=Gamescope 3.16.28 + Steam GamepadUI
+Exec=/usr/lib/ubuntu-gaming-mode/gamescope-session-plus steam
+Type=Application
+DesktopNames=gamescope
