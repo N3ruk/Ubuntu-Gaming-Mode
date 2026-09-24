@@ -30,6 +30,34 @@ Validado en Ubuntu 26.04 con una NVIDIA GeForce RTX 2060 y el runtime de Gamesco
 959afa06fd87eeeba8ffc1d4a3a6c965f9fa902d5678d43597b2ce7b20dca797  ubuntu-gaming-mode_1.0.0-3_amd64.deb
 ```
 
+## NVIDIA: Gamescope DRM 4K, HDR y VRR validados en una RTX 2060
+
+UGM 1.0.0-3 se desarrolló y superó su aceptación física sobre una **NVIDIA GeForce RTX 2060 de 6 GB** utilizando el driver propietario **NVIDIA 595.91.07** en Ubuntu 26.04.
+
+La sesión dedicada Gamescope DRM/KMS validada incluye:
+
+- salida 4K;
+- HDR;
+- VRR / Adaptive Sync;
+- Steam Overlay;
+- soporte de mando;
+- MangoApp / MangoHud;
+- escalado FSR y NIS;
+- cambio Desktop ↔ Gaming Mode.
+
+Esto es relevante porque NVIDIA continúa siendo una ruta más exigente dentro del ecosistema SteamOS/Gamescope que la configuración AMD habitual:
+
+- Gamescope upstream admite el driver propietario de NVIDIA, pero exige un driver suficientemente reciente y soporte DRM KMS/modesetting ([README de Gamescope](https://github.com/ValveSoftware/gamescope));
+- Bazzite describe actualmente Steam Gaming Mode con NVIDIA como soportado con **limitaciones importantes** frente a AMD y documenta un workaround específico para la interfaz de Steam en NVIDIA que puede provocar artefactos gráficos ([compatibilidad de hardware](https://docs.bazzite.gg/Gaming/Hardware_compatibility_for_gaming/), [quirks de Gaming Mode](https://docs.bazzite.gg/Handheld_and_HTPC_edition/quirks/));
+- ChimeraOS llegó a retirar el soporte NVIDIA por problemas relacionados con drivers, Wayland y Gamescope; posteriormente lo recuperó, pero sus notas de versión siguen indicando un rendimiento pobre de la interfaz de Steam en las NVIDIA GTX serie 16 y posteriores soportadas ([notas de ChimeraOS](https://github.com/ChimeraOS/chimeraos/wiki/Release-Notes));
+- un reporte upstream de Gamescope de 2026 documenta **corrupción de scan-out 4K con backend DRM en una NVIDIA RTX 4080 SUPER**, mientras resoluciones inferiores permanecen limpias ([Gamescope issue #2309](https://github.com/ValveSoftware/gamescope/issues/2309)).
+
+UGM **no** afirma compatibilidad universal con NVIDIA ni que esos problemas de upstream o de otras distribuciones estén resueltos para todas las GPU. La afirmación probada es más concreta: el sistema de referencia con RTX 2060 ejecuta correctamente una sesión Gamescope DRM independiente a 4K con HDR, VRR y las funciones de Steam Gaming Mode indicadas arriba.
+
+Para usuarios de NVIDIA que ya utilizan Ubuntu, UGM ofrece además una alternativa práctica a sustituir el sistema por una distribución dedicada al gaming: añade una sesión Gamescope tipo consola independiente conservando el escritorio Ubuntu y la pila de drivers existente.
+
+La build de Gamescope incluida se adaptó durante el desarrollo para la ruta 4K validada y la integración con Sharp Filter Selector. Su árbol fuente modificado se eliminó posteriormente, por lo que no se reconstruyen ni se atribuyen de memoria los cambios exactos realizados en Gamescope.
+
 ## Instalación
 
 Descarga el `.deb` y `SHA256SUMS` desde la misma GitHub Release, verifica el checksum e instala el paquete:
@@ -153,4 +181,6 @@ El Gamescope incluido en 1.0.0-3 **no es una build upstream sin modificar**. Dur
 
 ## Licencia
 
-La licencia todavía no está publicada en este repositorio. Los componentes de terceros conservan sus respectivas licencias.
+El código original del proyecto UGM se publica bajo la [Licencia MIT](LICENSE).
+
+Los componentes de terceros conservan sus propias licencias y avisos de copyright. Consulta [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) y el [resumen en español](THIRD_PARTY_NOTICES_es.md), incluyendo el aviso MIT de ChimeraOS gamescope-session y la licencia BSD 2-Clause de Gamescope.
