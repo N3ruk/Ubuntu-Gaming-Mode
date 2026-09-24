@@ -174,6 +174,8 @@ El Gamescope incluido en 1.0.0-3 **no es una build upstream sin modificar**. Dur
 - [Estructura del código fuente](SOURCE_es.md)
 - [Runtime custom de Gamescope](gamescope/README_es.md)
 - [Historial de cambios](CHANGELOG_es.md)
+- [Notas de la release v1.0.0-3 GOLD](docs/releases/v1.0.0-3.md)
+- [Avisos de terceros](THIRD_PARTY_NOTICES_es.md) · [English](THIRD_PARTY_NOTICES.md)
 
 ## Estado
 
