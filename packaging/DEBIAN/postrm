@@ -1,0 +1,570 @@
+#!/bin/bash
+set -u
+umask 077
+
+STATE_ROOT="/var/lib/ubuntu-gaming-mode"
+ORIGINAL="$STATE_ROOT/original-state"
+MANAGED="$STATE_ROOT/managed-state"
+
+CONFIG="/etc/ubuntu-gaming-mode/session.conf"
+
+ACTION="${1:-remove}"
+
+RESTORE_OK=1
+
+log() {
+    printf 'ubuntu-gaming-mode: %s\n' "$*"
+}
+
+warn() {
+    printf 'ubuntu-gaming-mode: WARN: %s\n' "$*" >&2
+}
+
+snapshot_valid() {
+    [ -d "$ORIGINAL" ] &&
+    [ -f "$ORIGINAL/.complete" ] &&
+    [ -f "$ORIGINAL/manifest" ] &&
+    [ -f "$ORIGINAL/manifest.sha256" ] &&
+    [ -f "$ORIGINAL/format-version" ] &&
+    [ "$(cat "$ORIGINAL/format-version" 2>/dev/null || true)" = "1" ] &&
+    (cd "$ORIGINAL" && sha256sum -c manifest.sha256 >/dev/null 2>&1)
+}
+
+get_account_session() {
+    uid="$1"
+    path="/org/freedesktop/Accounts/User${uid}"
+
+    out="$(
+        busctl get-property             org.freedesktop.Accounts             "$path"             org.freedesktop.Accounts.User             Session 2>/dev/null
+    )" || return 1
+
+    case "$out" in
+        's "'*'"')
+            printf '%s\n' "$out" |
+                sed -n 's/^s "\(.*\)"$/\1/p'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+set_account_session() {
+    uid="$1"
+    value="$2"
+    path="/org/freedesktop/Accounts/User${uid}"
+
+    busctl call         org.freedesktop.Accounts         "$path"         org.freedesktop.Accounts.User         SetSession         s "$value"         >/dev/null 2>&1
+}
+
+state_field() {
+    file="$1"
+    field="$2"
+
+    sed -n "s/^${field}=//p"         "$file" 2>/dev/null |
+        head -n1
+}
+
+restore_gdm_properties() {
+
+    python3 -         "/etc/gdm3/custom.conf"         "$ORIGINAL/shared/gdm.original" <<'PY2'
+
+from pathlib import Path
+import os
+import re
+import sys
+import tempfile
+
+target = Path(sys.argv[1])
+original_file = Path(sys.argv[2])
+
+keys = (
+    "AutomaticLoginEnable",
+    "AutomaticLogin",
+)
+
+def load(path):
+    result = {}
+    if not path.exists():
+        return result
+
+    for line in path.read_text(errors="replace").splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) < 2:
+            continue
+
+        result[parts[0]] = (
+            parts[1],
+            parts[2] if len(parts) > 2 else ""
+        )
+
+    return result
+
+original = load(original_file)
+
+if not original:
+    raise SystemExit("estado GDM ORIGINAL ausente")
+
+text = (
+    target.read_text(errors="replace")
+    if target.exists()
+    else ""
+)
+
+lines = text.splitlines(keepends=True)
+
+def bounds(lines, wanted):
+    start = None
+    end = len(lines)
+
+    for i, line in enumerate(lines):
+        m = re.match(
+            r'^\s*\[([^\]]+)\]\s*$',
+            line
+        )
+
+        if not m:
+            continue
+
+        section = m.group(1).strip().lower()
+
+        if start is not None:
+            end = i
+            break
+
+        if section == wanted:
+            start = i
+
+    return start, end
+
+start, end = bounds(lines, "daemon")
+
+if start is None:
+    if any(
+        state == "present"
+        for state, _ in original.values()
+    ):
+        prefix = ["[daemon]\n"]
+
+        for key in keys:
+            if key in original and original[key][0] == "present":
+                prefix.append(
+                    f"{key}={original[key][1]}\n"
+                )
+
+        if lines and lines[0].strip():
+            prefix.append("\n")
+
+        lines = prefix + lines
+
+else:
+    for key in keys:
+        if key not in original:
+            continue
+
+        state, value = original[key]
+
+        start, end = bounds(
+            lines,
+            "daemon"
+        )
+
+        matches = []
+
+        for i in range(start + 1, end):
+            m = re.match(
+                r'^\s*([^#;][^=]*?)\s*=',
+                lines[i]
+            )
+
+            if m and m.group(1).strip() == key:
+                matches.append(i)
+
+        if state == "absent":
+            for i in reversed(matches):
+                del lines[i]
+
+        elif state == "present":
+            newline = f"{key}={value}\n"
+
+            if matches:
+                lines[matches[0]] = newline
+
+                for i in reversed(matches[1:]):
+                    del lines[i]
+
+            else:
+                start, end = bounds(
+                    lines,
+                    "daemon"
+                )
+
+                lines.insert(
+                    end,
+                    newline
+                )
+
+        else:
+            raise SystemExit(
+                f"estado ORIGINAL desconocido para {key}: {state}"
+            )
+
+new_text = "".join(lines)
+
+target.parent.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+old_stat = None
+
+try:
+    old_stat = target.stat()
+except FileNotFoundError:
+    pass
+
+fd, tmp = tempfile.mkstemp(
+    prefix=".ugm-gdm-",
+    dir=str(target.parent)
+)
+
+try:
+    with os.fdopen(fd, "w") as f:
+        f.write(new_text)
+
+    if old_stat:
+        os.chmod(
+            tmp,
+            old_stat.st_mode & 0o7777
+        )
+
+        try:
+            os.chown(
+                tmp,
+                old_stat.st_uid,
+                old_stat.st_gid
+            )
+        except PermissionError:
+            pass
+
+    else:
+        os.chmod(
+            tmp,
+            0o644
+        )
+
+    os.replace(
+        tmp,
+        target
+    )
+
+finally:
+    try:
+        os.unlink(tmp)
+    except FileNotFoundError:
+        pass
+
+PY2
+}
+
+snapshot_source() {
+    p="$1"
+
+    if [ -e "$ORIGINAL/files$p" ] ||
+       [ -L "$ORIGINAL/files$p" ]; then
+
+        printf '%s\n' "$ORIGINAL/files$p"
+        return 0
+    fi
+
+    if [ -e "$ORIGINAL$p" ] ||
+       [ -L "$ORIGINAL$p" ]; then
+
+        printf '%s\n' "$ORIGINAL$p"
+        return 0
+    fi
+
+    return 1
+}
+
+restore_manifest_paths() {
+    while IFS="$(printf '\t')"           read -r status path
+    do
+        [ -n "$path" ] ||
+            continue
+
+        [ "$path" = "/etc/gdm3/custom.conf" ] &&
+            continue
+
+        case "$status" in
+            present)
+                src="$(
+                    snapshot_source "$path" 2>/dev/null ||
+                    true
+                )"
+
+                if [ -z "$src" ]; then
+                    warn "manifest indica presente pero falta copia: $path"
+                    RESTORE_OK=0
+                    continue
+                fi
+
+                rm -rf -- "$path"
+
+                mkdir -p                     "$(dirname "$path")"
+
+                cp -a --                     "$src"                     "$path" ||
+                {
+                    warn "no se pudo restaurar $path"
+                    RESTORE_OK=0
+                }
+
+                ;;
+
+            absent)
+                rm -rf -- "$path" ||
+                {
+                    warn "no se pudo eliminar $path"
+                    RESTORE_OK=0
+                }
+
+                ;;
+
+            *)
+                warn "entrada manifest desconocida: $status $path"
+                RESTORE_OK=0
+                ;;
+        esac
+
+    done < "$ORIGINAL/manifest"
+}
+
+restore_accountsservice() {
+    [ -n "${UGM_UID:-}" ] ||
+        return 0
+
+    [ -n "${UGM_DESKTOP_SESSION:-}" ] ||
+        return 0
+
+    current="$(
+        get_account_session "$UGM_UID"
+    )" ||
+    {
+        warn "no se pudo consultar AccountsService durante restauración"
+        RESTORE_OK=0
+        return 0
+    }
+
+    original_file="$ORIGINAL/shared/accountsservice.original"
+
+    target_status="$(
+        state_field             "$original_file"             status
+    )"
+
+    target_value="$(
+        state_field             "$original_file"             value
+    )"
+
+    if [ "$target_status" = "ok" ]; then
+        set_account_session             "$UGM_UID"             "$target_value" ||
+        {
+            warn "no se pudo restaurar AccountsService ORIGINAL"
+            RESTORE_OK=0
+            return 0
+        }
+
+        verify="$(
+            get_account_session "$UGM_UID" 2>/dev/null ||
+            printf '__QUERY_FAILED__'
+        )"
+
+        if [ "$verify" != "$target_value" ]; then
+            warn "AccountsService no refleja el valor ORIGINAL"
+            RESTORE_OK=0
+            return 0
+        fi
+
+        if [ -n "$target_value" ]; then
+            log "AccountsService restaurado al ORIGINAL '$target_value'."
+        else
+            log "AccountsService restaurado al valor ORIGINAL vacío."
+        fi
+
+        return 0
+    fi
+
+    warn "valor ORIGINAL de AccountsService desconocido debido a migración desde un formato heredado."
+
+    if [ "$current" != "$UGM_DESKTOP_SESSION" ]; then
+        warn "Se seleccionará '$UGM_DESKTOP_SESSION' como estado Desktop seguro."
+
+        set_account_session             "$UGM_UID"             "$UGM_DESKTOP_SESSION" ||
+        {
+            warn "no se pudo seleccionar Desktop seguro"
+            RESTORE_OK=0
+            return 0
+        }
+
+        verify="$(
+            get_account_session "$UGM_UID" 2>/dev/null ||
+            printf '__QUERY_FAILED__'
+        )"
+
+        if [ "$verify" != "$UGM_DESKTOP_SESSION" ]; then
+            warn "AccountsService no quedó en Desktop seguro"
+            RESTORE_OK=0
+        fi
+
+    else
+        log "AccountsService ya está en Desktop seguro."
+    fi
+}
+
+cleanup_package_backups() {
+    root="/var/backups/ubuntu-gaming-mode"
+
+    state_file="$ORIGINAL/shared/backups.path-state"
+    list_file="$ORIGINAL/shared/backups.original-list"
+
+    [ -d "$root" ] ||
+        return 0
+
+    state="$(
+        cat "$state_file" 2>/dev/null ||
+        echo unknown
+    )"
+
+    case "$state" in
+        present|absent)
+            find "$root"                 -mindepth 1                 -maxdepth 1                 -printf '%f\n' 2>/dev/null |
+            while IFS= read -r name
+            do
+                case "$name" in
+                    setup-*|package-adoption-*|uninstall-preinstall-*)
+                        if ! grep -Fxq                             -- "$name"                             "$list_file" 2>/dev/null
+                        then
+                            rm -rf                                 -- "$root/$name"
+                        fi
+                        ;;
+                esac
+            done
+
+            if [ "$state" = "absent" ]; then
+                rmdir "$root" 2>/dev/null || true
+            fi
+            ;;
+
+        *)
+            ;;
+    esac
+}
+
+reload_user_systemd() {
+    [ -n "${UGM_USER:-}" ] ||
+        return 0
+
+    [ -n "${UGM_UID:-}" ] ||
+        return 0
+
+    runtime="/run/user/${UGM_UID}"
+
+    if [ -S "$runtime/bus" ]; then
+        runuser -u "$UGM_USER" -- env             XDG_RUNTIME_DIR="$runtime"             DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus"             /usr/bin/systemctl             --user daemon-reload             >/dev/null 2>&1 || true
+    fi
+}
+
+case "$ACTION" in
+    upgrade|failed-upgrade|abort-upgrade)
+        exit 0
+        ;;
+
+    remove|purge|abort-install|disappear)
+        ;;
+
+    *)
+        exit 0
+        ;;
+esac
+
+snapshot_valid ||
+    exit 0
+
+if [ -r "$CONFIG" ]; then
+    # shellcheck disable=SC1090
+    . "$CONFIG"
+
+else
+    UGM_USER=""
+    UGM_UID=""
+
+    UGM_DESKTOP_SESSION="$(
+        sed -n 's/^desktop=//p'             "$MANAGED/accounts.allowed" 2>/dev/null |
+        head -n1
+    )"
+
+    UGM_GAMING_SESSION="$(
+        sed -n 's/^gaming=//p'             "$MANAGED/accounts.allowed" 2>/dev/null |
+        head -n1
+    )"
+fi
+
+log "Restaurando estado anterior a la primera instalación de Ubuntu Gaming Mode."
+
+restore_gdm_properties ||
+{
+    warn "falló restauración selectiva de GDM"
+    RESTORE_OK=0
+}
+
+restore_accountsservice
+restore_manifest_paths
+cleanup_package_backups
+
+systemctl daemon-reload     >/dev/null 2>&1 || true
+
+reload_user_systemd
+
+command -v update-desktop-database     >/dev/null 2>&1 &&
+update-desktop-database     /usr/share/applications     >/dev/null 2>&1 || true
+
+command -v gtk-update-icon-cache     >/dev/null 2>&1 &&
+gtk-update-icon-cache     -q -t -f     /usr/share/icons/hicolor     >/dev/null 2>&1 || true
+
+if [ "$RESTORE_OK" -eq 1 ]; then
+    CONFIG_DIR_ORIGINAL="$(
+        cat "$ORIGINAL/shared/config-dir.original" 2>/dev/null ||
+        true
+    )"
+
+    rm -rf "$STATE_ROOT"
+
+    case "$CONFIG_DIR_ORIGINAL" in
+        absent)
+            if rmdir /etc/ubuntu-gaming-mode 2>/dev/null; then
+                log "Directorio /etc/ubuntu-gaming-mode retirado; no existía antes de UGM."
+            elif [ -d /etc/ubuntu-gaming-mode ]; then
+                warn "/etc/ubuntu-gaming-mode no estaba en el ORIGINAL pero ahora no está vacío; se conserva."
+            fi
+            ;;
+
+        present)
+            ;;
+
+        unknown-migrated|"")
+            ;;
+
+        *)
+            warn "estado ORIGINAL de /etc/ubuntu-gaming-mode no reconocido: '$CONFIG_DIR_ORIGINAL'; se conserva."
+            ;;
+    esac
+
+    log "Desinstalación completada."
+    log "Baseline original restaurado y estado de Ubuntu Gaming Mode eliminado."
+
+    exit 0
+fi
+
+warn "la restauración no fue completa."
+warn "Se conserva $STATE_ROOT para recuperación."
+
+exit 1
