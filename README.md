@@ -170,6 +170,8 @@ The Gamescope binary bundled in 1.0.0-3 is **not an unmodified upstream build**.
 - [Source layout](SOURCE.md) · [Español](SOURCE_es.md)
 - [Bundled Gamescope runtime](gamescope/README.md) · [Español](gamescope/README_es.md)
 - [Changelog](CHANGELOG.md) · [Español](CHANGELOG_es.md)
+- [v1.0.0-3 GOLD release notes](docs/releases/v1.0.0-3.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md) · [Español](THIRD_PARTY_NOTICES_es.md)
 
 ## Status
 
