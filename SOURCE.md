@@ -1,4 +1,6 @@
-# Source layout
+# Ubuntu Gaming Mode source layout and reproducibility
+
+**English** | [Español](SOURCE_es.md)
 
 The files in this repository are organized from the validated Ubuntu Gaming Mode 1.0.0-3 GOLD package.
 
