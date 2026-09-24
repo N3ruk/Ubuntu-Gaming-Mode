@@ -37,6 +37,10 @@ El árbol de código fuente modificado de Gamescope utilizado para producir el b
 
 Para 1.0.0-3, el binario validado y el SHA256 anterior constituyen la referencia canónica de integridad.
 
+Sí se conoce un comportamiento histórico concreto aunque se haya perdido el parche exacto: antes de la build final validada, el sistema de referencia con RTX 2060 sufría corrupción grave de scan-out DRM a 4K, con la imagen dividida en secciones desplazadas y fuerte corrupción azul/cian, rosa/magenta y morada. La build actual de Gamescope de 1.0.0-3 ya no reproduce ese fallo en el sistema validado y su ruta 4K está estabilizada.
+
+Esto se documenta deliberadamente como un resultado observado antes/después, no como una afirmación sobre el cambio interno exacto ni sobre el comportamiento universal de NVIDIA.
+
 No se pretende hacer ingeniería inversa ni aproximar los parches perdidos únicamente para documentarlos. Cuando UGM necesite actualizar Gamescope a una versión más reciente, el comportamiento 4K necesario y la integración con Sharp Filter Selector se volverán a implementar sobre la nueva base de código y se documentarán como parte de esa futura versión.
 
 No sustituyas este binario dentro de un paquete 1.0.0-3 sin cambiar la versión del paquete y repetir las pruebas físicas de aceptación.
