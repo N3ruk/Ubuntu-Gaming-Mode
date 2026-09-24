@@ -83,6 +83,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+
+# ------------------------------------------------------------
+# Detectar usuario
+# ------------------------------------------------------------
+
 detect_user() {
     if [[ -n "$REQUESTED_USER" ]]; then
         printf '%s
@@ -105,6 +110,7 @@ detect_user() {
 
     for sid in $(loginctl list-sessions --no-legend --no-pager 2>/dev/null |
                  awk '{print $1}'); do
+
         user="$(loginctl show-session "$sid" -p Name --value 2>/dev/null || true)"
         type="$(loginctl show-session "$sid" -p Type --value 2>/dev/null || true)"
         class="$(loginctl show-session "$sid" -p Class --value 2>/dev/null || true)"
@@ -128,11 +134,17 @@ id "$TARGET_USER" >/dev/null 2>&1 ||
 
 TARGET_UID="$(id -u "$TARGET_USER")"
 
+
+# ------------------------------------------------------------
+# Detectar sesión Desktop
+# ------------------------------------------------------------
+
 detect_desktop_session() {
     local sid user type class desktop
 
     for sid in $(loginctl list-sessions --no-legend --no-pager 2>/dev/null |
                  awk '{print $1}'); do
+
         user="$(loginctl show-session "$sid" -p Name --value 2>/dev/null || true)"
         [[ "$user" == "$TARGET_USER" ]] || continue
 
@@ -143,6 +155,8 @@ detect_desktop_session() {
         [[ "$type" == "wayland" || "$type" == "x11" ]] || continue
         [[ "$class" == "user" || "$class" == "user-early" ]] || continue
         [[ -n "$desktop" ]] || continue
+
+        # Nunca considerar nuestro Gaming Mode como Desktop.
         [[ "$desktop" != "gamescope" ]] || continue
         [[ "$desktop" != "$REQUESTED_GAMING" ]] || continue
 
@@ -153,6 +167,7 @@ detect_desktop_session() {
 
     return 1
 }
+
 
 detect_desktop_accountsservice() {
     local value
@@ -170,6 +185,7 @@ detect_desktop_accountsservice() {
 ' "$value"
 }
 
+
 desktop_session_file_exists() {
     local session_id="$1"
 
@@ -179,11 +195,13 @@ desktop_session_file_exists() {
        -f "/usr/share/xsessions/${session_id}.desktop" ]]
 }
 
+
 detect_desktop_session_environment() {
     local sid user type class leader value key
 
     for sid in $(loginctl list-sessions --no-legend --no-pager 2>/dev/null |
                  awk '{print $1}'); do
+
         user="$(loginctl show-session "$sid" -p Name --value 2>/dev/null || true)"
         [[ "$user" == "$TARGET_USER" ]] || continue
 
@@ -206,6 +224,8 @@ detect_desktop_session_environment() {
             )"
 
             [[ -n "$value" ]] || continue
+
+            # Nunca considerar Gaming Mode como Desktop.
             [[ "$value" != "gamescope" ]] || continue
             [[ "$value" != "$REQUESTED_GAMING" ]] || continue
 
@@ -220,6 +240,7 @@ detect_desktop_session_environment() {
     return 1
 }
 
+
 detect_ubuntu_desktop_fallback() {
     local os_id=""
 
@@ -232,10 +253,13 @@ detect_ubuntu_desktop_fallback() {
     fi
 
     [[ "$os_id" == "ubuntu" ]] || return 1
+
     desktop_session_file_exists "ubuntu" || return 1
+
     printf '%s
 ' "ubuntu"
 }
+
 
 if [[ -n "$REQUESTED_DESKTOP" ]]; then
     DESKTOP_SESSION="$REQUESTED_DESKTOP"
@@ -254,11 +278,21 @@ fi
 
 GAMING_SESSION="$REQUESTED_GAMING"
 
+
+# ------------------------------------------------------------
+# Sanitizar IDs
+# ------------------------------------------------------------
+
 [[ "$DESKTOP_SESSION" =~ ^[A-Za-z0-9._+-]+$ ]] ||
     die "ID de Desktop session no válido: $DESKTOP_SESSION"
 
 [[ "$GAMING_SESSION" =~ ^[A-Za-z0-9._+-]+$ ]] ||
     die "ID de Gaming session no válido: $GAMING_SESSION"
+
+
+# ------------------------------------------------------------
+# Validar sesiones
+# ------------------------------------------------------------
 
 if [[ ! -f "/usr/share/wayland-sessions/${DESKTOP_SESSION}.desktop" &&
       ! -f "/usr/share/xsessions/${DESKTOP_SESSION}.desktop" ]]; then
@@ -269,6 +303,11 @@ GAMING_SESSION_FILE="/usr/share/wayland-sessions/${GAMING_SESSION}.desktop"
 
 [[ -f "$GAMING_SESSION_FILE" ]] ||
     die "no existe $GAMING_SESSION_FILE"
+
+
+# ------------------------------------------------------------
+# Infraestructura obligatoria
+# ------------------------------------------------------------
 
 for command in     busctl loginctl systemctl runuser python3 sudo visudo
 do
@@ -287,6 +326,11 @@ done
 
 [[ -f /usr/lib/systemd/system/gaming-autologin-rearm.service ]] ||
     die "falta gaming-autologin-rearm.service"
+
+
+# ------------------------------------------------------------
+# Resultado detectado
+# ------------------------------------------------------------
 
 echo
 echo "============================================================"
@@ -311,6 +355,11 @@ echo "gamescope-session-plus:"
 echo "  /usr/lib/ubuntu-gaming-mode/gamescope-session-plus"
 echo
 
+
+# ------------------------------------------------------------
+# Dry run
+# ------------------------------------------------------------
+
 if [[ "$MODE" == "dry-run" ]]; then
     echo "NO se ha modificado ningún archivo."
     echo
@@ -332,8 +381,18 @@ if [[ "$MODE" == "dry-run" ]]; then
     exit 0
 fi
 
+
+# ------------------------------------------------------------
+# Apply exige root
+# ------------------------------------------------------------
+
 [[ $EUID -eq 0 ]] ||
     die "--apply requiere sudo/root"
+
+
+# ------------------------------------------------------------
+# Preparar archivos temporales ANTES de tocar nada
+# ------------------------------------------------------------
 
 TMPDIR_SETUP="$(mktemp -d)"
 
@@ -346,6 +405,7 @@ TMP_CONFIG="$TMPDIR_SETUP/session.conf"
 TMP_GDM="$TMPDIR_SETUP/custom.conf"
 TMP_SUDOERS="$TMPDIR_SETUP/sudoers"
 
+
 cat > "$TMP_CONFIG" <<CONFIG
 # Ubuntu Gaming Mode - configuración generada
 UGM_USER="$TARGET_USER"
@@ -353,6 +413,7 @@ UGM_UID="$TARGET_UID"
 UGM_DESKTOP_SESSION="$DESKTOP_SESSION"
 UGM_GAMING_SESSION="$GAMING_SESSION"
 CONFIG
+
 
 [[ -f "$GDM_CONFIG" ]] ||
     die "no existe $GDM_CONFIG"
@@ -421,6 +482,7 @@ else:
 target.write_text("".join(lines))
 PY
 
+
 cat > "$TMP_SUDOERS" <<SUDOERS
 $TARGET_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block gaming-autologin-rearm.service
 SUDOERS
@@ -432,6 +494,11 @@ visudo -cf "$TMP_SUDOERS" >/dev/null ||
 
 bash -n "$TMP_CONFIG" ||
     die "session.conf generado no es válido"
+
+
+# ------------------------------------------------------------
+# Backup
+# ------------------------------------------------------------
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP="/var/backups/ubuntu-gaming-mode/setup-$STAMP"
@@ -453,6 +520,11 @@ backup_file "$SUDOERS_FILE"
 echo "Backup:"
 echo "  $BACKUP"
 
+
+# ------------------------------------------------------------
+# Instalar configuración
+# ------------------------------------------------------------
+
 install -d -o root -g root -m 0755 "$CONFIG_DIR"
 
 install -o root -g root -m 0644     "$TMP_CONFIG" "$CONFIG_FILE"
@@ -460,6 +532,11 @@ install -o root -g root -m 0644     "$TMP_CONFIG" "$CONFIG_FILE"
 install -o root -g root -m 0644     "$TMP_GDM" "$GDM_CONFIG"
 
 install -o root -g root -m 0440     "$TMP_SUDOERS" "$SUDOERS_FILE"
+
+
+# ------------------------------------------------------------
+# Validación final
+# ------------------------------------------------------------
 
 bash -n "$CONFIG_FILE" ||
     die "session.conf final no válido"
@@ -475,6 +552,7 @@ bash -n /usr/lib/ubuntu-gaming-mode/return-to-gaming-mode ||
 
 bash -n /usr/lib/ubuntu-gaming-mode/gaming-autologin-rearm ||
     die "gaming-autologin-rearm no válido"
+
 
 echo
 echo "============================================================"
