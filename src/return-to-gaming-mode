@@ -1,0 +1,66 @@
+#!/bin/bash
+
+set -u
+
+USER_ID="$(id -u)"
+ACCOUNTS_PATH="/org/freedesktop/Accounts/User${USER_ID}"
+
+CONFIG_FILE="/etc/ubuntu-gaming-mode/session.conf"
+
+[[ -r "$CONFIG_FILE" ]] || {
+    echo "ERROR: no existe $CONFIG_FILE" >&2
+    exit 1
+}
+
+# shellcheck disable=SC1090
+source "$CONFIG_FILE"
+
+GAMING_SESSION="$UGM_GAMING_SESSION"
+DESKTOP_SESSION_ID="$UGM_DESKTOP_SESSION"
+
+SESSION_FILE="/usr/share/wayland-sessions/${GAMING_SESSION}.desktop"
+
+fail() {
+    zenity         --error         --title="Steam Gaming Mode"         --text="$1" 2>/dev/null || true
+
+    echo "ERROR: $1" >&2
+    exit 1
+}
+
+if [[ "${XDG_SESSION_DESKTOP:-}" != "$DESKTOP_SESSION_ID" ]] &&
+   [[ "${DESKTOP_SESSION:-}" != "$DESKTOP_SESSION_ID" ]]; then
+    fail "Este lanzador solo puede utilizarse desde la sesión de escritorio configurada ($DESKTOP_SESSION_ID)."
+fi
+
+zenity     --question     --title="Steam Gaming Mode"     --width=420     --text="¿Quieres entrar en Steam Gaming Mode?
+
+Se cerrará la sesión actual de Ubuntu."     --ok-label="Entrar en Gaming Mode"     --cancel-label="Cancelar"
+
+if [[ $? -ne 0 ]]; then
+    exit 0
+fi
+
+[[ -f "$SESSION_FILE" ]] ||
+    fail "No existe $SESSION_FILE."
+
+command -v busctl >/dev/null ||
+    fail "No se encuentra busctl."
+
+command -v gnome-session-quit >/dev/null ||
+    fail "No se encuentra gnome-session-quit."
+
+busctl call     org.freedesktop.Accounts     "$ACCOUNTS_PATH"     org.freedesktop.Accounts.User     SetSession s "$GAMING_SESSION" ||
+    fail "No se pudo seleccionar Steam Gaming Mode."
+
+CURRENT_SESSION="$(
+    busctl get-property         org.freedesktop.Accounts         "$ACCOUNTS_PATH"         org.freedesktop.Accounts.User         Session 2>/dev/null |
+    sed -n 's/^s "\(.*\)"$/\1/p'
+)"
+
+[[ "$CURRENT_SESSION" == "$GAMING_SESSION" ]] ||
+    fail "AccountsService no guardó Steam Gaming Mode."
+
+sudo -n /usr/bin/systemctl start --no-block gaming-autologin-rearm.service ||
+    fail "No se pudo preparar el autologin; no se cerrará Ubuntu."
+
+gnome-session-quit --logout --no-prompt
