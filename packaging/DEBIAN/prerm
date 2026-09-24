@@ -1,0 +1,72 @@
+#!/bin/bash
+set -eu
+
+CONFIG="/etc/ubuntu-gaming-mode/session.conf"
+ACTION="${1:-remove}"
+
+log() {
+    printf 'ubuntu-gaming-mode: %s
+' "$*"
+}
+
+get_account_session() {
+    uid="$1"
+
+    path="/org/freedesktop/Accounts/User${uid}"
+
+    out="$(
+        busctl get-property             org.freedesktop.Accounts             "$path"             org.freedesktop.Accounts.User             Session 2>/dev/null
+    )" || return 1
+
+    printf '%s
+' "$out" |
+        sed -n 's/^s "\(.*\)"$/\1/p'
+}
+
+set_account_session() {
+    uid="$1"
+    value="$2"
+
+    path="/org/freedesktop/Accounts/User${uid}"
+
+    busctl call         org.freedesktop.Accounts         "$path"         org.freedesktop.Accounts.User         SetSession         s "$value"         >/dev/null
+}
+
+case "$ACTION" in
+
+    upgrade|deconfigure)
+        # Una actualización NUNCA es una desinstalación.
+        exit 0
+        ;;
+
+    remove)
+        ;;
+
+    *)
+        exit 0
+        ;;
+esac
+
+[ -r "$CONFIG" ] ||
+    exit 0
+
+# shellcheck disable=SC1090
+. "$CONFIG"
+
+current="$(
+    get_account_session "$UGM_UID" 2>/dev/null ||
+    true
+)"
+
+if [ "$current" = "$UGM_GAMING_SESSION" ]; then
+
+    log "Gaming Mode está seleccionado; pasando a $UGM_DESKTOP_SESSION antes de retirar el paquete."
+
+    set_account_session         "$UGM_UID"         "$UGM_DESKTOP_SESSION" ||
+    {
+        echo "ubuntu-gaming-mode: ERROR: no se pudo seleccionar la sesión Desktop" >&2
+        exit 1
+    }
+fi
+
+exit 0
