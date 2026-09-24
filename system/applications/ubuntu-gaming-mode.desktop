@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Volver a Gaming Mode
+Comment=Cambiar de Ubuntu a Steam Gaming Mode
+Exec=/usr/lib/ubuntu-gaming-mode/return-to-gaming-mode
+Icon=ubuntu-gaming-mode
+Terminal=false
+Type=Application
+Categories=Game;
+StartupNotify=false
