@@ -1,0 +1,497 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+CONFIG_DIR="/etc/ubuntu-gaming-mode"
+CONFIG_FILE="$CONFIG_DIR/session.conf"
+GDM_CONFIG="/etc/gdm3/custom.conf"
+SUDOERS_FILE="/etc/sudoers.d/gaming-autologin-rearm"
+
+GAMING_SESSION_DEFAULT="steam-gaming-mode"
+
+MODE="dry-run"
+REQUESTED_USER=""
+REQUESTED_DESKTOP=""
+REQUESTED_GAMING="$GAMING_SESSION_DEFAULT"
+
+die() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+usage() {
+    cat <<USAGE
+Ubuntu Gaming Mode Setup
+
+Uso:
+  ubuntu-gaming-mode-setup [opciones]
+
+Opciones:
+  --dry-run
+      Detectar y mostrar configuración sin modificar nada.
+      Es el modo predeterminado.
+
+  --apply
+      Aplicar la configuración.
+
+  --user USUARIO
+      Forzar usuario.
+
+  --desktop-session SESION
+      Forzar ID de sesión Desktop.
+
+  --gaming-session SESION
+      Forzar ID de Gaming Mode.
+      Predeterminado: steam-gaming-mode
+
+  -h, --help
+      Mostrar ayuda.
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            MODE="dry-run"
+            shift
+            ;;
+        --apply)
+            MODE="apply"
+            shift
+            ;;
+        --user)
+            [[ $# -ge 2 ]] || die "--user necesita un argumento"
+            REQUESTED_USER="$2"
+            shift 2
+            ;;
+        --desktop-session)
+            [[ $# -ge 2 ]] || die "--desktop-session necesita un argumento"
+            REQUESTED_DESKTOP="$2"
+            shift 2
+            ;;
+        --gaming-session)
+            [[ $# -ge 2 ]] || die "--gaming-session necesita un argumento"
+            REQUESTED_GAMING="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "opción desconocida: $1"
+            ;;
+    esac
+done
+
+detect_user() {
+    if [[ -n "$REQUESTED_USER" ]]; then
+        printf '%s
+' "$REQUESTED_USER"
+        return
+    fi
+
+    if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+        printf '%s
+' "$SUDO_USER"
+        return
+    fi
+
+    if [[ "$(id -u)" -ne 0 ]]; then
+        id -un
+        return
+    fi
+
+    local sid user type class
+
+    for sid in $(loginctl list-sessions --no-legend --no-pager 2>/dev/null |
+                 awk '{print $1}'); do
+        user="$(loginctl show-session "$sid" -p Name --value 2>/dev/null || true)"
+        type="$(loginctl show-session "$sid" -p Type --value 2>/dev/null || true)"
+        class="$(loginctl show-session "$sid" -p Class --value 2>/dev/null || true)"
+
+        [[ "$user" != "root" && "$user" != "gdm" ]] || continue
+        [[ "$type" == "wayland" || "$type" == "x11" ]] || continue
+        [[ "$class" == "user" || "$class" == "user-early" ]] || continue
+
+        printf '%s
+' "$user"
+        return
+    done
+
+    die "no se pudo detectar el usuario; utiliza --user"
+}
+
+TARGET_USER="$(detect_user)"
+
+id "$TARGET_USER" >/dev/null 2>&1 ||
+    die "el usuario '$TARGET_USER' no existe"
+
+TARGET_UID="$(id -u "$TARGET_USER")"
+
+detect_desktop_session() {
+    local sid user type class desktop
+
+    for sid in $(loginctl list-sessions --no-legend --no-pager 2>/dev/null |
+                 awk '{print $1}'); do
+        user="$(loginctl show-session "$sid" -p Name --value 2>/dev/null || true)"
+        [[ "$user" == "$TARGET_USER" ]] || continue
+
+        type="$(loginctl show-session "$sid" -p Type --value 2>/dev/null || true)"
+        class="$(loginctl show-session "$sid" -p Class --value 2>/dev/null || true)"
+        desktop="$(loginctl show-session "$sid" -p Desktop --value 2>/dev/null || true)"
+
+        [[ "$type" == "wayland" || "$type" == "x11" ]] || continue
+        [[ "$class" == "user" || "$class" == "user-early" ]] || continue
+        [[ -n "$desktop" ]] || continue
+        [[ "$desktop" != "gamescope" ]] || continue
+        [[ "$desktop" != "$REQUESTED_GAMING" ]] || continue
+
+        printf '%s
+' "$desktop"
+        return 0
+    done
+
+    return 1
+}
+
+detect_desktop_accountsservice() {
+    local value
+    local path="/org/freedesktop/Accounts/User${TARGET_UID}"
+
+    value="$(
+        busctl get-property             org.freedesktop.Accounts             "$path"             org.freedesktop.Accounts.User             Session 2>/dev/null |
+        sed -n 's/^s "\(.*\)"$/\1/p'
+    )"
+
+    [[ -n "$value" ]] || return 1
+    [[ "$value" != "$REQUESTED_GAMING" ]] || return 1
+
+    printf '%s
+' "$value"
+}
+
+desktop_session_file_exists() {
+    local session_id="$1"
+
+    [[ "$session_id" =~ ^[A-Za-z0-9._+-]+$ ]] || return 1
+
+    [[ -f "/usr/share/wayland-sessions/${session_id}.desktop" ||
+       -f "/usr/share/xsessions/${session_id}.desktop" ]]
+}
+
+detect_desktop_session_environment() {
+    local sid user type class leader value key
+
+    for sid in $(loginctl list-sessions --no-legend --no-pager 2>/dev/null |
+                 awk '{print $1}'); do
+        user="$(loginctl show-session "$sid" -p Name --value 2>/dev/null || true)"
+        [[ "$user" == "$TARGET_USER" ]] || continue
+
+        type="$(loginctl show-session "$sid" -p Type --value 2>/dev/null || true)"
+        class="$(loginctl show-session "$sid" -p Class --value 2>/dev/null || true)"
+
+        [[ "$type" == "wayland" || "$type" == "x11" ]] || continue
+        [[ "$class" == "user" || "$class" == "user-early" ]] || continue
+
+        leader="$(loginctl show-session "$sid" -p Leader --value 2>/dev/null || true)"
+
+        [[ "$leader" =~ ^[0-9]+$ ]] || continue
+        [[ -r "/proc/${leader}/environ" ]] || continue
+
+        for key in XDG_SESSION_DESKTOP DESKTOP_SESSION; do
+            value="$(
+                tr '\0' '\n' < "/proc/${leader}/environ" |
+                sed -n "s/^${key}=//p" |
+                sed -n '1p'
+            )"
+
+            [[ -n "$value" ]] || continue
+            [[ "$value" != "gamescope" ]] || continue
+            [[ "$value" != "$REQUESTED_GAMING" ]] || continue
+
+            desktop_session_file_exists "$value" || continue
+
+            printf '%s
+' "$value"
+            return 0
+        done
+    done
+
+    return 1
+}
+
+detect_ubuntu_desktop_fallback() {
+    local os_id=""
+
+    if [[ -r /etc/os-release ]]; then
+        os_id="$(
+            sed -n 's/^ID=//p' /etc/os-release |
+            sed 's/^"//; s/"$//' |
+            sed -n '1p'
+        )"
+    fi
+
+    [[ "$os_id" == "ubuntu" ]] || return 1
+    desktop_session_file_exists "ubuntu" || return 1
+    printf '%s
+' "ubuntu"
+}
+
+if [[ -n "$REQUESTED_DESKTOP" ]]; then
+    DESKTOP_SESSION="$REQUESTED_DESKTOP"
+else
+    DESKTOP_SESSION="$(
+        detect_desktop_session ||
+        detect_desktop_session_environment ||
+        detect_desktop_accountsservice ||
+        detect_ubuntu_desktop_fallback ||
+        true
+    )"
+fi
+
+[[ -n "$DESKTOP_SESSION" ]] ||
+    die "no se pudo detectar Desktop session; usa --desktop-session"
+
+GAMING_SESSION="$REQUESTED_GAMING"
+
+[[ "$DESKTOP_SESSION" =~ ^[A-Za-z0-9._+-]+$ ]] ||
+    die "ID de Desktop session no válido: $DESKTOP_SESSION"
+
+[[ "$GAMING_SESSION" =~ ^[A-Za-z0-9._+-]+$ ]] ||
+    die "ID de Gaming session no válido: $GAMING_SESSION"
+
+if [[ ! -f "/usr/share/wayland-sessions/${DESKTOP_SESSION}.desktop" &&
+      ! -f "/usr/share/xsessions/${DESKTOP_SESSION}.desktop" ]]; then
+    die "no existe la sesión Desktop '$DESKTOP_SESSION'"
+fi
+
+GAMING_SESSION_FILE="/usr/share/wayland-sessions/${GAMING_SESSION}.desktop"
+
+[[ -f "$GAMING_SESSION_FILE" ]] ||
+    die "no existe $GAMING_SESSION_FILE"
+
+for command in     busctl loginctl systemctl runuser python3 sudo visudo
+do
+    command -v "$command" >/dev/null 2>&1 ||
+        die "falta comando requerido: $command"
+done
+
+[[ -x /usr/lib/ubuntu-gaming-mode/gamescope ]] ||
+    die "falta /usr/lib/ubuntu-gaming-mode/gamescope"
+
+[[ -x /usr/lib/ubuntu-gaming-mode/gamescope-session-plus ]] ||
+    die "falta /usr/lib/ubuntu-gaming-mode/gamescope-session-plus"
+
+[[ -x /usr/lib/ubuntu-gaming-mode/gaming-autologin-rearm ]] ||
+    die "falta gaming-autologin-rearm"
+
+[[ -f /usr/lib/systemd/system/gaming-autologin-rearm.service ]] ||
+    die "falta gaming-autologin-rearm.service"
+
+echo
+echo "============================================================"
+echo " Ubuntu Gaming Mode - Setup"
+echo "============================================================"
+echo
+printf "%-20s %s
+" "Modo:"              "$MODE"
+printf "%-20s %s
+" "Usuario:"           "$TARGET_USER"
+printf "%-20s %s
+" "UID:"               "$TARGET_UID"
+printf "%-20s %s
+" "Desktop session:"   "$DESKTOP_SESSION"
+printf "%-20s %s
+" "Gaming session:"    "$GAMING_SESSION"
+echo
+echo "Gamescope:"
+echo "  /usr/lib/ubuntu-gaming-mode/gamescope"
+echo
+echo "gamescope-session-plus:"
+echo "  /usr/lib/ubuntu-gaming-mode/gamescope-session-plus"
+echo
+
+if [[ "$MODE" == "dry-run" ]]; then
+    echo "NO se ha modificado ningún archivo."
+    echo
+    echo "session.conf resultante:"
+    echo
+    echo "UGM_USER=\"$TARGET_USER\""
+    echo "UGM_UID=\"$TARGET_UID\""
+    echo "UGM_DESKTOP_SESSION=\"$DESKTOP_SESSION\""
+    echo "UGM_GAMING_SESSION=\"$GAMING_SESSION\""
+    echo
+    echo "sudoers resultante:"
+    echo
+    echo "$TARGET_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block gaming-autologin-rearm.service"
+    echo
+    echo "GDM:"
+    echo "  AutomaticLoginEnable=true"
+    echo "  AutomaticLogin=$TARGET_USER"
+    echo
+    exit 0
+fi
+
+[[ $EUID -eq 0 ]] ||
+    die "--apply requiere sudo/root"
+
+TMPDIR_SETUP="$(mktemp -d)"
+
+cleanup() {
+    rm -rf "$TMPDIR_SETUP"
+}
+trap cleanup EXIT
+
+TMP_CONFIG="$TMPDIR_SETUP/session.conf"
+TMP_GDM="$TMPDIR_SETUP/custom.conf"
+TMP_SUDOERS="$TMPDIR_SETUP/sudoers"
+
+cat > "$TMP_CONFIG" <<CONFIG
+# Ubuntu Gaming Mode - configuración generada
+UGM_USER="$TARGET_USER"
+UGM_UID="$TARGET_UID"
+UGM_DESKTOP_SESSION="$DESKTOP_SESSION"
+UGM_GAMING_SESSION="$GAMING_SESSION"
+CONFIG
+
+[[ -f "$GDM_CONFIG" ]] ||
+    die "no existe $GDM_CONFIG"
+
+python3 - "$GDM_CONFIG" "$TMP_GDM" "$TARGET_USER" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+user = sys.argv[3]
+
+lines = source.read_text().splitlines(keepends=True)
+
+daemon = None
+
+for i, line in enumerate(lines):
+    if re.match(r'^\s*\[daemon\]\s*$', line):
+        daemon = i
+        break
+
+if daemon is None:
+    if lines and not lines[-1].endswith("\n"):
+        lines[-1] += "\n"
+
+    if lines and lines[-1].strip():
+        lines.append("\n")
+
+    lines += [
+        "[daemon]\n",
+        "AutomaticLoginEnable=true\n",
+        f"AutomaticLogin={user}\n",
+    ]
+
+else:
+    end = len(lines)
+
+    for i in range(daemon + 1, len(lines)):
+        if re.match(r'^\s*\[[^]]+\]\s*$', lines[i]):
+            end = i
+            break
+
+    section = []
+
+    for line in lines[daemon + 1:end]:
+        if re.match(r'^\s*AutomaticLoginEnable\s*=', line):
+            continue
+        if re.match(r'^\s*AutomaticLogin\s*=', line):
+            continue
+        section.append(line)
+
+    while section and not section[-1].strip():
+        section.pop()
+
+    if section:
+        section.append("\n")
+
+    section += [
+        "AutomaticLoginEnable=true\n",
+        f"AutomaticLogin={user}\n",
+    ]
+
+    lines = lines[:daemon + 1] + section + lines[end:]
+
+target.write_text("".join(lines))
+PY
+
+cat > "$TMP_SUDOERS" <<SUDOERS
+$TARGET_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block gaming-autologin-rearm.service
+SUDOERS
+
+chmod 0440 "$TMP_SUDOERS"
+
+visudo -cf "$TMP_SUDOERS" >/dev/null ||
+    die "sudoers generado no es válido"
+
+bash -n "$TMP_CONFIG" ||
+    die "session.conf generado no es válido"
+
+STAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP="/var/backups/ubuntu-gaming-mode/setup-$STAMP"
+
+mkdir -p "$BACKUP"
+
+backup_file() {
+    local f="$1"
+
+    if [[ -e "$f" ]]; then
+        cp -a --parents "$f" "$BACKUP/"
+    fi
+}
+
+backup_file "$CONFIG_FILE"
+backup_file "$GDM_CONFIG"
+backup_file "$SUDOERS_FILE"
+
+echo "Backup:"
+echo "  $BACKUP"
+
+install -d -o root -g root -m 0755 "$CONFIG_DIR"
+
+install -o root -g root -m 0644     "$TMP_CONFIG" "$CONFIG_FILE"
+
+install -o root -g root -m 0644     "$TMP_GDM" "$GDM_CONFIG"
+
+install -o root -g root -m 0440     "$TMP_SUDOERS" "$SUDOERS_FILE"
+
+bash -n "$CONFIG_FILE" ||
+    die "session.conf final no válido"
+
+visudo -cf "$SUDOERS_FILE" >/dev/null ||
+    die "sudoers final no válido"
+
+bash -n /usr/lib/ubuntu-gaming-mode/os-session-select ||
+    die "os-session-select no válido"
+
+bash -n /usr/lib/ubuntu-gaming-mode/return-to-gaming-mode ||
+    die "return-to-gaming-mode no válido"
+
+bash -n /usr/lib/ubuntu-gaming-mode/gaming-autologin-rearm ||
+    die "gaming-autologin-rearm no válido"
+
+echo
+echo "============================================================"
+echo " CONFIGURACIÓN COMPLETADA"
+echo "============================================================"
+echo
+printf "%-20s %s
+" "Usuario:"           "$TARGET_USER"
+printf "%-20s %s
+" "UID:"               "$TARGET_UID"
+printf "%-20s %s
+" "Desktop session:"   "$DESKTOP_SESSION"
+printf "%-20s %s
+" "Gaming session:"    "$GAMING_SESSION"
+echo
+echo "Backup:"
+echo "  $BACKUP"
+echo
+echo "No se ha reiniciado GDM."
+echo "No se ha cerrado ninguna sesión."
