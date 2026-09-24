@@ -55,6 +55,19 @@ This matters because NVIDIA remains a more demanding path in the SteamOS/Gamesco
 
 By contrast, the UGM RTX 2060 reference system has physically validated a **smooth Steam Gamepad UI at both 60 FPS and 120 FPS** in Gaming Mode, in addition to the 4K/HDR/VRR tests above. No UI-lag problem or game-breaking graphical artifacts were observed during that acceptance testing.
 
+### Historical NVIDIA 4K scan-out corruption solved on the validated UGM build
+
+During UGM development, the RTX 2060 reference system previously exhibited a severe 4K DRM presentation failure that visually matched the same class of corruption now documented upstream in Gamescope issue #2309:
+
+- the 4K image appeared cut into several sections;
+- parts of the framebuffer were displayed in the wrong screen positions;
+- strong blue/cyan, pink/magenta and purple corruption appeared across the image;
+- the failure was specific to the 4K Gamescope DRM path.
+
+The current UGM 1.0.0-3 Gamescope build no longer reproduces that failure on the validated RTX 2060 setup: 4K output is stable, including the HDR/VRR and Steam UI acceptance tests.
+
+Because the modified Gamescope source tree was later deleted, UGM cannot prove which exact code change eliminated the corruption or claim that it fixes the still-open upstream issue on other NVIDIA GPUs. What can be stated is narrower and directly tested: **the NVIDIA 4K scan-out corruption encountered during UGM development was overcome and the reference RTX 2060 configuration is now stable at 4K**.
+
 UGM does **not** claim universal NVIDIA compatibility or that these upstream/distribution-specific problems are fixed for every GPU. The narrower, tested claim is that the RTX 2060 reference system successfully runs a standalone Gamescope DRM session at 4K with HDR, VRR, a smooth Steam UI at 60/120 FPS and the Steam Gaming Mode features listed above.
 
 For NVIDIA users who already run Ubuntu, this is also a practical alternative to replacing the operating system with a dedicated gaming distribution: UGM adds a separate console-style Gamescope session while preserving the existing Ubuntu desktop and driver stack.
