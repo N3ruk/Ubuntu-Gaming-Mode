@@ -33,6 +33,14 @@ read_selected_session() {
     sed -n 's/^s "\(.*\)"$/\1/p'
 }
 
+#
+# IMPORTANTE:
+# AccountsService puede dejar Session="" durante la transición después
+# de desaparecer la sesión gráfica.
+#
+# Por ello capturamos la sesión destino AHORA, mientras la sesión de
+# origen sigue viva y SetSession ya ha sido ejecutado.
+#
 selected=""
 
 for ((attempt=0; attempt<20; attempt++)); do
@@ -57,6 +65,8 @@ case "$selected" in
         ;;
 esac
 
+# Ejecutado por systemd, fuera de la sesión que debe terminar.
+# Solo se reinicia GDM si desaparecen TODAS las sesiones gráficas de usuario.
 has_graphical_session() {
     local sessions sid rest props
 
@@ -83,7 +93,16 @@ for ((attempt=0; attempt<60; attempt++)); do
         result=$?
         [[ $result -eq 1 ]] || exit "$result"
 
+        #
+        # NO volver a consultar AccountsService aquí.
+        # Durante este intervalo Session puede ser temporalmente "".
+        # Usamos la sesión destino capturada antes del logout.
+        #
+
         if [[ "$selected" == "$DESKTOP_SESSION_ID" ]]; then
+            # Gamescope puede dejar este target activo si un portal tiene
+            # un arranque pendiente. GNOME rechaza arrancar en ese estado.
+            # No reiniciar el gestor de usuario ni sus servicios no gráficos.
             user_systemctl() {
                 runuser -u "$TARGET_USER" -- env                     XDG_RUNTIME_DIR="$RUNTIME_DIR"                     DBUS_SESSION_BUS_ADDRESS="$USER_BUS"                     /usr/bin/systemctl --user "$@"
             }
