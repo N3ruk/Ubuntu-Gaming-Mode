@@ -114,12 +114,28 @@ UGM manages:
 
 Installation and upgrades do **not** restart GDM or close the current session.
 
+## Source tree
+
+The package sources are published in this repository:
+
+- `src/` — UGM runtime scripts and session helpers
+- `system/` — systemd units, desktop/session entries and Gamescope session configuration
+- `packaging/DEBIAN/` — Debian control and maintainer scripts
+- `packaging/build-deb.sh` — package assembly script
+- `gamescope/` — validated custom Gamescope runtime information
+
+See [SOURCE.md](SOURCE.md) for the source layout, binary inputs and reproducibility notes.
+
+The compiled custom Gamescope binary and the application icon are intentionally not stored in Git history; they are inputs to the package build and are contained in the validated release artifact.
+
 ## Documentation
 
 - [Installation](docs/installation.md)
 - [Uninstall and rollback](docs/uninstall-and-rollback.md)
 - [Architecture](docs/architecture.md)
 - [FSR/NIS: nested vs DRM performance](docs/performance/fsr-nis-nested-vs-drm.md)
+- [Source layout](SOURCE.md)
+- [Bundled Gamescope runtime](gamescope/README.md)
 - [Changelog](CHANGELOG.md)
 
 ## Status
