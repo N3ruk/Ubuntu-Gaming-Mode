@@ -1,4 +1,6 @@
-# Ubuntu Gaming Mode
+# Ubuntu Gaming Mode for Ubuntu 26.04
+
+**English** | [Español](README_es.md)
 
 A SteamOS-style Gaming Mode session for **Ubuntu 26.04**, built around a dedicated **Gamescope DRM/KMS** session and Steam Gamepad UI.
 
@@ -133,13 +135,13 @@ The Gamescope binary bundled in 1.0.0-3 is **not an unmodified upstream build**.
 
 ## Documentation
 
-- [Installation](docs/installation.md)
-- [Uninstall and rollback](docs/uninstall-and-rollback.md)
-- [Architecture](docs/architecture.md)
-- [FSR/NIS: nested vs DRM performance](docs/performance/fsr-nis-nested-vs-drm.md)
-- [Source layout](SOURCE.md)
-- [Bundled Gamescope runtime](gamescope/README.md)
-- [Changelog](CHANGELOG.md)
+- [Installation](docs/installation.md) · [Español](docs/es/instalacion.md)
+- [Uninstall and rollback](docs/uninstall-and-rollback.md) · [Español](docs/es/desinstalacion-y-rollback.md)
+- [Architecture](docs/architecture.md) · [Español](docs/es/arquitectura.md)
+- [FSR/NIS: nested vs DRM performance](docs/performance/fsr-nis-nested-vs-drm.md) · [Español](docs/es/rendimiento-fsr-nis-gamescope-nested-vs-drm.md)
+- [Source layout](SOURCE.md) · [Español](SOURCE_es.md)
+- [Bundled Gamescope runtime](gamescope/README.md) · [Español](gamescope/README_es.md)
+- [Changelog](CHANGELOG.md) · [Español](CHANGELOG_es.md)
 
 ## Status
 
