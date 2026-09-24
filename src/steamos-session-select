@@ -1,0 +1,26 @@
+#!/bin/bash
+
+LOG="$HOME/.local/state/gamescope-session/session-switch.log"
+
+mkdir -p "$(dirname "$LOG")"
+
+{
+    echo
+    echo "============================================================"
+    echo "$(date '+%F %T') steamos-session-select"
+    echo "ARGS: $*"
+    echo "USER: $(id -un)"
+    echo "UID: $(id -u)"
+    echo "PATH: $PATH"
+} >> "$LOG"
+
+GAMESCOPE_SESSION_SCRIPT="/usr/lib/ubuntu-gaming-mode/os-session-select"
+
+if [[ -x "$GAMESCOPE_SESSION_SCRIPT" ]]; then
+    echo "$(date '+%F %T') Ejecutando $GAMESCOPE_SESSION_SCRIPT $*" >> "$LOG"
+    exec "$GAMESCOPE_SESSION_SCRIPT" "$@"
+fi
+
+echo "$(date '+%F %T') ERROR: $GAMESCOPE_SESSION_SCRIPT no ejecutable" >> "$LOG"
+
+steam -shutdown
