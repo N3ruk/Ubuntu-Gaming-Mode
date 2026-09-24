@@ -1,4 +1,6 @@
-# Changelog
+# Ubuntu Gaming Mode Changelog
+
+**English** | [Español](CHANGELOG_es.md)
 
 ## 1.0.0-3 — GOLD
 
