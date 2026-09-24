@@ -1,0 +1,290 @@
+#!/bin/bash
+
+set -x
+
+SYS_ID="$(cat /sys/devices/virtual/dmi/id/product_name)"
+
+declare -r CLIENT=$1
+declare -r CLIENT_CONFIG_DIR_USR=/usr/share/gamescope-session-plus/sessions.d
+declare -r CLIENT_CONFIG_DIR_ETC=/etc/gamescope-session-plus/sessions.d
+declare -r CLIENT_CONFIG_DIR_LOCAL="${XDG_CONFIG_HOME:-$HOME/.config}/gamescope-session-plus/sessions.d"
+
+short_session_recover() {
+	:
+}
+
+post_gamescope_start() {
+	:
+}
+
+post_client_shutdown() {
+	:
+}
+
+get_gamescope_binary() {
+	if [ -n "$GAMESCOPE_BIN" ]; then
+		echo $GAMESCOPE_BIN
+	else
+		echo "/usr/bin/gamescope"
+	fi
+}
+
+gamescope_has_option() {
+	if ($(get_gamescope_binary) --help 2>&1 | grep -e "$1" > /dev/null); then
+		return 0
+	fi
+
+	return 1
+}
+
+export INTEL_DEBUG=norbc
+export mesa_glthread=true
+export ENABLE_GAMESCOPE_WSI=1
+export QT_QPA_PLATFORM=xcb
+export SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS=0
+
+export MANGOHUD_CONFIGFILE=$(mktemp /tmp/mangohud.XXXXXXXX)
+export RADV_FORCE_VRS_CONFIG_FILE=$(mktemp /tmp/radv_vrs.XXXXXXXX)
+
+export GAMESCOPE_MODE_SAVE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/gamescope/modes.cfg"
+export GAMESCOPE_PATCHED_EDID_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/gamescope/edid.bin"
+
+mkdir -p "$(dirname "$GAMESCOPE_MODE_SAVE_FILE")"
+touch "$GAMESCOPE_MODE_SAVE_FILE"
+
+mkdir -p "$(dirname "$GAMESCOPE_PATCHED_EDID_FILE")"
+touch "$GAMESCOPE_PATCHED_EDID_FILE"
+
+export GAMESCOPE_NV12_COLORSPACE=k_EStreamColorspace_BT601
+export VKD3D_SWAPCHAIN_LATENCY_FRAMES=3
+
+mkdir -p "$(dirname "$MANGOHUD_CONFIGFILE")"
+echo "no_display" >"$MANGOHUD_CONFIGFILE"
+
+mkdir -p "$(dirname "$RADV_FORCE_VRS_CONFIG_FILE")"
+echo "1x1" >"$RADV_FORCE_VRS_CONFIG_FILE"
+
+export WINEDLLOVERRIDES=dxgi=n
+export vk_xwayland_wait_ready=false
+export GAMESCOPE_LIMITER_FILE=$(mktemp /tmp/gamescope-limiter.XXXXXXXX)
+export GAMESCOPE_DISABLE_ASYNC_FLIPS=1
+
+ulimit -n 524288
+
+if [ -f /usr/share/gamescope-session-plus/device-quirks ]; then
+	. /usr/share/gamescope-session-plus/device-quirks
+fi
+
+set -a
+for i in ${CLIENT_CONFIG_DIR_USR}/${CLIENT} ${CLIENT_CONFIG_DIR_ETC}/${CLIENT} ${CLIENT_CONFIG_DIR_LOCAL}/${CLIENT}; do
+	[[ -f "${i}" ]] && . "${i}"
+done
+set +a
+
+set -a
+for i in /etc/environment.d/*.conf; do
+	[[ -f "${i}" ]] && . "${i}"
+done
+for i in "${HOME}"/.config/environment.d/*.conf; do
+	[[ -f "${i}" ]] && . "${i}"
+done
+set +a
+
+tmpdir="$([[ -n ${XDG_RUNTIME_DIR+x} ]] && mktemp -p "$XDG_RUNTIME_DIR" -d -t gamescope.XXXXXXX)"
+socket="${tmpdir:+$tmpdir/startup.socket}"
+stats="${tmpdir:+$tmpdir/stats.pipe}"
+if [[ -z $tmpdir || -z ${XDG_RUNTIME_DIR+x} ]]; then
+	echo >&2 "!! Failed to find run directory in which to create stats session sockets (is \$XDG_RUNTIME_DIR set?)"
+	exit 0
+fi
+
+export GAMESCOPE_STATS="$stats"
+mkfifo -- "$stats"
+mkfifo -- "$socket"
+
+linkname="gamescope-stats"
+sessionlink="${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/}${linkname}"
+lockfile="$sessionlink".lck
+exec 9>"$lockfile"
+if flock -n 9 && rm -f "$sessionlink" && ln -sf "$tmpdir" "$sessionlink"; then
+	echo >&2 "Claimed global gamescope stats session at \"$sessionlink\""
+else
+	echo >&2 "!! Failed to claim global gamescope stats session"
+fi
+
+if [ -z "$GAMESCOPECMD" ]; then
+	: "${OUTPUT_CONNECTOR:=*,eDP-1}"
+	: "${XWAYLAND_COUNT:=2}"
+	: "${TOUCH_MODE:=4}"
+	: "${HIDE_CURSOR_DELAY_MS:=3000}"
+	: "${FADE_OUT_DURATION_MS:=200}"
+
+	CURSOR=""
+	if [ -f "$CURSOR_FILE" ]; then
+		CURSOR="--cursor ${CURSOR_FILE}"
+	fi
+
+	RESOLUTION=""
+	if [ -n "$SCREEN_WIDTH" ] && [ -n "$SCREEN_HEIGHT" ]; then
+		RESOLUTION="-W $SCREEN_WIDTH -H $SCREEN_HEIGHT"
+	fi
+
+	INTERNAL_RESOLUTION=""
+	if [ -n "$INTERNAL_WIDTH" ] && [ -n "$INTERNAL_HEIGHT" ] ; then
+		INTERNAL_RESOLUTION="-w $INTERNAL_WIDTH -h $INTERNAL_HEIGHT"
+	fi
+
+	DRM_MODE_OPTION=""
+	if [ -n "$DRM_MODE" ] ; then
+		DRM_MODE_OPTION="--generate-drm-mode $DRM_MODE"
+	fi
+
+	ORIENTATION_OPTION=""
+	if [ -n "$ORIENTATION" ] ; then
+		ORIENTATION_OPTION="--force-orientation $ORIENTATION"
+	fi
+
+	ADAPTIVE_SYNC_OPTION=""
+	if [ -n "$ADAPTIVE_SYNC" ]; then
+		ADAPTIVE_SYNC_OPTION="--adaptive-sync"
+	fi
+
+	PANEL_TYPE_OPTION=""
+	if [ -n "$PANEL_TYPE" ] && gamescope_has_option "--force-panel-type"; then
+		PANEL_TYPE_OPTION="--force-panel-type $PANEL_TYPE"
+	fi
+
+	CUSTOM_REFRESH_RATES_OPTION=""
+	if [ -n "$CUSTOM_REFRESH_RATES" ] && gamescope_has_option "--custom-refresh-rates"; then
+		CUSTOM_REFRESH_RATES_OPTION="--custom-refresh-rates $CUSTOM_REFRESH_RATES"
+	fi
+
+	USE_ROTATION_SHADER_OPTION=""
+	if [ -n "$USE_ROTATION_SHADER" ] && gamescope_has_option "--use-rotation-shader"; then
+		USE_ROTATION_SHADER_OPTION="--use-rotation-shader $USE_ROTATION_SHADER"
+	fi
+
+	BACKEND_OPTION=""
+	if [ -n "$BACKEND" ] && gamescope_has_option "--backend"; then
+		BACKEND_OPTION="--backend $BACKEND"
+	fi
+	
+	MAX_SCALE_OPTION=""
+	if [ -n "$MAX_SCALE" ] && gamescope_has_option "--max-scale"; then
+		MAX_SCALE_OPTION="--max-scale $MAX_SCALE"
+	fi
+
+	HDR_OPTIONS=""
+	if [ "$ENABLE_GAMESCOPE_HDR" == "1" ] && [ "$ENABLE_GAMESCOPE_WSI" == "1" ] && gamescope_has_option "--hdr-enabled" && gamescope_has_option "--hdr-itm-enable"; then
+		HDR_OPTIONS="--hdr-enabled --hdr-itm-enable"
+		export ENABLE_HDR_WSI=1
+		export DXVK_HDR=1
+		export GAMESCOPE_WAYLAND_DISPLAY="gamescope-0"
+	fi
+
+	if [ -n "$GAMESCOPE_HDR_NITS" ] && gamescope_has_option "--hdr-itm-sdr-nits" && gamescope_has_option "--hdr-sdr-content-nits"; then
+		HDR_OPTIONS="$HDR_OPTIONS --hdr-itm-sdr-nits $GAMESCOPE_HDR_NITS --hdr-sdr-content-nits $GAMESCOPE_HDR_NITS"
+	fi
+
+	GAMESCOPECMD="$(get_gamescope_binary) 		$CURSOR 		$RESOLUTION 		$INTERNAL_RESOLUTION 		$ORIENTATION_OPTION 		$DRM_MODE_OPTION 		$ADAPTIVE_SYNC_OPTION 		$PANEL_TYPE_OPTION 		$CUSTOM_REFRESH_RATES_OPTION 		$USE_ROTATION_SHADER_OPTION 		$BACKEND_OPTION 		$HDR_OPTIONS 		$MAX_SCALE_OPTION 		--prefer-output $OUTPUT_CONNECTOR 		--xwayland-count $XWAYLAND_COUNT 		--default-touch-mode $TOUCH_MODE 		--hide-cursor-delay $HIDE_CURSOR_DELAY_MS 		--fade-out-duration $FADE_OUT_DURATION_MS 		--steam"
+fi
+
+GAMESCOPECMD+=" -R $socket -T $stats"
+
+if [ -n "$VULKAN_ADAPTER" ]; then
+	GAMESCOPECMD+=" --prefer-vk-device $VULKAN_ADAPTER"
+fi
+
+short_session_tracker_file="/tmp/chimeraos-short-session-tracker"
+short_session_duration=60
+short_session_count_before_reset=5
+SECONDS=0
+
+short_session_count=$(wc <"$short_session_tracker_file" -l)
+
+if [[ "$short_session_count" -ge "$short_session_count_before_reset" ]]; then
+	echo >&2 "gamescope-session-plus: detected broken ${CLIENT} or gamescope failure, will try to reset the session"
+
+	short_session_recover
+
+	rm "$short_session_tracker_file"
+	exit 1
+fi
+
+$GAMESCOPECMD &
+gamescope_pid="$!"
+
+if read -r -t 5 response_x_display response_wl_display <>"$socket"; then
+	export DISPLAY="$response_x_display"
+	export GAMESCOPE_WAYLAND_DISPLAY="$response_wl_display"
+else
+	echo "gamescope failed" >>"$short_session_tracker_file"
+	kill -9 "$gamescope_pid"
+	wait -n "$gamescope_pid"
+	exit 1
+fi
+
+post_gamescope_start
+
+if command -v /usr/bin/ibus-daemon >/dev/null; then
+	/usr/bin/ibus-daemon -d -r --panel=disable --emoji-extension=disable
+fi
+
+if command -v mangoapp >/dev/null; then
+	(while true; do
+		mangoapp
+	done) &
+fi
+
+if [[ ":Galileo:" =~ ":$SYS_ID:"  ]]; then
+  if command -v galileo-mura-setup > /dev/null; then
+    galileo-mura-setup &
+  fi
+fi
+
+if [ -n "$STEAMCMD" ]; then
+	CLIENTCMD=$STEAMCMD
+fi
+
+$CLIENTCMD
+
+if [[ "$SECONDS" -lt "$short_session_duration" ]]; then
+	echo "${CLIENT} failed" >>"$short_session_tracker_file"
+else
+	rm "$short_session_tracker_file"
+fi
+
+post_client_shutdown
+
+kill $gamescope_pid
+
+sleep 5 &
+sleep_pid="$!"
+
+if [[ -e "$REBOOT_SENTINEL" ]]; then
+	rm -f "$REBOOT_SENTINEL"
+	rm "$short_session_tracker_file"
+	reboot
+fi
+if [[ -e "$SHUTDOWN_SENTINEL" ]]; then
+	rm -f "$SHUTDOWN_SENTINEL"
+	rm "$short_session_tracker_file"
+	poweroff
+fi
+
+ret=0
+wait -n $gamescope_pid $sleep_pid || ret=$?
+
+if [[ $ret = 127 ]]; then
+	echo >&2 "gamescope-session-plus: Interrupted while waiting on teardown, force-killing remaining tasks"
+fi
+
+for job in $(jobs -p); do
+	if [[ $ret != 127 && $job = "$gamescope_pid" ]]; then
+		echo >&2 "gamescope-session-plus: gamescope timed out while exiting, killing"
+	elif [[ $ret != 127 && $job != "$sleep_pid" ]]; then
+		echo >&2 "gamescope-session-plus: unexpected background pid $job at teardown: "
+		ps -p "$job" >&2
+	fi
+	kill -9 "$job"
+done
