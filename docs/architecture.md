@@ -1,4 +1,6 @@
-# Architecture
+# Ubuntu Gaming Mode architecture: Gamescope DRM/KMS on Ubuntu 26.04
+
+**English** | [Español](es/arquitectura.md)
 
 Ubuntu Gaming Mode provides a dedicated Steam/Gamescope session alongside the normal Ubuntu desktop.
 
