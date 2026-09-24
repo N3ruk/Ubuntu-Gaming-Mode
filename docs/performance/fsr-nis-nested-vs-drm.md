@@ -1,4 +1,6 @@
-# FSR/NIS performance — nested Gamescope vs DRM Gaming Mode
+# FSR/NIS performance in Gamescope: nested vs DRM Gaming Mode
+
+**English** | [Español](../es/rendimiento-fsr-nis-gamescope-nested-vs-drm.md)
 
 Status: **documented from real project measurements**
 
