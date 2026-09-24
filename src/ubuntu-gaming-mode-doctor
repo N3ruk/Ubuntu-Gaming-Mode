@@ -1,0 +1,495 @@
+#!/bin/bash
+set -u
+
+OK=0
+WARN=0
+FAIL=0
+
+CONFIG="/etc/ubuntu-gaming-mode/session.conf"
+RUNTIME="/usr/lib/ubuntu-gaming-mode"
+STEAM_CONFIG="/etc/gamescope-session-plus/sessions.d/steam"
+SYSTEM_SERVICE="/usr/lib/systemd/system/gaming-autologin-rearm.service"
+USER_SERVICE="/usr/lib/systemd/user/gamescope-session-plus@.service"
+SUDOERS="/etc/sudoers.d/gaming-autologin-rearm"
+GDM="/etc/gdm3/custom.conf"
+
+STATE_ROOT="/var/lib/ubuntu-gaming-mode"
+ORIGINAL="$STATE_ROOT/original-state"
+MANAGED="$STATE_ROOT/managed-state"
+
+EXPECTED_GAMESCOPE_SHA="e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c"
+EXPECTED_RUNTIME_SHA="3671cbc698b05e6ae3e68492848af3fec33aa0fe64c2f94a5e3e3395b498e636"
+
+ok()   { printf '[ OK ] %s
+' "$*"; OK=$((OK+1)); }
+info() { printf '[INFO] %s
+' "$*"; }
+warn() { printf '[WARN] %s
+' "$*"; WARN=$((WARN+1)); }
+fail() { printf '[FAIL] %s
+' "$*"; FAIL=$((FAIL+1)); }
+
+section() {
+    printf '
+============================================================
+ %s
+============================================================
+' "$1"
+}
+
+get_account_session_raw() {
+    uid="$1"
+
+    busctl get-property         org.freedesktop.Accounts         "/org/freedesktop/Accounts/User${uid}"         org.freedesktop.Accounts.User         Session 2>/dev/null
+}
+
+printf '
+Ubuntu Gaming Mode Doctor
+'
+printf 'Modo de diagnóstico: solo lectura
+'
+
+section "CONFIGURACIÓN"
+
+if [ -r "$CONFIG" ]; then
+    ok "$CONFIG existe"
+
+    bash -n "$CONFIG" >/dev/null 2>&1 &&
+        ok "session.conf tiene sintaxis válida" ||
+        fail "session.conf no tiene sintaxis válida"
+
+    # shellcheck disable=SC1090
+    . "$CONFIG"
+
+    printf '
+Usuario configurado:        %s
+' "${UGM_USER:-}"
+    printf 'UID configurado:            %s
+' "${UGM_UID:-}"
+    printf 'Sesión Desktop:             %s
+' "${UGM_DESKTOP_SESSION:-}"
+    printf 'Sesión Gaming:              %s
+' "${UGM_GAMING_SESSION:-}"
+
+    if id "${UGM_USER:-__missing__}" >/dev/null 2>&1; then
+        ok "usuario '$UGM_USER' existe"
+        REAL_UID="$(id -u "$UGM_USER")"
+
+        [ "$REAL_UID" = "${UGM_UID:-}" ] &&
+            ok "UID coincide: $REAL_UID" ||
+            fail "UID real $REAL_UID no coincide con ${UGM_UID:-vacío}"
+
+        if [ "$(id -u)" -eq 0 ]; then
+            if runuser -u "$UGM_USER" -- test -r "$CONFIG"; then
+                ok "session.conf legible por el usuario configurado '$UGM_USER'"
+            else
+                fail "session.conf NO es legible por el usuario configurado '$UGM_USER'"
+            fi
+        elif [ "$(id -un)" = "$UGM_USER" ]; then
+            [ -r "$CONFIG" ] &&
+                ok "session.conf legible por el usuario configurado '$UGM_USER'" ||
+                fail "session.conf NO es legible por el usuario configurado '$UGM_USER'"
+        else
+            warn "no se puede verificar la legibilidad de session.conf como '$UGM_USER' sin privilegios root"
+        fi
+    else
+        fail "usuario configurado no existe"
+    fi
+else
+    fail "$CONFIG no existe"
+    UGM_USER=""
+    UGM_UID=""
+    UGM_DESKTOP_SESSION=""
+    UGM_GAMING_SESSION="steam-gaming-mode"
+fi
+
+section "RUNTIME"
+
+for p in     "$RUNTIME/gamescope"     "$RUNTIME/gamescope-session-plus"     "$RUNTIME/gamescope-session-plus-runtime"     "$RUNTIME/ubuntu-gaming-mode-setup"     "$RUNTIME/ubuntu-gaming-mode-doctor"     "$RUNTIME/os-session-select"     "$RUNTIME/steamos-session-select"     "$RUNTIME/return-to-gaming-mode"     "$RUNTIME/gaming-autologin-rearm"
+do
+    if [ -e "$p" ] || [ -L "$p" ]; then
+        ok "$p"
+    else
+        fail "falta $p"
+    fi
+done
+
+section "COMANDOS PÚBLICOS"
+
+for spec in     "/usr/bin/ubuntu-gaming-mode-setup:$RUNTIME/ubuntu-gaming-mode-setup"     "/usr/bin/ubuntu-gaming-mode-doctor:$RUNTIME/ubuntu-gaming-mode-doctor"     "/usr/bin/steamos-session-select:$RUNTIME/steamos-session-select"
+do
+    link="${spec%%:*}"
+    expected="${spec#*:}"
+    actual="$(readlink -f "$link" 2>/dev/null || true)"
+
+    [ "$actual" = "$expected" ] &&
+        ok "$link -> $expected" ||
+        fail "$link no apunta a $expected"
+done
+
+section "GAMESCOPE"
+
+if [ -x "$RUNTIME/gamescope" ]; then
+    VERSION="$("$RUNTIME/gamescope" --version 2>&1 | head -n1 || true)"
+    printf '%s
+' "$VERSION"
+
+    case "$VERSION" in
+        *"3.16.28-3-g0d07f6e"*) ok "versión Gamescope esperada" ;;
+        *) warn "versión Gamescope distinta de la validada" ;;
+    esac
+
+    ACTUAL_SHA="$(sha256sum "$RUNTIME/gamescope" | awk '{print $1}')"
+
+    [ "$ACTUAL_SHA" = "$EXPECTED_GAMESCOPE_SHA" ] &&
+        ok "SHA256 Gamescope coincide" ||
+        fail "SHA256 Gamescope NO coincide"
+fi
+
+if [ -f "$RUNTIME/gamescope-session-plus-runtime" ]; then
+    ACTUAL_SHA="$(sha256sum "$RUNTIME/gamescope-session-plus-runtime" | awk '{print $1}')"
+
+    [ "$ACTUAL_SHA" = "$EXPECTED_RUNTIME_SHA" ] &&
+        ok "SHA256 gamescope-session-plus-runtime coincide" ||
+        fail "SHA256 gamescope-session-plus-runtime NO coincide"
+fi
+
+section "CONFIGURACIÓN DE GAMING MODE"
+
+if [ -f "$STEAM_CONFIG" ]; then
+    ok "$STEAM_CONFIG existe"
+
+    grep -Fq 'GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope' "$STEAM_CONFIG" &&
+        ok "GAMESCOPE_BIN usa el runtime canónico" ||
+        fail "GAMESCOPE_BIN no usa el runtime canónico"
+
+    grep -Fq 'gamescope_drm_gbm_scanout=1' "$STEAM_CONFIG" &&
+        ok "gamescope_drm_gbm_scanout=1 está preservado" ||
+        fail "falta gamescope_drm_gbm_scanout=1"
+
+    grep -Fq 'detect_output_connector' "$STEAM_CONFIG" &&
+        ok "detección automática de conector DRM presente" ||
+        fail "falta detección automática de conector DRM"
+else
+    fail "falta $STEAM_CONFIG"
+fi
+
+if grep -Fq 'detect_desktop_session_environment' "$RUNTIME/ubuntu-gaming-mode-setup" 2>/dev/null &&
+   grep -Fq 'detect_ubuntu_desktop_fallback' "$RUNTIME/ubuntu-gaming-mode-setup" 2>/dev/null
+then
+    ok "detector robusto de Desktop presente"
+else
+    fail "falta el detector robusto de Desktop"
+fi
+
+SESSION_DESKTOP="/usr/share/wayland-sessions/steam-gaming-mode.desktop"
+
+if [ -f "$SESSION_DESKTOP" ]; then
+    ok "$SESSION_DESKTOP existe"
+
+    grep -Fq 'Exec=/usr/lib/ubuntu-gaming-mode/gamescope-session-plus steam' "$SESSION_DESKTOP" &&
+        ok "sesión Gaming utiliza gamescope-session-plus canónico" ||
+        fail "Exec de la sesión Gaming no es canónico"
+else
+    fail "falta $SESSION_DESKTOP"
+fi
+
+section "SYSTEMD"
+
+if [ -f "$SYSTEM_SERVICE" ]; then
+    ok "$SYSTEM_SERVICE existe"
+
+    grep -Fq 'ExecStart=/usr/lib/ubuntu-gaming-mode/gaming-autologin-rearm' "$SYSTEM_SERVICE" &&
+        ok "gaming-autologin-rearm.service usa ruta canónica" ||
+        fail "gaming-autologin-rearm.service usa ruta inesperada"
+else
+    fail "falta $SYSTEM_SERVICE"
+fi
+
+systemctl cat gaming-autologin-rearm.service >/dev/null 2>&1 &&
+    ok "gaming-autologin-rearm.service cargado (inactivo es normal)" ||
+    warn "gaming-autologin-rearm.service aún no está visible para systemd"
+
+if [ -f "$USER_SERVICE" ]; then
+    ok "$USER_SERVICE existe"
+
+    grep -Fq 'gamescope-session-plus-runtime %i' "$USER_SERVICE" &&
+        ok "gamescope-session-plus@.service usa runtime canónico" ||
+        fail "unidad user no usa runtime canónico"
+
+    grep -Fq 'GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope' "$USER_SERVICE" &&
+        ok "gamescope-session-plus@.service usa Gamescope canónico" ||
+        fail "unidad user no usa Gamescope canónico"
+else
+    fail "falta $USER_SERVICE"
+fi
+
+section "SUDOERS"
+
+if [ -f "$SUDOERS" ]; then
+    ok "$SUDOERS existe"
+
+    visudo -cf "$SUDOERS" >/dev/null 2>&1 &&
+        ok "sudoers válido" ||
+        fail "sudoers inválido"
+
+    EXPECTED_SUDOERS="${UGM_USER:-__missing__} ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block gaming-autologin-rearm.service"
+
+    grep -Fxq "$EXPECTED_SUDOERS" "$SUDOERS" 2>/dev/null &&
+        ok "sudoers contiene únicamente la autorización esperada" ||
+        fail "sudoers no coincide con la autorización esperada"
+else
+    fail "falta $SUDOERS"
+fi
+
+section "GDM"
+
+if [ -f "$GDM" ]; then
+    ok "$GDM existe"
+
+    grep -Eq '^[[:space:]]*AutomaticLoginEnable[[:space:]]*=[[:space:]]*true[[:space:]]*$' "$GDM" &&
+        ok "AutomaticLoginEnable=true" ||
+        fail "AutomaticLoginEnable no es true"
+
+    grep -Eq "^[[:space:]]*AutomaticLogin[[:space:]]*=[[:space:]]*${UGM_USER:-__missing__}[[:space:]]*$" "$GDM" &&
+        ok "AutomaticLogin=${UGM_USER:-}" ||
+        fail "AutomaticLogin no coincide con el usuario configurado"
+else
+    fail "falta $GDM"
+fi
+
+section "ACCOUNTS SERVICE"
+
+if [ -n "${UGM_UID:-}" ]; then
+    if RAW="$(get_account_session_raw "$UGM_UID")"; then
+        if printf '%s
+' "$RAW" | grep -Eq '^s ".*"$'; then
+            SELECTED="$(printf '%s
+' "$RAW" | sed -n 's/^s "\(.*\)"$/\1/p')"
+
+            if [ -z "$SELECTED" ]; then
+                printf 'Sesión persistida: (vacía)
+'
+                ok "AccountsService accesible; Session vacía es un estado válido"
+            else
+                printf 'Sesión seleccionada: %s
+' "$SELECTED"
+
+                if [ "$SELECTED" = "${UGM_DESKTOP_SESSION:-}" ] ||
+                   [ "$SELECTED" = "${UGM_GAMING_SESSION:-}" ]
+                then
+                    ok "AccountsService apunta a una sesión gestionada válida"
+                else
+                    warn "AccountsService apunta a una sesión externa ('$SELECTED'); puede impedir el funcionamiento de UGM. Una actualización/reinstalación restaurará la sesión administrada y sobrescribirá este cambio."
+                fi
+            fi
+        else
+            warn "respuesta inesperada de AccountsService: $RAW"
+        fi
+    else
+        warn "falló realmente la consulta D-Bus a AccountsService"
+    fi
+else
+    warn "no hay UID configurado para consultar AccountsService"
+fi
+
+section "ESTADO / ROLLBACK"
+
+[ -f "$ORIGINAL/.complete" ] &&
+    ok "snapshot original completo" ||
+    fail "falta snapshot original completo"
+
+[ "$(cat "$ORIGINAL/format-version" 2>/dev/null || true)" = "1" ] &&
+    ok "formato de snapshot original = 1" ||
+    fail "formato de snapshot original desconocido"
+
+if [ -f "$ORIGINAL/manifest" ] &&
+   [ -f "$ORIGINAL/manifest.sha256" ] &&
+   (
+       cd "$ORIGINAL" 2>/dev/null &&
+       sha256sum -c manifest.sha256 >/dev/null 2>&1
+   )
+then
+    ok "manifest del snapshot original íntegro"
+else
+    fail "manifest del snapshot original ausente o alterado"
+fi
+
+[ "$(stat -c '%a' "$STATE_ROOT" 2>/dev/null || true)" = "700" ] &&
+    ok "$STATE_ROOT protegido con permisos 0700" ||
+    warn "$STATE_ROOT no tiene permisos 0700"
+
+[ "$(stat -c '%a' "$ORIGINAL" 2>/dev/null || true)" = "700" ] &&
+    ok "original-state protegido con permisos 0700" ||
+    warn "original-state no tiene permisos 0700"
+
+ORIGIN="$(cat "$ORIGINAL/snapshot-origin" 2>/dev/null || true)"
+
+case "$ORIGIN" in
+    first-install) ok "baseline creado por una primera instalación" ;;
+    legacy-preinstall) ok "baseline heredado adoptado sin fotografiar el sistema actualizado" ;;
+    *) warn "origen del snapshot no reconocido: '${ORIGIN:-vacío}'" ;;
+esac
+
+[ -f "$MANAGED/.complete" ] &&
+    ok "managed-state actual completo" ||
+    fail "falta managed-state actual"
+
+if [ -f "$MANAGED/package-version" ]; then
+    MANAGED_VERSION="$(cat "$MANAGED/package-version")"
+    INSTALLED_VERSION="$(dpkg-query -W -f='${Version}' ubuntu-gaming-mode 2>/dev/null || true)"
+
+    printf 'Versión managed-state: %s
+' "$MANAGED_VERSION"
+    printf 'Versión dpkg:          %s
+' "${INSTALLED_VERSION:-no disponible}"
+
+    if [ -n "$INSTALLED_VERSION" ]; then
+        [ "$MANAGED_VERSION" = "$INSTALLED_VERSION" ] &&
+            ok "managed-state corresponde a la versión instalada" ||
+            fail "managed-state ($MANAGED_VERSION) no coincide con dpkg ($INSTALLED_VERSION)"
+    else
+        warn "dpkg no devolvió la versión instalada"
+    fi
+else
+    fail "managed-state no registra package-version"
+fi
+
+[ "$(stat -c '%a' "$MANAGED" 2>/dev/null || true)" = "700" ] &&
+    ok "managed-state protegido con permisos 0700" ||
+    warn "managed-state no tiene permisos 0700"
+
+ACC_STATUS="$(sed -n 's/^status=//p' "$ORIGINAL/shared/accountsservice.original" 2>/dev/null | head -n1)"
+
+case "$ACC_STATUS" in
+    ok)
+        ACC_VALUE="$(sed -n 's/^value=//p' "$ORIGINAL/shared/accountsservice.original" | head -n1)"
+        if [ -n "$ACC_VALUE" ]; then
+            ok "AccountsService original registrado: '$ACC_VALUE'"
+        else
+            ok "AccountsService original registrado correctamente como valor vacío"
+        fi
+        ;;
+    unknown-migrated)
+        info "baseline heredado: valor ORIGINAL de AccountsService desconocido; se aplicará restauración conservadora"
+        ;;
+    query-failed-first-install)
+        warn "AccountsService original no pudo capturarse durante la primera instalación"
+        ;;
+    pending)
+        fail "AccountsService original continúa pendiente después de postinst"
+        ;;
+    *)
+        warn "estado original de AccountsService no reconocido: '${ACC_STATUS:-vacío}'"
+        ;;
+esac
+
+section "DRM"
+
+CONNECTED=""
+
+for d in /sys/class/drm/card*-*; do
+    [ -r "$d/status" ] || continue
+
+    if [ "$(cat "$d/status")" = "connected" ]; then
+        name="$(basename "$d")"
+        name="${name#card*-}"
+        printf 'Conectado: %s
+' "$name"
+        CONNECTED=1
+    fi
+done
+
+[ -n "$CONNECTED" ] &&
+    ok "al menos un conector DRM conectado" ||
+    warn "no se detecta ningún conector DRM conectado"
+
+section "GPU"
+
+GPU_INFO="$(lspci 2>/dev/null | grep -Ei 'VGA compatible controller|3D controller|Display controller' || true)"
+
+if [ -n "$GPU_INFO" ]; then
+    printf '%s
+' "$GPU_INFO"
+
+    if printf '%s
+' "$GPU_INFO" | grep -qiE 'VMware|VirtualBox|Virtio|QXL'; then
+        warn "GPU virtual detectada; Gamescope DRM puede no ser validable en esta VM"
+    elif printf '%s
+' "$GPU_INFO" | grep -qi NVIDIA; then
+        ok "GPU NVIDIA detectada"
+    elif printf '%s
+' "$GPU_INFO" | grep -qiE 'AMD|ATI'; then
+        warn "GPU AMD detectada; soporte físico AMD aún no validado en esta rama"
+    else
+        warn "GPU no clasificada por el doctor"
+    fi
+else
+    warn "lspci no devolvió una GPU"
+fi
+
+if command -v vulkaninfo >/dev/null 2>&1; then
+    VK="$(vulkaninfo --summary 2>&1 | head -n 160 || true)"
+
+    VULKAN_HW="$(printf '%s
+' "$VK" | grep -Ei 'deviceType.*(DISCRETE_GPU|INTEGRATED_GPU)|deviceName.*(NVIDIA|GeForce|AMD|Radeon|Intel)' || true)"
+
+    if printf '%s
+' "$VK" | grep -qi llvmpipe; then
+        if [ -n "$VULKAN_HW" ]; then
+            info "llvmpipe también está registrado como renderer software, pero Vulkan detecta una GPU hardware"
+        else
+            warn "Vulkan solo parece disponer de llvmpipe/software rendering; Gaming Mode DRM no puede validarse en este entorno"
+        fi
+    elif [ -n "$VULKAN_HW" ]; then
+        ok "Vulkan detecta una GPU hardware"
+    else
+        info "vulkaninfo disponible; no se detectó llvmpipe pero no se pudo clasificar el dispositivo Vulkan"
+    fi
+fi
+
+section "STEAM"
+
+command -v steam >/dev/null 2>&1 &&
+    ok "Steam disponible en PATH" ||
+    warn "Steam no está disponible en PATH"
+
+section "REFERENCIAS ANTIGUAS"
+
+OLD_REFS="$(grep -niE '/usr/local/(bin|sbin|lib/systemd/user)/|/usr/lib/os-session-select'         "$RUNTIME/gamescope-session-plus"         "$RUNTIME/gamescope-session-plus-runtime"         "$RUNTIME/gaming-autologin-rearm"         "$RUNTIME/os-session-select"         "$RUNTIME/return-to-gaming-mode"         "$RUNTIME/steamos-session-select"         "$STEAM_CONFIG"         "$SYSTEM_SERVICE"         "$USER_SERVICE"         2>/dev/null || true)"
+
+if [ -z "$OLD_REFS" ]; then
+    ok "no quedan referencias internas antiguas"
+else
+    printf '%s
+' "$OLD_REFS"
+    warn "hay referencias internas a rutas heredadas"
+fi
+
+section "RESULTADO"
+
+printf 'OK:       %d
+' "$OK"
+printf 'Warnings: %d
+' "$WARN"
+printf 'Fallos:   %d
+' "$FAIL"
+
+if [ "$FAIL" -gt 0 ]; then
+    printf '
+Ubuntu Gaming Mode: se detectaron fallos.
+'
+    exit 1
+fi
+
+if [ "$WARN" -gt 0 ]; then
+    printf '
+Ubuntu Gaming Mode: instalación funcional con advertencias.
+'
+else
+    printf '
+Ubuntu Gaming Mode: estado saludable.
+'
+fi
+
+exit 0
