@@ -19,7 +19,8 @@ Validated on Ubuntu 26.04 with an NVIDIA GeForce RTX 2060 using the bundled Game
 - Steam Overlay
 - Gamepad support
 - MangoApp / MangoHud
-- FSR and NIS scaling
+- FSR scaling
+- NIS scaling, unlocked through the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin
 
 ### Release checksum
 
@@ -127,6 +128,8 @@ The package sources are published in this repository:
 See [SOURCE.md](SOURCE.md) for the source layout, binary inputs and reproducibility notes.
 
 The compiled custom Gamescope binary and the application icon are intentionally not stored in Git history; they are inputs to the package build and are contained in the validated release artifact.
+
+The Gamescope binary bundled in 1.0.0-3 is **not an unmodified upstream build**. During UGM development it was adapted to work correctly at 4K and to interoperate with the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky plugin through a small integration connector. The modified Gamescope source tree was later deleted, so the exact patch set can no longer be reconstructed reliably. That integration will be reimplemented and documented when UGM eventually needs to move to a newer Gamescope version.
 
 ## Documentation
 
