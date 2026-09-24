@@ -1,4 +1,6 @@
-# Installation
+# Install Ubuntu Gaming Mode 1.0.0-3 on Ubuntu 26.04
+
+**English** | [Español](es/instalacion.md)
 
 ## Requirements
 
