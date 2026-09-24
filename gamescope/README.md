@@ -1,4 +1,6 @@
-# Bundled Gamescope runtime
+# Custom Gamescope runtime for Ubuntu Gaming Mode
+
+**English** | [Español](README_es.md)
 
 Ubuntu Gaming Mode 1.0.0-3 GOLD ships a validated **custom** Gamescope binary inside the release package.
 
