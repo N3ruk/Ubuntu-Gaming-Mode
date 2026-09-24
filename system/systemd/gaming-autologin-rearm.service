@@ -1,0 +1,8 @@
+[Unit]
+Description=Rearmar autologin solo tras un cambio solicitado de Gaming Mode
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ubuntu-gaming-mode/gaming-autologin-rearm
+TimeoutStartSec=75
+Restart=no
