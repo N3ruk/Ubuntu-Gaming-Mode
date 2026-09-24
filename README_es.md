@@ -45,15 +45,14 @@ La sesión dedicada Gamescope DRM/KMS validada incluye:
 - escalado FSR y NIS;
 - cambio Desktop ↔ Gaming Mode.
 
-Esto es relevante porque NVIDIA continúa siendo una ruta más exigente dentro del ecosistema SteamOS/Gamescope que la configuración AMD habitual:
+NVIDIA continúa siendo una ruta más exigente dentro del ecosistema SteamOS/Gamescope que la configuración AMD habitual. Las referencias siguientes se incluyen como contexto técnico, **no como crítica hacia Bazzite o ChimeraOS**. Ambos proyectos han realizado aportaciones muy importantes al gaming en Linux y su documentación es especialmente valiosa precisamente porque expone con transparencia las limitaciones de hardware y sus workarounds:
 
 - Gamescope upstream admite el driver propietario de NVIDIA, pero exige un driver suficientemente reciente y soporte DRM KMS/modesetting ([README de Gamescope](https://github.com/ValveSoftware/gamescope));
-- Bazzite clasifica actualmente Steam Gaming Mode con NVIDIA como soportado con **limitaciones importantes** frente a AMD. Su propia documentación indica que activar **GPU accelerated rendering in web views** mejora el rendimiento de la interfaz de Steam con NVIDIA, pero advierte de que esa misma opción **muy probablemente provoque artefactos gráficos capaces de romper juegos** ([compatibilidad de hardware](https://docs.bazzite.gg/Gaming/Hardware_compatibility_for_gaming/), [quirks de Gaming Mode](https://docs.bazzite.gg/Handheld_and_HTPC_edition/quirks/));
-- también existen reportes concretos en Bazzite de regresiones NVIDIA: Gaming Mode que no se mantiene abierto en una RTX 4070 mientras Steam en Desktop funciona, parpadeo severo en la parte inferior de la pantalla tras un desajuste entre librerías y módulo NVIDIA en una GTX 1660 SUPER, y un equipo híbrido con RTX 4050 cuyo monitor DisplayPort externo funciona en Desktop Mode pero no recibe señal en Gaming Mode ([RTX 4070](https://github.com/ublue-os/bazzite/issues/5032), [GTX 1660 SUPER](https://github.com/ublue-os/bazzite/issues/3092), [RTX 4050 y monitor externo](https://github.com/ublue-os/bazzite/issues/2611));
-- ChimeraOS retiró NVIDIA durante aproximadamente 1,5 años por el estado de los drivers NVIDIA, Wayland y Gamescope. Cuando volvió a incluir los drivers todavía avisaba de **problemas importantes de rendimiento y estabilidad**; más tarde declaró soporte oficial para GTX serie 16 y posteriores, pero mantuvo la advertencia de que **el rendimiento de la interfaz de Steam sigue siendo pobre**. Su propia guía de troubleshooting recomienda activar la aceleración GPU de las webviews de Steam para reducir ese lag ([notas de versión](https://github.com/ChimeraOS/chimeraos/wiki/Release-Notes), [troubleshooting](https://github.com/ChimeraOS/chimeraos/wiki/Troubleshooting));
+- Bazzite clasifica oficialmente Steam Gaming Mode con NVIDIA como soportado con **limitaciones importantes** frente a AMD. Su documentación explica que activar **GPU accelerated rendering in web views** puede mejorar el rendimiento de la interfaz de Steam en NVIDIA, aunque también advierte de posibles artefactos gráficos graves ([compatibilidad de hardware](https://docs.bazzite.gg/Gaming/Hardware_compatibility_for_gaming/), [quirks de Gaming Mode](https://docs.bazzite.gg/Handheld_and_HTPC_edition/quirks/));
+- ChimeraOS documentó históricamente las dificultades de NVIDIA con Wayland/Gamescope, retiró temporalmente el soporte NVIDIA y posteriormente volvió a ofrecer soporte oficial para GTX serie 16 y posteriores, manteniendo la advertencia de un rendimiento pobre de la interfaz de Steam en NVIDIA. Su documentación de troubleshooting recomienda la aceleración GPU de las webviews de Steam para reducir ese lag ([notas de versión](https://github.com/ChimeraOS/chimeraos/wiki/Release-Notes), [troubleshooting](https://github.com/ChimeraOS/chimeraos/wiki/Troubleshooting));
 - un reporte upstream de Gamescope de 2026 documenta **corrupción de scan-out 4K con NVIDIA**: aparecen columnas/bandas verticales con contenido del framebuffer desplazado a 3840×2160 @ 30/60/120, mientras 1080p y 1440p permanecen limpios. El problema se reprodujo en RTX 4080 SUPER y RTX 4070 y también aparece con contenido estático y con force-composition activado ([Gamescope issue #2309](https://github.com/ValveSoftware/gamescope/issues/2309)).
 
-En cambio, en el sistema de referencia de UGM con RTX 2060 se ha validado físicamente una **interfaz Steam Gamepad UI fluida tanto a 60 FPS como a 120 FPS** dentro de Gaming Mode, además de las pruebas 4K/HDR/VRR indicadas arriba. Durante esa aceptación no se observaron problemas de lag en la UI ni artefactos gráficos que rompieran los juegos.
+En el sistema de referencia de UGM con RTX 2060 se ha validado físicamente una **interfaz Steam Gamepad UI fluida tanto a 60 FPS como a 120 FPS** dentro de Gaming Mode, además de las pruebas 4K/HDR/VRR indicadas arriba. Durante esa aceptación no se observaron problemas de lag en la UI ni artefactos gráficos que rompieran los juegos.
 
 ### Corrupción histórica de scan-out 4K en NVIDIA resuelta en la build validada de UGM
 
@@ -70,9 +69,21 @@ Como el árbol fuente modificado de Gamescope se eliminó posteriormente, UGM no
 
 UGM **no** afirma compatibilidad universal con NVIDIA ni que esos problemas de upstream o de otras distribuciones estén resueltos para todas las GPU. La afirmación probada es más concreta: el sistema de referencia con RTX 2060 ejecuta correctamente una sesión Gamescope DRM independiente a 4K con HDR, VRR, interfaz Steam fluida a 60/120 FPS y las funciones de Steam Gaming Mode indicadas arriba.
 
-Para usuarios de NVIDIA que ya utilizan Ubuntu, UGM ofrece además una alternativa práctica a sustituir el sistema por una distribución dedicada al gaming: añade una sesión Gamescope tipo consola independiente conservando el escritorio Ubuntu y la pila de drivers existente.
+Para usuarios de NVIDIA que ya utilizan Ubuntu, UGM ofrece un **modelo de integración diferente** al de distribuciones gaming dedicadas como SteamOS, Bazzite o ChimeraOS: añade una sesión Gamescope tipo consola independiente conservando el escritorio Ubuntu y la pila de drivers existente. Es una diferencia de enfoque e integración, no una afirmación de que UGM sustituya o sea superior a esos proyectos.
 
 La build de Gamescope incluida se adaptó durante el desarrollo para la ruta 4K validada y la integración con Sharp Filter Selector. Su árbol fuente modificado se eliminó posteriormente, por lo que no se reconstruyen ni se atribuyen de memoria los cambios exactos realizados en Gamescope.
+
+## Agradecimientos
+
+Ubuntu Gaming Mode se apoya en el trabajo de toda la comunidad de gaming en Linux. **UGM no existiría en su forma actual sin los proyectos siguientes.**
+
+Un agradecimiento especial a **Valve, SteamOS y el equipo de Steam Deck**. SteamOS estableció el modelo de sesión de juego dedicada en el que se inspira UGM, y el trabajo open source de Valve sobre el compositor evolucionó desde `steamos-compositor` hasta **Gamescope**, la tecnología central que hace posible el Gaming Mode DRM/KMS de UGM. Steam Deck y SteamOS también constituyen la referencia práctica de una interfaz Gaming Mode orientada a mando que convive con un escritorio Linux normal.
+
+Un agradecimiento especialmente importante a **ChimeraOS**. Su proyecto **gamescope-session-plus** está basado explícitamente en el trabajo de Valve con Gamescope/Steam Deck, está diseñado para poder utilizarse más allá de ChimeraOS y aportó tanto documentación como una base técnica fundamental para el runtime de sesión de UGM. UGM adapta ese trabajo a su entorno Ubuntu/GDM/systemd y conserva la atribución upstream y la licencia MIT correspondientes.
+
+Gracias también a **Bazzite** por su amplia implementación de Steam Gaming Mode y por su documentación sobre una gran variedad de hardware. Su forma transparente de documentar las limitaciones y workarounds de NVIDIA ha sido una referencia útil para validar y explicar el comportamiento NVIDIA de UGM.
+
+UGM es un proyecto independiente y no está afiliado ni respaldado por Valve, ChimeraOS, Bazzite, NVIDIA o Canonical. Las comparaciones de este README pretenden documentar comportamiento probado y contexto técnico, no restar valor al trabajo de los proyectos que han hecho posible este ecosistema.
 
 ## Instalación
 
