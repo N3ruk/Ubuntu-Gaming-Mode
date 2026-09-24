@@ -45,15 +45,14 @@ The validated dedicated Gamescope DRM/KMS session includes:
 - FSR and NIS scaling;
 - Desktop ↔ Gaming Mode switching.
 
-This matters because NVIDIA remains a more demanding path in the SteamOS/Gamescope ecosystem than the typical AMD configuration:
+NVIDIA remains a more demanding path in the SteamOS/Gamescope ecosystem than the typical AMD configuration. The references below are included as technical context, **not as criticism of Bazzite or ChimeraOS**. Both projects have made major contributions to Linux gaming and are especially valuable because they document hardware limitations and workarounds transparently:
 
 - upstream Gamescope supports the proprietary NVIDIA driver, but explicitly requires a sufficiently recent driver and DRM KMS/modesetting support ([Gamescope README](https://github.com/ValveSoftware/gamescope));
-- Bazzite currently classifies NVIDIA Steam Gaming Mode as supported with **major caveats** compared with AMD. Its own Gaming Mode documentation says that enabling Steam's **GPU accelerated rendering in web views** improves NVIDIA UI performance, while warning that the same option will **most likely cause game-breaking graphical artifacts** ([hardware compatibility](https://docs.bazzite.gg/Gaming/Hardware_compatibility_for_gaming/), [Gaming Mode quirks](https://docs.bazzite.gg/Handheld_and_HTPC_edition/quirks/));
-- Bazzite issue reports also show concrete NVIDIA regressions seen in the field: Gaming Mode failing to stay running on an RTX 4070 while desktop Steam still works, severe lower-screen flickering after an NVIDIA driver/library mismatch on a GTX 1660 SUPER, and a hybrid RTX 4050 system where an external DisplayPort monitor works in Desktop Mode but receives no signal in Gaming Mode ([RTX 4070 report](https://github.com/ublue-os/bazzite/issues/5032), [GTX 1660 SUPER report](https://github.com/ublue-os/bazzite/issues/3092), [RTX 4050 external-display report](https://github.com/ublue-os/bazzite/issues/2611));
-- ChimeraOS removed NVIDIA support for roughly 1.5 years because of the state of NVIDIA drivers, Wayland and Gamescope, reintroduced the drivers while still warning of **significant performance and stability issues**, and later officially supported GTX 16-series-and-newer hardware while still stating that **Steam UI performance is poor**. Its troubleshooting page specifically recommends enabling Steam's GPU-accelerated web rendering to reduce NVIDIA UI lag ([release notes](https://github.com/ChimeraOS/chimeraos/wiki/Release-Notes), [troubleshooting](https://github.com/ChimeraOS/chimeraos/wiki/Troubleshooting));
+- Bazzite officially classifies NVIDIA Steam Gaming Mode as supported with **major caveats** compared with AMD. Its Gaming Mode documentation explains that enabling Steam's **GPU accelerated rendering in web views** can improve NVIDIA UI performance, while also warning that the setting can cause serious graphical artifacts ([hardware compatibility](https://docs.bazzite.gg/Gaming/Hardware_compatibility_for_gaming/), [Gaming Mode quirks](https://docs.bazzite.gg/Handheld_and_HTPC_edition/quirks/));
+- ChimeraOS documented the historical difficulty of NVIDIA with Wayland/Gamescope, temporarily removed NVIDIA support, and later restored official support for GTX 16-series-and-newer hardware while still noting poor Steam UI performance on NVIDIA. Its troubleshooting documentation recommends GPU-accelerated Steam web views to reduce UI lag ([release notes](https://github.com/ChimeraOS/chimeraos/wiki/Release-Notes), [troubleshooting](https://github.com/ChimeraOS/chimeraos/wiki/Troubleshooting));
 - a 2026 upstream Gamescope report documents persistent **4K DRM scan-out corruption** on NVIDIA: displaced vertical framebuffer bands/columns appear on screen at 3840×2160 @ 30/60/120, while 1080p/1440p remain clean. The report was reproduced on RTX 4080 SUPER and RTX 4070 systems and also remained visible with static content and force-composition enabled ([Gamescope issue #2309](https://github.com/ValveSoftware/gamescope/issues/2309)).
 
-By contrast, the UGM RTX 2060 reference system has physically validated a **smooth Steam Gamepad UI at both 60 FPS and 120 FPS** in Gaming Mode, in addition to the 4K/HDR/VRR tests above. No UI-lag problem or game-breaking graphical artifacts were observed during that acceptance testing.
+On UGM's tested RTX 2060 reference system, the **Steam Gamepad UI has been physically validated as smooth at both 60 FPS and 120 FPS** in Gaming Mode, in addition to the 4K/HDR/VRR tests above. No UI-lag problem or game-breaking graphical artifacts were observed during that acceptance testing.
 
 ### Historical NVIDIA 4K scan-out corruption solved on the validated UGM build
 
@@ -70,9 +69,21 @@ Because the modified Gamescope source tree was later deleted, UGM cannot prove w
 
 UGM does **not** claim universal NVIDIA compatibility or that these upstream/distribution-specific problems are fixed for every GPU. The narrower, tested claim is that the RTX 2060 reference system successfully runs a standalone Gamescope DRM session at 4K with HDR, VRR, a smooth Steam UI at 60/120 FPS and the Steam Gaming Mode features listed above.
 
-For NVIDIA users who already run Ubuntu, this is also a practical alternative to replacing the operating system with a dedicated gaming distribution: UGM adds a separate console-style Gamescope session while preserving the existing Ubuntu desktop and driver stack.
+For NVIDIA users who already run Ubuntu, UGM offers a **different deployment model** from dedicated gaming distributions such as SteamOS, Bazzite or ChimeraOS: it adds a separate console-style Gamescope session while preserving the existing Ubuntu desktop and driver stack. This is a choice of integration model, not a claim that UGM is a replacement for or superior to those projects.
 
 The bundled Gamescope build was specifically adapted during development for the validated 4K path and the Sharp Filter Selector integration. Its modified source tree was later deleted, so the exact Gamescope-side changes are not reconstructed or claimed here.
+
+## Acknowledgements
+
+Ubuntu Gaming Mode stands on the work of the wider Linux gaming community. **UGM would not exist in its current form without the projects below.**
+
+Special thanks to **Valve, SteamOS and the Steam Deck team**. SteamOS established the dedicated Steam gaming-session model that UGM follows, and Valve's open-source compositor work evolved from `steamos-compositor` into **Gamescope**, the core technology that makes UGM's DRM/KMS Gaming Mode possible. Steam Deck and SteamOS also provided the practical reference for a controller-first Gaming Mode alongside a normal Linux desktop.
+
+A particularly important thanks goes to **ChimeraOS**. Its **gamescope-session-plus** project is explicitly based on Valve's Gamescope/Steam Deck work, is designed for use beyond ChimeraOS itself, and provided both documentation and a major technical foundation for UGM's session runtime. UGM adapts that work to its Ubuntu/GDM/systemd environment and preserves the relevant upstream attribution and MIT license.
+
+Thanks also to **Bazzite** for its extensive Steam Gaming Mode implementation and documentation across a broad hardware range. Its clear documentation of NVIDIA caveats and workarounds has been useful context when validating and documenting UGM's own NVIDIA path.
+
+UGM is an independent project and is not affiliated with or endorsed by Valve, ChimeraOS, Bazzite, NVIDIA or Canonical. The comparisons in this README are intended to document tested behavior and technical context, not to diminish the work of the projects that made this ecosystem possible.
 
 ## Installation
 
