@@ -1,0 +1,6 @@
+/.build/
+/dist/
+*.deb
+*.log
+*~
+.DS_Store
