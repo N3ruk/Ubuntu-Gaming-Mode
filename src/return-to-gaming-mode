@@ -2,6 +2,10 @@
 
 set -u
 
+# ============================================================
+# Ubuntu -> Steam Gaming Mode
+# ============================================================
+
 USER_ID="$(id -u)"
 ACCOUNTS_PATH="/org/freedesktop/Accounts/User${USER_ID}"
 
@@ -27,18 +31,31 @@ fail() {
     exit 1
 }
 
+# ------------------------------------------------------------
+# Solo permitirlo desde Ubuntu
+# ------------------------------------------------------------
+
 if [[ "${XDG_SESSION_DESKTOP:-}" != "$DESKTOP_SESSION_ID" ]] &&
    [[ "${DESKTOP_SESSION:-}" != "$DESKTOP_SESSION_ID" ]]; then
     fail "Este lanzador solo puede utilizarse desde la sesión de escritorio configurada ($DESKTOP_SESSION_ID)."
 fi
 
+# ------------------------------------------------------------
+# Confirmación
+# ------------------------------------------------------------
+
 zenity     --question     --title="Steam Gaming Mode"     --width=420     --text="¿Quieres entrar en Steam Gaming Mode?
 
 Se cerrará la sesión actual de Ubuntu."     --ok-label="Entrar en Gaming Mode"     --cancel-label="Cancelar"
 
+# Cancelar = no hacer absolutamente nada
 if [[ $? -ne 0 ]]; then
     exit 0
 fi
+
+# ------------------------------------------------------------
+# Comprobaciones
+# ------------------------------------------------------------
 
 [[ -f "$SESSION_FILE" ]] ||
     fail "No existe $SESSION_FILE."
@@ -49,8 +66,16 @@ command -v busctl >/dev/null ||
 command -v gnome-session-quit >/dev/null ||
     fail "No se encuentra gnome-session-quit."
 
+# ------------------------------------------------------------
+# Seleccionar Gaming Mode para el siguiente login de GDM
+# ------------------------------------------------------------
+
 busctl call     org.freedesktop.Accounts     "$ACCOUNTS_PATH"     org.freedesktop.Accounts.User     SetSession s "$GAMING_SESSION" ||
     fail "No se pudo seleccionar Steam Gaming Mode."
+
+# ------------------------------------------------------------
+# Verificar antes de cerrar GNOME
+# ------------------------------------------------------------
 
 CURRENT_SESSION="$(
     busctl get-property         org.freedesktop.Accounts         "$ACCOUNTS_PATH"         org.freedesktop.Accounts.User         Session 2>/dev/null |
@@ -59,6 +84,10 @@ CURRENT_SESSION="$(
 
 [[ "$CURRENT_SESSION" == "$GAMING_SESSION" ]] ||
     fail "AccountsService no guardó Steam Gaming Mode."
+
+# ------------------------------------------------------------
+# Salir limpiamente de Ubuntu
+# ------------------------------------------------------------
 
 sudo -n /usr/bin/systemctl start --no-block gaming-autologin-rearm.service ||
     fail "No se pudo preparar el autologin; no se cerrará Ubuntu."
