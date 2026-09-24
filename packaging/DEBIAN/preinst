@@ -1,0 +1,276 @@
+#!/bin/bash
+set -eu
+umask 077
+
+STATE_ROOT="/var/lib/ubuntu-gaming-mode"
+ORIGINAL="$STATE_ROOT/original-state"
+LEGACY="$STATE_ROOT/preinstall"
+FORMAT_VERSION="1"
+PKG_VERSION="1.0.0-3"
+ACTION="${1:-install}"
+OLD_VERSION="${2:-}"
+
+log() {
+    printf 'ubuntu-gaming-mode: %s
+' "$*"
+}
+
+die() {
+    printf 'ubuntu-gaming-mode: ERROR: %s
+' "$*" >&2
+    exit 1
+}
+
+snapshot_valid() {
+    [ -d "$ORIGINAL" ] &&
+    [ -f "$ORIGINAL/.complete" ] &&
+    [ -f "$ORIGINAL/manifest" ] &&
+    [ -f "$ORIGINAL/manifest.sha256" ] &&
+    [ -f "$ORIGINAL/format-version" ] &&
+    [ "$(cat "$ORIGINAL/format-version" 2>/dev/null || true)" = "$FORMAT_VERSION" ] &&
+    (cd "$ORIGINAL" && sha256sum -c manifest.sha256 >/dev/null 2>&1)
+}
+
+legacy_snapshot_valid() {
+    [ -d "$LEGACY" ] &&
+    [ -f "$LEGACY/.complete" ] &&
+    [ -f "$LEGACY/manifest" ]
+}
+
+capture_gdm_state() {
+    src="$1"
+    dst="$2"
+
+    python3 - "$src" "$dst" <<'PY2'
+from pathlib import Path
+import re
+import sys
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+
+keys = ("AutomaticLoginEnable", "AutomaticLogin")
+state = {k: ("absent", "") for k in keys}
+
+if src.exists():
+    section = None
+
+    for line in src.read_text(errors="replace").splitlines():
+        stripped = line.strip()
+
+        if not stripped or stripped.startswith(("#", ";")):
+            continue
+
+        m = re.match(r'^\s*\[([^\]]+)\]\s*$', line)
+        if m:
+            section = m.group(1).strip().lower()
+            continue
+
+        if section != "daemon":
+            continue
+
+        m = re.match(r'^\s*([^#;][^=]*?)\s*=\s*(.*?)\s*$', line)
+        if not m:
+            continue
+
+        key = m.group(1).strip()
+
+        if key in state:
+            state[key] = ("present", m.group(2).strip())
+
+dst.parent.mkdir(parents=True, exist_ok=True)
+
+with dst.open("w") as f:
+    for key in keys:
+        status, value = state[key]
+        f.write(f"{key}\t{status}\t{value}\n")
+PY2
+}
+
+finalize_snapshot() {
+    root="$1"
+
+    (
+        cd "$root"
+        sha256sum manifest > manifest.sha256
+    )
+
+    # .complete SIEMPRE se crea al final.
+    touch "$root/.complete"
+
+    # Solo protegemos el contenedor.
+    # NO modificamos recursivamente los permisos de los ficheros
+    # copiados, porque forman parte del estado original.
+    chmod 0700 "$root"
+}
+
+mkdir -p "$STATE_ROOT"
+chmod 0700 "$STATE_ROOT"
+
+# ------------------------------------------------------------
+# SNAPSHOT ORIGINAL YA EXISTENTE
+# ------------------------------------------------------------
+
+if snapshot_valid; then
+    log "Snapshot original válido detectado; se conserva."
+    exit 0
+fi
+
+# ------------------------------------------------------------
+# MIGRACIÓN DE SNAPSHOT HEREDADO
+# ------------------------------------------------------------
+
+if legacy_snapshot_valid; then
+    log "Adoptando snapshot original heredado."
+
+    tmp="$STATE_ROOT/.original-state-migrate.$$"
+
+    rm -rf "$tmp"
+    mkdir -m 0700 -p "$tmp"
+
+    cp -a "$LEGACY/." "$tmp/"
+    rm -f "$tmp/.complete"
+
+    printf '%s
+' "$FORMAT_VERSION" > "$tmp/format-version"
+    printf '%s
+' "$PKG_VERSION" > "$tmp/migrated-by-version"
+    printf '%s
+' "legacy-preinstall" > "$tmp/snapshot-origin"
+
+    mkdir -p "$tmp/shared"
+
+    if [ -f "$tmp/files/etc/gdm3/custom.conf" ]; then
+        capture_gdm_state             "$tmp/files/etc/gdm3/custom.conf"             "$tmp/shared/gdm.original"
+
+    elif [ -f "$tmp/etc/gdm3/custom.conf" ]; then
+        capture_gdm_state             "$tmp/etc/gdm3/custom.conf"             "$tmp/shared/gdm.original"
+
+    else
+        capture_gdm_state             "/nonexistent"             "$tmp/shared/gdm.original"
+    fi
+
+    {
+        echo "status=unknown-migrated"
+        echo "value="
+    } > "$tmp/shared/accountsservice.original"
+
+    echo "unknown-migrated" > "$tmp/shared/config-dir.original"
+    echo "unknown-migrated" > "$tmp/shared/backups.path-state"
+    : > "$tmp/shared/backups.original-list"
+
+    finalize_snapshot "$tmp"
+
+    rm -rf "$ORIGINAL"
+    mv "$tmp" "$ORIGINAL"
+
+    snapshot_valid ||
+        die "el snapshot migrado no supera la validación"
+
+    log "Snapshot heredado adoptado correctamente."
+    exit 0
+fi
+
+if [ "$ACTION" = "upgrade" ] || [ -n "$OLD_VERSION" ]; then
+    die "actualización sin snapshot original; se aborta para proteger el rollback"
+fi
+
+if [ -e "$ORIGINAL" ]; then
+    stamp="$(date +%Y%m%d-%H%M%S)"
+    mv "$ORIGINAL"        "$STATE_ROOT/original-state.incomplete-$stamp"
+fi
+
+log "Primera instalación detectada; creando snapshot original."
+
+tmp="$STATE_ROOT/.original-state-new.$$"
+
+rm -rf "$tmp"
+mkdir -m 0700 -p "$tmp/files" "$tmp/shared"
+
+printf '%s
+' "$FORMAT_VERSION" > "$tmp/format-version"
+printf '%s
+' "$PKG_VERSION" > "$tmp/created-by-version"
+printf '%s
+' "first-install" > "$tmp/snapshot-origin"
+
+date -u +%Y-%m-%dT%H:%M:%SZ > "$tmp/created-at"
+
+: > "$tmp/manifest"
+
+snapshot_path() {
+    p="$1"
+
+    if [ -e "$p" ] || [ -L "$p" ]; then
+        printf 'present\t%s\n' "$p" >> "$tmp/manifest"
+
+        cp -a --parents --             "$p"             "$tmp/files"
+
+    else
+        printf 'absent\t%s\n' "$p" >> "$tmp/manifest"
+    fi
+}
+
+while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    snapshot_path "$p"
+done <<'EOF'
+/usr/lib/ubuntu-gaming-mode
+/usr/bin/ubuntu-gaming-mode-setup
+/usr/bin/ubuntu-gaming-mode-doctor
+/usr/bin/steamos-session-select
+/etc/gamescope-session-plus/sessions.d/steam
+/usr/lib/systemd/system/gaming-autologin-rearm.service
+/usr/lib/systemd/user/gamescope-session-plus@.service
+/usr/share/wayland-sessions/steam-gaming-mode.desktop
+/usr/share/applications/ubuntu-gaming-mode.desktop
+/usr/share/icons/hicolor/256x256/apps/ubuntu-gaming-mode.png
+/etc/ubuntu-gaming-mode/session.conf
+/etc/gdm3/custom.conf
+/etc/sudoers.d/gaming-autologin-rearm
+/etc/systemd/system/gaming-autologin-rearm.service
+/usr/local/lib/systemd/user/gamescope-session-plus@.service
+/usr/local/share/gamescope-session-plus
+/usr/local/bin/gamescope
+/usr/local/bin/gamescope-session-plus
+/usr/local/bin/steamos-session-select
+/usr/local/bin/return-to-gaming-mode
+/usr/local/sbin/gaming-autologin-rearm
+/usr/lib/os-session-select
+EOF
+
+capture_gdm_state     "/etc/gdm3/custom.conf"     "$tmp/shared/gdm.original"
+
+{
+    echo "status=pending"
+    echo "value="
+} > "$tmp/shared/accountsservice.original"
+
+if [ -d /etc/ubuntu-gaming-mode ]; then
+    echo "present" > "$tmp/shared/config-dir.original"
+else
+    echo "absent" > "$tmp/shared/config-dir.original"
+fi
+
+BACKUP_ROOT="/var/backups/ubuntu-gaming-mode"
+
+if [ -d "$BACKUP_ROOT" ]; then
+    echo "present" > "$tmp/shared/backups.path-state"
+
+    find "$BACKUP_ROOT"         -mindepth 1         -maxdepth 1         -printf '%f\n' 2>/dev/null |
+        LC_ALL=C sort         > "$tmp/shared/backups.original-list"
+else
+    echo "absent" > "$tmp/shared/backups.path-state"
+    : > "$tmp/shared/backups.original-list"
+fi
+
+finalize_snapshot "$tmp"
+
+mv "$tmp" "$ORIGINAL"
+
+snapshot_valid ||
+    die "el snapshot recién creado no supera la validación"
+
+log "Snapshot original creado correctamente."
+
+exit 0
