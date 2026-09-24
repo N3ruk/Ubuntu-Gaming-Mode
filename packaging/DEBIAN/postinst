@@ -1,0 +1,431 @@
+#!/bin/bash
+set -eu
+umask 077
+
+STATE_ROOT="/var/lib/ubuntu-gaming-mode"
+ORIGINAL="$STATE_ROOT/original-state"
+MANAGED="$STATE_ROOT/managed-state"
+
+LEGACY="$STATE_ROOT/preinstall"
+LEGACY_MANAGED="$STATE_ROOT/managed.sha256"
+
+PKG_VERSION="1.0.0-3"
+
+CONFIG="/etc/ubuntu-gaming-mode/session.conf"
+
+log() {
+    printf 'ubuntu-gaming-mode: %s\n' "$*"
+}
+
+warn() {
+    printf 'ubuntu-gaming-mode: WARN: %s\n' "$*" >&2
+}
+
+die() {
+    printf 'ubuntu-gaming-mode: ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+snapshot_valid() {
+    [ -d "$ORIGINAL" ] &&
+    [ -f "$ORIGINAL/.complete" ] &&
+    [ -f "$ORIGINAL/manifest" ] &&
+    [ -f "$ORIGINAL/manifest.sha256" ] &&
+    [ -f "$ORIGINAL/format-version" ] &&
+    [ "$(cat "$ORIGINAL/format-version" 2>/dev/null || true)" = "1" ] &&
+    (cd "$ORIGINAL" && sha256sum -c manifest.sha256 >/dev/null 2>&1)
+}
+
+capture_gdm_state() {
+    src="$1"
+    dst="$2"
+
+    python3 - "$src" "$dst" <<'PY2'
+from pathlib import Path
+import re
+import sys
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+
+keys = ("AutomaticLoginEnable", "AutomaticLogin")
+state = {k: ("absent", "") for k in keys}
+
+if src.exists():
+    section = None
+
+    for line in src.read_text(errors="replace").splitlines():
+        stripped = line.strip()
+
+        if not stripped or stripped.startswith(("#", ";")):
+            continue
+
+        m = re.match(r'^\s*\[([^\]]+)\]\s*$', line)
+        if m:
+            section = m.group(1).strip().lower()
+            continue
+
+        if section != "daemon":
+            continue
+
+        m = re.match(r'^\s*([^#;][^=]*?)\s*=\s*(.*?)\s*$', line)
+        if not m:
+            continue
+
+        key = m.group(1).strip()
+
+        if key in state:
+            state[key] = ("present", m.group(2).strip())
+
+dst.parent.mkdir(parents=True, exist_ok=True)
+
+with dst.open("w") as f:
+    for key in keys:
+        status, value = state[key]
+        f.write(f"{key}\t{status}\t{value}\n")
+PY2
+}
+
+warn_gdm_changes() {
+    current="$1"
+    last="$2"
+
+    python3 - "$current" "$last" <<'PY2'
+from pathlib import Path
+import sys
+
+keys = ("AutomaticLoginEnable", "AutomaticLogin")
+
+def load(path):
+    p = Path(path)
+    result = {}
+    if not p.exists():
+        return result
+
+    for line in p.read_text(errors="replace").splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) < 2:
+            continue
+        result[parts[0]] = (
+            parts[1],
+            parts[2] if len(parts) > 2 else ""
+        )
+    return result
+
+def show(v):
+    if v is None:
+        return "<desconocido>"
+    status, value = v
+    if status == "absent":
+        return "<ausente>"
+    return value
+
+current = load(sys.argv[1])
+last = load(sys.argv[2])
+
+for key in keys:
+    if key in last and current.get(key) != last.get(key):
+        print(
+            "ubuntu-gaming-mode: WARN: "
+            f"propiedad administrada por UGM modificada externamente: {key}",
+            file=sys.stderr,
+        )
+
+        print(
+            "ubuntu-gaming-mode: WARN: "
+            f"valor administrado={show(last.get(key))!r}; "
+            f"valor actual={show(current.get(key))!r}",
+            file=sys.stderr,
+        )
+
+        print(
+            "ubuntu-gaming-mode: WARN: "
+            "la actualización/reinstalación reparará esta propiedad "
+            "y SOBRESCRIBIRÁ la modificación manual para preservar "
+            "el funcionamiento de Ubuntu Gaming Mode.",
+            file=sys.stderr,
+        )
+PY2
+}
+
+get_account_session() {
+    uid="$1"
+    path="/org/freedesktop/Accounts/User${uid}"
+
+    out="$(
+        busctl get-property             org.freedesktop.Accounts             "$path"             org.freedesktop.Accounts.User             Session 2>/dev/null
+    )" || return 1
+
+    case "$out" in
+        's "'*'"')
+            printf '%s\n' "$out" |
+                sed -n 's/^s "\(.*\)"$/\1/p'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+set_account_session() {
+    uid="$1"
+    value="$2"
+    path="/org/freedesktop/Accounts/User${uid}"
+
+    busctl call         org.freedesktop.Accounts         "$path"         org.freedesktop.Accounts.User         SetSession         s "$value"         >/dev/null
+}
+
+write_account_state() {
+    dst="$1"
+    status="$2"
+    value="${3-}"
+
+    mkdir -p "$(dirname "$dst")"
+
+    {
+        printf 'status=%s\n' "$status"
+        printf 'value=%s\n' "$value"
+    } > "$dst"
+}
+
+warn_and_repair_account_session() {
+    allowed="$1"
+    uid="$2"
+
+    [ -f "$allowed" ] ||
+        return 0
+
+    current="$(get_account_session "$uid")" ||
+    {
+        warn "no se pudo consultar AccountsService para comprobar modificaciones externas"
+        return 0
+    }
+
+    desktop="$(sed -n 's/^desktop=//p' "$allowed" | head -n1)"
+    gaming="$(sed -n 's/^gaming=//p' "$allowed" | head -n1)"
+
+    [ -z "$current" ] &&
+        return 0
+
+    if [ "$current" != "$desktop" ] &&
+       [ "$current" != "$gaming" ]; then
+
+        warn "AccountsService fue modificado externamente: Session='$current'."
+        warn "Esta propiedad es administrada por Ubuntu Gaming Mode mientras el paquete esté instalado."
+        warn "La actualización/reinstalación reparará Session='$desktop' y SOBRESCRIBIRÁ esta modificación manual para preservar el funcionamiento de UGM."
+
+        set_account_session             "$uid"             "$desktop" ||
+        die "no se pudo reparar AccountsService"
+
+        verify="$(get_account_session "$uid")" ||
+            die "no se pudo verificar AccountsService tras repararlo"
+
+        [ "$verify" = "$desktop" ] ||
+            die "AccountsService no refleja la sesión Desktop reparada"
+
+        log "AccountsService reparado correctamente a '$desktop'."
+    fi
+}
+
+reload_user_systemd() {
+    [ -r "$CONFIG" ] || return 0
+
+    # shellcheck disable=SC1090
+    . "$CONFIG"
+
+    runtime="/run/user/${UGM_UID}"
+
+    if [ -S "$runtime/bus" ]; then
+        runuser -u "$UGM_USER" -- env             XDG_RUNTIME_DIR="$runtime"             DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus"             /usr/bin/systemctl             --user daemon-reload             >/dev/null 2>&1 || true
+    fi
+}
+
+[ "${1:-configure}" = "configure" ] ||
+    exit 0
+
+snapshot_valid ||
+    die "falta un snapshot original válido"
+
+chmod 0700 "$STATE_ROOT"
+
+rm -rf "$STATE_ROOT/overrides"
+
+tmp_gdm="$(mktemp)"
+tmp_last="$(mktemp)"
+
+trap 'rm -f "$tmp_gdm" "$tmp_last"' EXIT
+
+capture_gdm_state     "/etc/gdm3/custom.conf"     "$tmp_gdm"
+
+if [ -f "$MANAGED/.complete" ] &&
+   [ -f "$MANAGED/gdm.last" ]; then
+
+    warn_gdm_changes         "$tmp_gdm"         "$MANAGED/gdm.last"
+
+elif [ -f "$LEGACY_MANAGED" ] &&
+     [ -r "$CONFIG" ]; then
+
+    # shellcheck disable=SC1090
+    . "$CONFIG"
+
+    {
+        printf 'AutomaticLoginEnable\tpresent\ttrue\n'
+        printf 'AutomaticLogin\tpresent\t%s\n' "$UGM_USER"
+    } > "$tmp_last"
+
+    warn_gdm_changes         "$tmp_gdm"         "$tmp_last"
+fi
+
+if [ -f "$MANAGED/.complete" ] &&
+   [ -f "$MANAGED/accounts.allowed" ] &&
+   [ -r "$CONFIG" ]; then
+
+    # shellcheck disable=SC1090
+    . "$CONFIG"
+
+    warn_and_repair_account_session         "$MANAGED/accounts.allowed"         "$UGM_UID"
+
+elif [ -f "$LEGACY_MANAGED" ] &&
+     [ -r "$CONFIG" ]; then
+
+    # shellcheck disable=SC1090
+    . "$CONFIG"
+
+    tmp_allowed="$(mktemp)"
+
+    {
+        printf 'desktop=%s\n' "$UGM_DESKTOP_SESSION"
+        printf 'gaming=%s\n' "$UGM_GAMING_SESSION"
+    } > "$tmp_allowed"
+
+    warn_and_repair_account_session         "$tmp_allowed"         "$UGM_UID"
+
+    rm -f "$tmp_allowed"
+fi
+
+legacy_system="/etc/systemd/system/gaming-autologin-rearm.service"
+
+if [ -e "$legacy_system" ] ||
+   [ -L "$legacy_system" ]; then
+
+    if grep -Fq         'ExecStart=/usr/lib/ubuntu-gaming-mode/gaming-autologin-rearm'         "$legacy_system" 2>/dev/null &&
+       grep -Fq         'Type=oneshot'         "$legacy_system" 2>/dev/null; then
+
+        log "Adoptando servicio systemd heredado de /etc."
+        rm -f "$legacy_system"
+
+    else
+        die "existe $legacy_system pero no coincide con la unidad heredada conocida"
+    fi
+fi
+
+legacy_user="/usr/local/lib/systemd/user/gamescope-session-plus@.service"
+
+if [ -e "$legacy_user" ] ||
+   [ -L "$legacy_user" ]; then
+
+    if grep -Fq         'gamescope-session-plus-runtime'         "$legacy_user" 2>/dev/null; then
+
+        log "Adoptando unidad systemd de usuario heredada."
+        rm -f "$legacy_user"
+
+    elif grep -Fq         'ExecStart=/usr/local/share/gamescope-session-plus/gamescope-session-plus %i'         "$legacy_user" 2>/dev/null &&
+         grep -Fq         'Environment=GAMESCOPE_BIN=/usr/local/bin/gamescope'         "$legacy_user" 2>/dev/null; then
+
+        log "Adoptando unidad systemd manual histórica conocida."
+        rm -f "$legacy_user"
+
+    else
+        die "existe $legacy_user pero no coincide con ninguna unidad heredada conocida"
+    fi
+fi
+
+systemctl daemon-reload || true
+
+log "Configurando Ubuntu Gaming Mode."
+
+/usr/lib/ubuntu-gaming-mode/ubuntu-gaming-mode-setup     --apply
+
+[ -r "$CONFIG" ] ||
+    die "setup no generó $CONFIG"
+
+# shellcheck disable=SC1090
+. "$CONFIG"
+
+accounts_original="$ORIGINAL/shared/accountsservice.original"
+
+status="$(
+    sed -n 's/^status=//p'         "$accounts_original" 2>/dev/null |
+    head -n1
+)"
+
+if [ "$status" = "pending" ]; then
+
+    if current="$(get_account_session "$UGM_UID")"; then
+
+        write_account_state             "$accounts_original"             "ok"             "$current"
+
+        if [ -n "$current" ]; then
+            log "AccountsService original capturado: $current"
+        else
+            log "AccountsService original capturado: valor vacío"
+        fi
+
+    else
+
+        write_account_state             "$accounts_original"             "query-failed-first-install"             ""
+
+        warn "no se pudo capturar AccountsService original; no se inventará un valor"
+    fi
+fi
+
+tmp_managed="$STATE_ROOT/.managed-state-new.$$"
+
+rm -rf "$tmp_managed"
+mkdir -m 0700 -p "$tmp_managed"
+
+printf '%s\n' "$PKG_VERSION"     > "$tmp_managed/package-version"
+
+capture_gdm_state     "/etc/gdm3/custom.conf"     "$tmp_managed/gdm.last"
+
+{
+    printf 'desktop=%s\n' "$UGM_DESKTOP_SESSION"
+    printf 'gaming=%s\n' "$UGM_GAMING_SESSION"
+} > "$tmp_managed/accounts.allowed"
+
+: > "$tmp_managed/generated.sha256"
+
+for p in     /etc/ubuntu-gaming-mode/session.conf     /etc/sudoers.d/gaming-autologin-rearm
+do
+    if [ -f "$p" ]; then
+        sha256sum "$p"             >> "$tmp_managed/generated.sha256"
+    fi
+done
+
+touch "$tmp_managed/.complete"
+
+rm -rf "$MANAGED"
+mv "$tmp_managed" "$MANAGED"
+
+rm -f "$LEGACY_MANAGED"
+rm -f "$STATE_ROOT/last-package-adoption-backup"
+
+systemctl daemon-reload || true
+reload_user_systemd
+
+log "Ejecutando diagnóstico final."
+
+if ! /usr/lib/ubuntu-gaming-mode/ubuntu-gaming-mode-doctor; then
+    die "el diagnóstico final detectó fallos"
+fi
+
+rm -rf "$LEGACY"
+
+log "Instalación configurada correctamente."
+warn "Ubuntu Gaming Mode administra AutomaticLoginEnable, AutomaticLogin y la selección de sesión necesaria para Desktop/Gaming."
+warn "Modificar manualmente estas propiedades puede romper Ubuntu Gaming Mode."
+warn "Una actualización o reinstalación reparará estas propiedades y SOBRESCRIBIRÁ cualquier modificación manual realizada sobre ellas."
+log "Las propiedades y configuraciones que UGM no administra no se modifican."
+log "No se ha reiniciado GDM ni se ha cerrado la sesión."
+
+exit 0
