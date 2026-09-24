@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# ============================================================
+# Steam Gaming Mode - Ubuntu 26.04 / NVIDIA
+# Gamescope 3.16.28
+# ============================================================
+
+export GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope
+export gamescope_drm_gbm_scanout=1
+
+# ------------------------------------------------------------
+# Gamescope DRM
+# ------------------------------------------------------------
+
+BACKEND=drm
+# Detectar automáticamente el conector DRM físicamente conectado
+detect_output_connector() {
+    local d name
+
+    for d in /sys/class/drm/card*-*; do
+        [ -r "$d/status" ] || continue
+        [ "$(cat "$d/status")" = "connected" ] || continue
+
+        name="$(basename "$d")"
+        printf '%s
+' "${name#card*-}"
+        return 0
+    done
+
+    return 1
+}
+
+ACTIVE_CONNECTOR="$(detect_output_connector || true)"
+
+if [ -n "$ACTIVE_CONNECTOR" ]; then
+    OUTPUT_CONNECTOR="${ACTIVE_CONNECTOR},*"
+else
+    # Fallback: dejar que Gamescope elija una salida disponible
+    OUTPUT_CONNECTOR="*"
+fi
+
+# VRR real en Gamescope
+ADAPTIVE_SYNC=1
+
+# HDR real en Gamescope
+ENABLE_GAMESCOPE_HDR=1
+export ENABLE_GAMESCOPE_WSI=1
+
+# ------------------------------------------------------------
+# Steam GamepadUI
+# ------------------------------------------------------------
+
+CLIENTCMD="steam -gamepadui -steamos3 -steampal -steamdeck"
+
+export STEAM_MULTIPLE_XWAYLANDS=1
+
+# ------------------------------------------------------------
+# Escalado
+# ------------------------------------------------------------
+
+export STEAM_GAMESCOPE_NIS_SUPPORTED=1
+export STEAM_GAMESCOPE_FANCY_SCALING_SUPPORT=1
+
+# ------------------------------------------------------------
+# Capacidades HDR / VRR anunciadas a Steam
+# ------------------------------------------------------------
+
+export STEAM_GAMESCOPE_HDR_SUPPORTED=1
+export STEAM_GAMESCOPE_VRR_SUPPORTED=1
+
+# ------------------------------------------------------------
+# MangoApp / monitor de rendimiento
+# ------------------------------------------------------------
+
+export STEAM_MANGOAPP_PRESETS_SUPPORTED=1
+export STEAM_USE_MANGOAPP=1
+export STEAM_DISABLE_MANGOAPP_ATOM_WORKAROUND=1
+export STEAM_MANGOAPP_HORIZONTAL_SUPPORTED=1
+
+# ------------------------------------------------------------
+# Audio
+# ------------------------------------------------------------
+
+export STEAM_DISABLE_AUDIO_DEVICE_SWITCHING=1
