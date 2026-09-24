@@ -55,6 +55,19 @@ Esto es relevante porque NVIDIA continúa siendo una ruta más exigente dentro d
 
 En cambio, en el sistema de referencia de UGM con RTX 2060 se ha validado físicamente una **interfaz Steam Gamepad UI fluida tanto a 60 FPS como a 120 FPS** dentro de Gaming Mode, además de las pruebas 4K/HDR/VRR indicadas arriba. Durante esa aceptación no se observaron problemas de lag en la UI ni artefactos gráficos que rompieran los juegos.
 
+### Corrupción histórica de scan-out 4K en NVIDIA resuelta en la build validada de UGM
+
+Durante el desarrollo de UGM, el sistema de referencia con RTX 2060 sufrió anteriormente un fallo grave de presentación 4K sobre DRM que visualmente coincide con la misma familia de corrupción que ahora describe el issue #2309 de Gamescope:
+
+- la imagen 4K aparecía cortada en varias secciones;
+- partes del framebuffer se mostraban colocadas en zonas de la pantalla que no correspondían;
+- aparecía corrupción intensa de color azul/cian, rosa/magenta y morado por la imagen;
+- el fallo estaba asociado a la ruta Gamescope DRM a 4K.
+
+La build actual de Gamescope incluida en UGM 1.0.0-3 ya no reproduce ese problema en la RTX 2060 validada: la salida 4K está estabilizada, incluidas las pruebas con HDR, VRR y la interfaz de Steam.
+
+Como el árbol fuente modificado de Gamescope se eliminó posteriormente, UGM no puede demostrar qué cambio exacto eliminó la corrupción ni afirmar que resuelva el issue upstream todavía abierto en otras GPU NVIDIA. La afirmación verificable es más concreta: **la corrupción de scan-out NVIDIA a 4K encontrada durante el desarrollo de UGM fue superada y la configuración RTX 2060 de referencia es actualmente estable a 4K**.
+
 UGM **no** afirma compatibilidad universal con NVIDIA ni que esos problemas de upstream o de otras distribuciones estén resueltos para todas las GPU. La afirmación probada es más concreta: el sistema de referencia con RTX 2060 ejecuta correctamente una sesión Gamescope DRM independiente a 4K con HDR, VRR, interfaz Steam fluida a 60/120 FPS y las funciones de Steam Gaming Mode indicadas arriba.
 
 Para usuarios de NVIDIA que ya utilizan Ubuntu, UGM ofrece además una alternativa práctica a sustituir el sistema por una distribución dedicada al gaming: añade una sesión Gamescope tipo consola independiente conservando el escritorio Ubuntu y la pila de drivers existente.
