@@ -1,4 +1,6 @@
-# Uninstall and rollback
+# Uninstall Ubuntu Gaming Mode and restore the system with rollback
+
+**English** | [Español](es/desinstalacion-y-rollback.md)
 
 UGM records the state that existed before the first installation and uses it as the rollback baseline.
 
