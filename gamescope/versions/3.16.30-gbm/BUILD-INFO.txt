@@ -1,0 +1,27 @@
+Ubuntu Gaming Mode - Gamescope 3.16.30 GBM port
+
+Upstream repository: https://github.com/ValveSoftware/gamescope.git
+Upstream version: 3.16.30
+Upstream base: ad2763da1c48860f649abfe842a087188dcb6e20
+Original GBM POC base: 17baf4abd1ab3353fb705e4d0d023f84e870f7e8
+Original GBM POC result: 2bfc18c736520b7d4f9756977213ea439daa1c63
+Local port result: b211c9d3eab1310eda2e511c965da3cf5910290e
+Final source tree: b329fd0963e5ae797a14f4fe185f86c409937bc6
+
+Meson: 1.10.1
+Ninja: 1.13.2
+Compiler: gcc/g++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+GBM: 26.0.8-1ubuntu0.3
+Build type: release
+Prefix: /usr/local
+
+Build commands:
+meson setup build --prefix=/usr/local --buildtype=release
+ninja -C build
+meson test -C build --print-errorlogs
+
+Tests: 68 passed, 0 failed
+
+Binary version: gamescope 3.16.30-8-gb211c9d
+Binary size: 5158080 bytes
+Binary SHA256: 96fbdd3f3c7e716e873cc66b79992f2b5e54d27c360ce4afb2c1bbb0628fffba

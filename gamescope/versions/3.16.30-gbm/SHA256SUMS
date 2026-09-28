@@ -1,0 +1,8 @@
+68de13a49356e2941a6141bad5ecb6e21f1c7c34303f54e43d89dd3f1a4d00c3  patches/0001-build-add-optional-gbm-dependency.patch
+c4577f8f7c3c9728a4da389e90778fc0d78946f8f5944655e180a9f988becd63  patches/0002-backend-add-IBackendScanoutBuffer-and-scanout-alloca.patch
+d5f43c0cb3841313dd34a12f2159c249855c60175d2e354eab0e00eaf139c3da  patches/0003-drm-implement-GBM-allocated-scanout-buffers-opt-in.patch
+88ecffc4454ddb9773b05a3c846c7f7ed6e4315d0fa4eb646df248057917015a  patches/0004-rendervulkan-import-backend-allocated-GBM-scanout-bu.patch
+fedfc2e82104656febbe594998dd7d02f4d2dcf206b296abac2f93884fa92575  patches/0005-gitignore-ignore-meson-extracted-glm-subproject-dire.patch
+02f595760ebea02e075dc7085d55a94c5eb950af01d15296e4274aa66920582f  patches/0006-drm-rendervulkan-address-GBM-scanout-review-feedback.patch
+82f7d9d98eb83766b64eaa188af09a9975b97a3dee03a2e86b8b6e3b12a946b8  patches/0007-rendervulkan-steamcompmgr-address-second-review-roun.patch
+da53ece95a45c4c6312b2048c0db3ca41f0b7cdfb7bd933b56dd0b362fede939  patches/0008-drm-rendervulkan-apply-final-review-findings.patch

@@ -1,0 +1,68 @@
+From 6359a7fcd32ac8fe9a311656e001d87797e6cf43 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 20 Aug 2026 07:51:15 +0000
+Subject: [PATCH 1/8] build: add optional gbm dependency
+
+libgbm is used by the DRM backend to allocate scanout buffers that the
+display hardware can actually scan out (NVIDIA requires physically
+contiguous vidmem, which only its GBM allocation path guarantees).
+The dependency is optional: without it, HAVE_GBM=0 and the GBM scanout
+path compiles out. Mesa >= 21.3 is required for
+gbm_bo_create_with_modifiers2.
+
+Note for CI: the Arch container in .github/workflows/main.yml needs
+'mesa' added to its pacman package list to provide gbm.pc.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014ZqFjz2VRJrkstciYqbXbg
+---
+ README.md       | 2 +-
+ src/meson.build | 5 ++++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/README.md b/README.md
+index 0f53c60..7de4241 100644
+--- a/README.md
++++ b/README.md
+@@ -19,7 +19,7 @@ If running RadeonSI clients with older cards (GFX8 and below), currently have to
+ 
+ Dependent first (**Debian/Debian-based**):
+ ```
+-apt install meson ninja-build pkg-config cmake libpipewire-0.3-dev hwdata libx11-dev libwayland-dev libvulkan-dev wayland-protocols libx11-xcb-dev libxdamage-dev libxcomposite-dev libxcursor-dev libxxf86vm-dev libxtst-dev libxres-dev libxmu-dev libxkbcommon-dev libcap-dev libsdl2-dev libavif-dev libpixman-1-dev liblcms2-dev libseat-dev libinput-dev xwayland libxcb-composite0-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-res0-dev glslang-tools libluajit-5.1-dev libcatch2-dev
++apt install meson ninja-build pkg-config cmake libpipewire-0.3-dev hwdata libx11-dev libwayland-dev libvulkan-dev libgbm-dev wayland-protocols libx11-xcb-dev libxdamage-dev libxcomposite-dev libxcursor-dev libxxf86vm-dev libxtst-dev libxres-dev libxmu-dev libxkbcommon-dev libcap-dev libsdl2-dev libavif-dev libpixman-1-dev liblcms2-dev libseat-dev libinput-dev xwayland libxcb-composite0-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-res0-dev glslang-tools libluajit-5.1-dev libcatch2-dev
+ ```
+ 
+ Build with:
+diff --git a/src/meson.build b/src/meson.build
+index ae3ac16..f906304 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -11,6 +11,8 @@ dep_xmu = dependency('xmu')
+ dep_xi = dependency('xi')
+ 
+ drm_dep = dependency('libdrm', version: '>= 2.4.113', required: get_option('drm_backend'))
++# gbm_bo_create_with_modifiers2 needs Mesa >= 21.3
++gbm_dep = dependency('gbm', version: '>= 21.3', required: false)
+ eis_dep = dependency('libeis-1.0', required : get_option('input_emulation'))
+ 
+ wayland_server = dependency('wayland-server', version: '>=1.21')
+@@ -149,6 +151,7 @@ if sdl2_dep.found()
+ endif
+ 
+ gamescope_cpp_args += '-DHAVE_DRM=@0@'.format(drm_dep.found().to_int())
++gamescope_cpp_args += '-DHAVE_GBM=@0@'.format((drm_dep.found() and gbm_dep.found()).to_int())
+ gamescope_cpp_args += '-DHAVE_SDL2=@0@'.format(sdl2_dep.found().to_int())
+ gamescope_cpp_args += '-DHAVE_AVIF=@0@'.format(avif_dep.found().to_int())
+ gamescope_cpp_args += '-DHAVE_LIBCAP=@0@'.format(cap_dep.found().to_int())
+@@ -196,7 +199,7 @@ gamescope_version = configure_file(
+     include_directories : [reshade_include, sol2_include],
+     dependencies: [
+       dep_wayland, dep_x11, dep_xdamage, dep_xcomposite, dep_xrender, dep_xext, dep_xfixes,
+-      dep_xxf86vm, dep_xres, glm_dep, drm_dep, wayland_server,
++      dep_xxf86vm, dep_xres, glm_dep, drm_dep, gbm_dep, wayland_server,
+       xkbcommon, thread_dep, sdl2_dep, wlroots_dep,
+       vulkan_dep, liftoff_dep, dep_xtst, dep_xmu, cap_dep, epoll_dep, pipewire_dep, librt_dep,
+       stb_dep, displayinfo_dep, openvr_dep, dep_xcursor, avif_dep, dep_xi,
+-- 
+2.53.0
+
