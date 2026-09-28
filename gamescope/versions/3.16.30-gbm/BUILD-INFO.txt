@@ -6,7 +6,8 @@ Upstream base: ad2763da1c48860f649abfe842a087188dcb6e20
 Original GBM POC base: 17baf4abd1ab3353fb705e4d0d023f84e870f7e8
 Original GBM POC result: 2bfc18c736520b7d4f9756977213ea439daa1c63
 Local port result: b211c9d3eab1310eda2e511c965da3cf5910290e
-Final source tree: b329fd0963e5ae797a14f4fe185f86c409937bc6
+Safety patch result: 190d2cf1edee4468c67ca30f2b55fd89289106fc
+Final source tree: 5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1
 
 Meson: 1.10.1
 Ninja: 1.13.2
@@ -20,8 +21,11 @@ meson setup build --prefix=/usr/local --buildtype=release
 ninja -C build
 meson test -C build --print-errorlogs
 
-Tests: 68 passed, 0 failed
+GBM baseline tests: 68 passed, 0 failed
+Patch 0009 build: meson compile -C build gamescope (successful)
+Patch 0009 live validation: timeline import failure fell back to normal composition; no crash or GDM return
 
 Binary version: gamescope 3.16.30-8-gb211c9d
 Binary size: 5158080 bytes
-Binary SHA256: 96fbdd3f3c7e716e873cc66b79992f2b5e54d27c360ce4afb2c1bbb0628fffba
+Binary SHA256: 5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
+Binary version note: built from the patch 0009 working tree before commit metadata was created; embedded version remains -8-gb211c9d

@@ -7,6 +7,7 @@
 - Original GBM POC base: `17baf4abd1ab3353fb705e4d0d023f84e870f7e8` (Gamescope 3.16.25).
 - Original GBM POC result: `2bfc18c736520b7d4f9756977213ea439daa1c63`.
 - Local 3.16.30 port result: `b211c9d3eab1310eda2e511c965da3cf5910290e`.
+- Local safety result: `190d2cf1edee4468c67ca30f2b55fd89289106fc`.
 
 ## Commit map
 
@@ -21,18 +22,24 @@
 | `092a2e7` | `a924b3c` | rendervulkan, steamcompmgr: address second review round |
 | `2bfc18c` | `b211c9d` | drm, rendervulkan: apply final review findings |
 
+The table above is the complete upstream GBM port. Patch 0009 has no upstream
+POC counterpart: it is a UGM safety fix added after a real timeline-semaphore
+import failure caused the pre-emptive upscale path to crash.
+
 ## 3.16.30 integration
 
 `git range-diff` reports commits 1, 2, 5 and 8 as patch-equivalent. Commits 3, 4, 6 and 7 retain overlapping work already present in 3.16.30, including output rotation, HDR-capability rebuilds and `GetQueryPoolResults`, while integrating the GBM series.
 
-No additional UGM, Decky, NIS, FSR or VRR feature patch is present in the tracked diff.
+No Decky, NIS, FSR or VRR feature patch is present in the tracked diff. The only
+post-port UGM change is patch 0009, which provides fail-safe fallback to normal
+composition and does not add or select a scaling filter.
 
 ## Reproducibility proof
 
-The eight stored patches were applied with `git am` to a temporary worktree at the exact 3.16.30 base. The resulting tree was:
+The nine stored patches were applied with `git am` to a temporary worktree at the exact 3.16.30 base. The resulting tree was:
 
 ```text
-b329fd0963e5ae797a14f4fe185f86c409937bc6
+5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1
 ```
 
-This matches the tree of local result commit `b211c9d` exactly. The temporary worktree was removed after verification.
+This matches the tree of local result commit `190d2cf` exactly. Patches 0001-0008 alone still reproduce `b211c9d` / tree `b329fd0`; patch 0009 is separately identifiable. The temporary worktree was removed after verification.

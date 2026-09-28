@@ -5,6 +5,12 @@ Fecha de auditoría: 2026-09-28
 Sistema de referencia: Ubuntu 26.04 / NVIDIA RTX 2060 6 GB
 Proyecto: N3ruk/Ubuntu-Gaming-Mode
 
+Actualización 2026-09-28:
+  La auditoría inicial cubría los ocho commits del port GBM y el binario
+  96fbdd3f... Posteriormente se añadió el patch 0009, separado de upstream,
+  tras reproducir un fallo real de importación de semáforo timeline. Las
+  secciones 2, 3, 8-11 y 17 incorporan el estado final de nueve patches.
+
 
 1. OBJETIVO Y ALCANCE
 ----------------------------------------------------------------------
@@ -44,9 +50,13 @@ Base limpia exacta:
 
   ad2763da1c48860f649abfe842a087188dcb6e20
 
-Commit final local:
+Resultado del port GBM upstream (patches 0001-0008):
 
   b211c9d3eab1310eda2e511c965da3cf5910290e
+
+Commit final local con protección UGM (patch 0009):
+
+  190d2cf1edee4468c67ca30f2b55fd89289106fc
 
 Versión resultante:
 
@@ -54,21 +64,22 @@ Versión resultante:
 
 Árbol Git final:
 
-  b329fd0963e5ae797a14f4fe185f86c409937bc6
+  5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1
 
 Resumen del diff rastreado:
 
   10 archivos modificados
-  613 inserciones
-  35 eliminaciones
+  652 inserciones
+  62 eliminaciones
 
 SHA256 del diff binario completo entre base y resultado:
 
-  addeda740a92a6995656113e618d7c69eca11b53d1f66e58b2723c9a9aeb9b13
+  09169ae06f222ff5b382cf2e00d2e63d76b7e6bbc78ae7aa5e9e21545ff53773
 
-No se encontraron cambios adicionales de UGM, Decky Loader, NIS, FSR,
-Sharp Filter Selector, VRR o configuración de sesión dentro del árbol
-parcheado. Todo el diff rastreado pertenece al port de la serie GBM.
+No se encontraron cambios de Decky Loader, NIS, FSR, Sharp Filter Selector,
+VRR o configuración de sesión dentro del árbol parcheado. Los patches
+0001-0008 pertenecen al port GBM; el único cambio UGM adicional es 0009,
+un fallback de seguridad que no selecciona filtros ni cambia VRR/GBM.
 
 
 3. ESTADO DE LOS ÁRBOLES
@@ -107,11 +118,11 @@ Rama local:
 
 HEAD:
 
-  b211c9d3eab1310eda2e511c965da3cf5910290e
+  190d2cf1edee4468c67ca30f2b55fd89289106fc
 
 Descripción:
 
-  3.16.30-8-gb211c9d
+  3.16.30-9-g190d2cf (identidad fuente)
 
 Elemento no rastreado:
 
@@ -132,6 +143,7 @@ Contenido original:
   patches/0001-...patch
   ...
   patches/0008-...patch
+  patches/0009-...patch
 
 Esta carpeta no era todavía un repositorio Git en el momento de la auditoría.
 
@@ -337,13 +349,17 @@ Se comprobó cada patch individualmente mediante:
 
 Resultado:
 
-  8/8 patches con payload equivalente al commit correspondiente.
+  9/9 patches con payload equivalente al commit correspondiente.
 
 Los archivos almacenados usan cabeceras de serie:
 
   [PATCH 1/8]
   ...
   [PATCH 8/8]
+
+El patch adicional usa la cabecera:
+
+  [PATCH 9/9]
 
 Por ello su SHA256 no coincide con ejecutar git format-patch -1 de forma
 independiente, que produciría [PATCH] sin numeración. El contenido de código,
@@ -352,16 +368,16 @@ medido mediante patch-id estable, sí coincide exactamente.
 Prueba de reproducción real:
 
   1. Se creó un worktree temporal desde ad2763d.
-  2. Se aplicaron los ocho patches en orden mediante git am.
+  2. Se aplicaron los nueve patches en orden mediante git am.
   3. Se calculó el árbol Git final.
-  4. Se comparó con el árbol de b211c9d.
+  4. Se comparó con el árbol de 190d2cf.
   5. Se eliminó el worktree temporal.
 
 Resultado:
 
-  patches_applied=8
-  actual_tree=b329fd0963e5ae797a14f4fe185f86c409937bc6
-  expected_tree=b329fd0963e5ae797a14f4fe185f86c409937bc6
+  patches_applied=9
+  actual_tree=5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1
+  expected_tree=5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1
   match=true
   tracked_status=0
 
@@ -396,6 +412,9 @@ fedfc2e82104656febbe594998dd7d02f4d2dcf206b296abac2f93884fa92575
 
 da53ece95a45c4c6312b2048c0db3ca41f0b7cdfb7bd933b56dd0b362fede939
   patches/0008-drm-rendervulkan-apply-final-review-findings.patch
+
+fe006dbc59516133c7ce6f48ce3dffa4dc313be59bfce9cfde8364b159b8e82e
+  patches/0009-steamcompmgr-fallback-when-timeline-import-fails.patch
 
 
 10. BUILD EXACTO
@@ -456,9 +475,17 @@ Tamaño:
 
   5.158.080 bytes
 
-SHA256:
+SHA256 del baseline de ocho patches:
 
   96fbdd3f3c7e716e873cc66b79992f2b5e54d27c360ce4afb2c1bbb0628fffba
+
+Después de compilar el patch 0009 mediante `meson compile -C build gamescope`:
+
+  SHA256: 5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
+
+No se registró una nueva ejecución de la suite Meson tras ese cambio aislado;
+la validación adicional fue compilación correcta más reproducción física del
+fallo y continuidad de Gamescope.
 
 
 11. ESTADO DE LOS BINARIOS INSTALADOS
@@ -472,11 +499,11 @@ Versión:
 
   gamescope 3.16.30-8-gb211c9d
 
-SHA256:
+SHA256 instalado después del patch 0009:
 
-  96fbdd3f3c7e716e873cc66b79992f2b5e54d27c360ce4afb2c1bbb0628fffba
+  5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
 
-Este hash coincide exactamente con el build parcheado.
+Este hash coincide exactamente con el build de nueve patches validado.
 
 Binario general de /usr/local:
 
@@ -599,7 +626,8 @@ Estructura recomendada:
               |-- 0005-gitignore-ignore-meson-extracted-glm-subproject-dire.patch
               |-- 0006-drm-rendervulkan-address-GBM-scanout-review-feedback.patch
               |-- 0007-rendervulkan-steamcompmgr-address-second-review-roun.patch
-              `-- 0008-drm-rendervulkan-apply-final-review-findings.patch
+              |-- 0008-drm-rendervulkan-apply-final-review-findings.patch
+              `-- 0009-steamcompmgr-fallback-when-timeline-import-fails.patch
 
 Contenido recomendado:
 
@@ -622,7 +650,7 @@ BUILD-INFO.txt
   binario.
 
 SHA256SUMS
-  Hashes de los ocho patches y del binario publicado en la release.
+  Hashes de los nueve patches y del binario publicado en la release.
 
 patches/series
   Orden canónico de aplicación.
@@ -640,7 +668,7 @@ La documentación debe conservar la distinción entre:
      perdido y que contenía integración Decky/NIS adicional.
 
   2. Gamescope 3.16.30 GBM, que sí es reproducible mediante esta serie de
-     ocho patches.
+     ocho patches GBM y un noveno patch de seguridad UGM.
 
 El binario compilado debe seguir fuera del historial Git si se mantiene la
 política actual del proyecto. Debe distribuirse como input o dentro del .deb
@@ -674,10 +702,12 @@ La serie recuperada y portada:
 
   - es trazable hasta el repositorio oficial de Valve;
   - aplica limpiamente sobre ad2763d;
-  - reproduce exactamente el árbol final b329fd0...;
+  - reproduce exactamente el árbol GBM b329fd0... con 0001-0008 y el
+    árbol final 5fd5ea2... con 0009;
   - compila con HAVE_GBM=1;
   - supera 68/68 tests;
-  - genera el binario 96fbdd3f...fffba;
+  - generó el baseline 96fbdd3f...fffba y el runtime con protección
+    5ddf50c7...d256;
   - coincide con el runtime actualmente instalado por UGM;
   - contiene la modificación técnicamente coherente con la corrección del
     scanout 4K observada;
@@ -687,3 +717,49 @@ El siguiente paso documental correcto es publicar esta serie como una versión
 reproducible independiente dentro de N3ruk/Ubuntu-Gaming-Mode, sin afirmar que
 reconstruye el antiguo Gamescope 3.16.28 GOLD ni su conector Decky/NIS.
 
+
+17. PATCH 0009: FALLBACK DE SEGURIDAD POSTERIOR AL PORT GBM
+----------------------------------------------------------------------
+
+Commit:
+
+  190d2cf1edee4468c67ca30f2b55fd89289106fc
+
+Árbol final:
+
+  5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1
+
+Archivo modificado:
+
+  src/steamcompmgr.cpp
+
+Propósito técnico:
+
+  La ruta de upscale preventivo importaba los semáforos timeline acquire y
+  release y los añadía inmediatamente como dependencia/señal. Si
+  vkImportSemaphoreFdKHR fallaba, la conversión podía devolver nullptr y la
+  ruta posterior terminaba derribando Gamescope.
+
+  El patch importa ambos semáforos antes de preparar el command buffer. Si
+  cualquiera no existe, registra el fallo, desactiva upscale_preemptive para
+  el resto de esa sesión y continúa por composición normal. No construye un
+  comando con dependencias nulas y no modifica GBM, VRR, HDR ni el filtro.
+
+Evidencia física:
+
+  A las 15:20:05 del 2026-09-28 se registró:
+
+    vkImportSemaphoreFdKHR failed (VkResult: -3)
+
+  seguido del marcador específico del patch. Gamescope y Forgotten Anne
+  siguieron activos; no hubo segmentation fault, core dump ni retorno a GDM.
+  En la misma sesión se mantuvieron 4K, VRR y el reescalado funcional.
+
+Separación de procedencia:
+
+  - 0001-0008: port de la serie experimental GBM del repositorio de Valve.
+  - 0009: cambio de seguridad adicional de UGM, sin equivalente en esa serie.
+
+La mejora 4K + VRR procede de la ruta de asignación GBM de los ocho primeros
+patches. El noveno no crea esa funcionalidad: evita que un fallo de importación
+timeline en otra ruta destruya la sesión que ya la está utilizando.

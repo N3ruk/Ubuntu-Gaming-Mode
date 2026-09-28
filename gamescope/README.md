@@ -47,6 +47,6 @@ Do not replace this binary in a 1.0.0-3 package without changing the package ver
 
 ## Reproducible Gamescope 3.16.30 GBM port
 
-The source provenance, eight-patch series, exact build recipe, audit and validation scope for the newer port are preserved under [`versions/3.16.30-gbm/`](versions/3.16.30-gbm/README.md).
+The source provenance, eight-patch upstream GBM port, separate ninth UGM crash-safety patch, exact build recipe, audit and validation scope for the newer port are preserved under [`versions/3.16.30-gbm/`](versions/3.16.30-gbm/README.md).
 
 This is future-version material. It does not alter the historical 1.0.0-3 package or make that release reproducible from source.

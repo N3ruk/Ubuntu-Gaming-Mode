@@ -2,6 +2,20 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Conservación del código de Gamescope 3.16.30
+
+- Añadido el patch 0009 a la serie GBM reproducible. Si no puede importarse un
+  semáforo timeline del reescalado preventivo, continúa por composición normal
+  en lugar de permitir que una dependencia/señal nula derribe la sesión.
+- Conservado el cambio de seguridad como commit `190d2cf`, con árbol fuente final
+  `5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
+- Registrado el SHA256 del runtime validado:
+  `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
+- Documentada la separación entre los ocho patches GBM derivados de upstream y
+  el patch de seguridad de UGM, incluida la prueba real satisfactoria del fallback.
+
 ## 1.0.0-3 — GOLD
 
 Versión de producción promovida a GOLD después de superar la aceptación física desde una instalación limpia.

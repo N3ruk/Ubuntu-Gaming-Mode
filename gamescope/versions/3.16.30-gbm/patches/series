@@ -6,3 +6,4 @@
 0006-drm-rendervulkan-address-GBM-scanout-review-feedback.patch
 0007-rendervulkan-steamcompmgr-address-second-review-roun.patch
 0008-drm-rendervulkan-apply-final-review-findings.patch
+0009-steamcompmgr-fallback-when-timeline-import-fails.patch

@@ -47,6 +47,6 @@ El binario actual de 1.0.0-3 y su SHA256 son por tanto la referencia canónica.
 
 ## Trabajo futuro con Gamescope 3.16.30
 
-Existe un port separado y reproducible de scan-out GBM para Gamescope 3.16.30 documentado en [`gamescope/versions/3.16.30-gbm/`](gamescope/versions/3.16.30-gbm/README_es.md). Incluye la base upstream exacta, ocho patches, la receta de build, la prueba del árbol fuente y el registro de validación.
+Existe un port separado y reproducible de scan-out GBM para Gamescope 3.16.30 documentado en [`gamescope/versions/3.16.30-gbm/`](gamescope/versions/3.16.30-gbm/README_es.md). Incluye la base upstream exacta, ocho patches GBM derivados de upstream, un patch de seguridad adicional de UGM, la receta de build, la prueba del árbol fuente y el registro de validación.
 
 Este nuevo port no reconstruye el código perdido de Gamescope 3.16.28 de 1.0.0-3 ni su conector Sharp Filter Selector. Se conserva como material fuente para una futura versión empaquetada de UGM.

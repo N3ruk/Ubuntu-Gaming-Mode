@@ -47,6 +47,6 @@ No sustituyas este binario dentro de un paquete 1.0.0-3 sin cambiar la versión 
 
 ## Port GBM reproducible de Gamescope 3.16.30
 
-La procedencia, la serie de ocho patches, la receta exacta, la auditoría y el alcance de validación del nuevo port se conservan en [`versions/3.16.30-gbm/`](versions/3.16.30-gbm/README_es.md).
+La procedencia, los ocho patches del port GBM upstream, el noveno patch separado de seguridad de UGM, la receta exacta, la auditoría y el alcance de validación del nuevo port se conservan en [`versions/3.16.30-gbm/`](versions/3.16.30-gbm/README_es.md).
 
 Éste es material para una versión futura. No altera el paquete histórico 1.0.0-3 ni convierte esa release en reproducible desde código fuente.

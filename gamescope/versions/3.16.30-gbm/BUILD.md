@@ -19,7 +19,7 @@ git show -s --format=%T HEAD
 Expected tree:
 
 ```text
-b329fd0963e5ae797a14f4fe185f86c409937bc6
+5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1
 ```
 
 ## Build and tests
@@ -45,19 +45,25 @@ Observed toolchain:
 | PipeWire | auto/found |
 | GBM | `HAVE_GBM=1` |
 
-Expected test result:
+Test result recorded for the eight-patch GBM baseline:
 
 ```text
 Ok:   68
 Fail: 0
 ```
 
-Expected executable:
+Validated executable after compiling patch 0009:
 
 ```text
 version: gamescope 3.16.30-8-gb211c9d (gcc 15.2.0)
 size:    5158080 bytes
-sha256:  96fbdd3f3c7e716e873cc66b79992f2b5e54d27c360ce4afb2c1bbb0628fffba
+sha256:  5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
 ```
+
+Patch 0009 was compiled with `meson compile -C build gamescope`; no new Meson
+test-suite run was recorded after that single-file safety change. The installed
+runtime was then validated against the real import failure. Its embedded version
+string remains `-8-gb211c9d` because the source diff was committed only after
+the validated binary had been built.
 
 Exact binary identity depends on the recorded toolchain and dependencies. Source reproducibility is anchored by the final Git tree; release binary integrity is anchored by SHA256.

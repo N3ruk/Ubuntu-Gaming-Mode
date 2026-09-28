@@ -11,17 +11,23 @@
 ## Completed validation
 
 - Source series applies cleanly to the exact 3.16.30 base.
-- Reproduced source tree matches `b211c9d` exactly.
+- Patches 0001-0008 reproduce `b211c9d` exactly.
+- The full nine-patch series reproduces `190d2cf` / tree `5fd5ea2` exactly.
 - Release build completed successfully.
 - Meson test suite: 68 passed, 0 failed.
 - Installed UGM runtime hash matches the validated build.
 - Physical 1440p output remains functional.
 - Physical 3840x2160 output no longer exhibits the previously observed displaced-band scan-out corruption.
 - 4K with the existing VRR/Adaptive Sync path was reported functional on the reference system.
+- A real `vkImportSemaphoreFdKHR` failure was observed with Forgotten Anne. Patch 0009 emitted its fallback marker, disabled pre-emptive upscale for that session, kept Gamescope and the game running, and avoided the previous return to GDM.
 
 ## Interpretation
 
 The patch does not add a new VRR implementation. It replaces the scan-out allocation route with backend-allocated GBM buffers imported into Vulkan. Existing 3.16.30 Adaptive Sync logic remains responsible for VRR.
+
+Patch 0009 is a separate crash-safety change. It does not explain why GBM 4K +
+VRR works; it explains why a failed timeline-semaphore import no longer brings
+down the session while that working pipeline is in use.
 
 ## Acceptance matrix for a packaged release
 

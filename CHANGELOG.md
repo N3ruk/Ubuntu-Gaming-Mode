@@ -2,6 +2,20 @@
 
 **English** | [Español](CHANGELOG_es.md)
 
+## Unreleased
+
+### Gamescope 3.16.30 source preservation
+
+- Added patch 0009 to the reproducible GBM series. It falls back to normal
+  composition when a pre-emptive-upscale timeline semaphore cannot be imported,
+  rather than allowing a null dependency/signal to bring down the session.
+- Preserved the safety change as commit `190d2cf`, with final source tree
+  `5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
+- Recorded the validated runtime SHA256
+  `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
+- Documented the distinction between the eight upstream-derived GBM patches and
+  the separate UGM safety patch, including the successful real failure fallback.
+
 ## 1.0.0-3 — GOLD
 
 Production release promoted to GOLD after physical clean-install acceptance.

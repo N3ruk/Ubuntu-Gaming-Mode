@@ -1,0 +1,98 @@
+From 190d2cf1edee4468c67ca30f2b55fd89289106fc Mon Sep 17 00:00:00 2001
+From: N3ruk <neruk123@gmail.com>
+Date: Mon, 28 Sep 2026 15:55:14 +0200
+Subject: [PATCH 9/9] steamcompmgr: fall back when timeline import fails
+
+---
+ src/steamcompmgr.cpp | 66 ++++++++++++++++++++++++++------------------
+ 1 file changed, 39 insertions(+), 27 deletions(-)
+
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index 2cb5eb5..fba97f8 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -8457,42 +8457,54 @@ void update_wayland_res(CommitDoneList_t *doneCommits, steamcompmgr_win_t *w, Re
+ 		TempUpscaleImage_t *pTempImage = GetTempUpscaleImage( pUpscaleFocus, g_nOutputWidth, g_nOutputHeight, g_output.uOutputFormat );
+ 		if ( pTempImage )
+ 		{
+-			const uint64_t ulNextReleasePoint = ++pTempImage->ulLastPoint;
++			std::shared_ptr<VulkanTimelineSemaphore_t> pAcquireSemaphore = reslistentry.pAcquirePoint->GetTimeline()->ToVkSemaphore();
++			std::shared_ptr<VulkanTimelineSemaphore_t> pReleaseSemaphore = pTempImage->pReleaseTimeline->ToVkSemaphore();
+ 
+-			std::unique_ptr<CVulkanCmdBuffer> pCommandBuffer = g_device.commandBuffer();
+-			
+-			pCommandBuffer->AddDependency( reslistentry.pAcquirePoint->GetTimeline()->ToVkSemaphore(), reslistentry.pAcquirePoint->GetPoint() );
+-			pCommandBuffer->AddSignal( pTempImage->pReleaseTimeline->ToVkSemaphore(), ulNextReleasePoint );
+-
+-			if ( pUpscaleFocus->oLastPreemptiveUpscaleSeqNo )
++			if ( !pAcquireSemaphore || !pReleaseSemaphore )
+ 			{
+-				vulkan_wait( *pUpscaleFocus->oLastPreemptiveUpscaleSeqNo, true );
++				xwm_log.errorf( "Failed to import timeline semaphore for pre-emptive upscale; disabling it for this session and falling back to normal composition." );
++				cv_upscale_preemptive = false;
++				bPreemptiveUpscale = false;
+ 			}
++			else
++			{
++				const uint64_t ulNextReleasePoint = ++pTempImage->ulLastPoint;
+ 
+-			std::optional<uint64_t> seqNo = vulkan_composite( &upscaledFrameInfo, nullptr, false, pTempImage->pTexture, false, std::move( pCommandBuffer ) );
++				std::unique_ptr<CVulkanCmdBuffer> pCommandBuffer = g_device.commandBuffer();
+ 
+-			if ( cv_upscale_preemptive_debug_force_sync )
+-			{
+-				vulkan_wait( *seqNo, true );
+-			}
++				pCommandBuffer->AddDependency( std::move( pAcquireSemaphore ), reslistentry.pAcquirePoint->GetPoint() );
++				pCommandBuffer->AddSignal( std::move( pReleaseSemaphore ), ulNextReleasePoint );
+ 
+-			pUpscaleFocus->oLastPreemptiveUpscaleSeqNo = seqNo;
++				if ( pUpscaleFocus->oLastPreemptiveUpscaleSeqNo )
++				{
++					vulkan_wait( *pUpscaleFocus->oLastPreemptiveUpscaleSeqNo, true );
++				}
+ 
+-			newCommit->upscaledTexture = std::optional<UpscaledTexture_t>
+-			{
+-				std::in_place_t{},
+-				upscaledFrameInfo.eUpscaleFilter,
+-				upscaledFrameInfo.eUpscaleScaler,
+-				g_nOutputWidth,
+-				g_nOutputHeight,
+-				pTempImage->pTexture,
+-				upscaledFrameInfo.outputEncodingEOTF == EOTF_Gamma22 ? VK_COLOR_SPACE_SRGB_NONLINEAR_KHR : VK_COLOR_SPACE_HDR10_ST2084_EXT,
+-			};
++				std::optional<uint64_t> seqNo = vulkan_composite( &upscaledFrameInfo, nullptr, false, pTempImage->pTexture, false, std::move( pCommandBuffer ) );
+ 
+-			// Manifest a new acquire timeline point with this inline work.
+-			eventFd = gamescope::CAcquireTimelinePoint( pTempImage->pReleaseTimeline, ulNextReleasePoint ).CreateEventFd();
++				if ( cv_upscale_preemptive_debug_force_sync )
++				{
++					vulkan_wait( *seqNo, true );
++				}
+ 
+-			//xwm_log.infof( "Pre-emptively upscaling!" );
++				pUpscaleFocus->oLastPreemptiveUpscaleSeqNo = seqNo;
++
++				newCommit->upscaledTexture = std::optional<UpscaledTexture_t>
++				{
++					std::in_place_t{},
++					upscaledFrameInfo.eUpscaleFilter,
++					upscaledFrameInfo.eUpscaleScaler,
++					g_nOutputWidth,
++					g_nOutputHeight,
++					pTempImage->pTexture,
++					upscaledFrameInfo.outputEncodingEOTF == EOTF_Gamma22 ? VK_COLOR_SPACE_SRGB_NONLINEAR_KHR : VK_COLOR_SPACE_HDR10_ST2084_EXT,
++				};
++
++				// Manifest a new acquire timeline point with this inline work.
++				eventFd = gamescope::CAcquireTimelinePoint( pTempImage->pReleaseTimeline, ulNextReleasePoint ).CreateEventFd();
++
++				//xwm_log.infof( "Pre-emptively upscaling!" );
++			}
+ 		}
+ 		else
+ 		{
+-- 
+2.53.0
+
