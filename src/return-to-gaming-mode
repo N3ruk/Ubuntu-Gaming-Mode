@@ -109,4 +109,9 @@ CURRENT_SESSION="$(
 sudo -n /usr/bin/systemctl start --no-block gaming-autologin-rearm.service ||
     fail "No se pudo preparar el autologin; no se cerrará Ubuntu."
 
-gnome-session-quit --logout --no-prompt
+# El usuario ya ha confirmado explícitamente el cambio a Gaming Mode.
+# GNOME puede crear inhibidores de logout para procesos en primer plano
+# (por ejemplo, una terminal), lo que de otro modo abre un diálogo de
+# espera de 60 segundos. --force evita ese segundo diálogo sin alterar
+# la preparación de AccountsService ni el rearme del autologin.
+gnome-session-quit --logout --no-prompt --force
