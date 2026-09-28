@@ -43,4 +43,10 @@ The Gamescope binary bundled with 1.0.0-3 was modified during UGM development fo
 
 The modified Gamescope source tree and exact patch set were deleted after the validated binary had been produced. Because those sources no longer exist, this repository **does not claim to know the exact code changes** and will not attempt to recreate them from memory.
 
-The current 1.0.0-3 binary and its SHA256 therefore remain the canonical reference. If a future UGM release requires a newer Gamescope version, the required 4K and Decky/NIS integration work will be recreated from the new upstream source and documented at that time.
+The current 1.0.0-3 binary and its SHA256 therefore remain the canonical reference.
+
+## Future Gamescope 3.16.30 work
+
+A separate reproducible GBM scan-out port for Gamescope 3.16.30 is documented under [`gamescope/versions/3.16.30-gbm/`](gamescope/versions/3.16.30-gbm/README.md). It includes the exact upstream base, eight patches, build recipe, source-tree proof and validation record.
+
+That new port does not reconstruct the lost 1.0.0-3 Gamescope 3.16.28 source or its Sharp Filter Selector connector. It is maintained as source material for a future versioned UGM package.

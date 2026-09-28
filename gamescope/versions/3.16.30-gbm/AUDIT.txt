@@ -1,0 +1,689 @@
+AUDITORÍA TÉCNICA: GAMESCOPE 3.16.30 + PORT GBM PARA NVIDIA
+======================================================================
+
+Fecha de auditoría: 2026-09-28
+Sistema de referencia: Ubuntu 26.04 / NVIDIA RTX 2060 6 GB
+Proyecto: N3ruk/Ubuntu-Gaming-Mode
+
+
+1. OBJETIVO Y ALCANCE
+----------------------------------------------------------------------
+
+Esta auditoría compara:
+
+  1. Gamescope 3.16.30 limpio:
+     /home/n3ruk/src/gamescope-3.16.30
+
+  2. Gamescope 3.16.30 con el port GBM:
+     /home/n3ruk/src/gamescope-3.16.30-gbm
+
+  3. La serie de patches conservada en:
+     /home/n3ruk/src/UGM-2.0-gamescope-3.16.30/patches
+
+La auditoría identifica todos los cambios respecto al commit upstream:
+
+  ad2763da1c48860f649abfe842a087188dcb6e20
+
+También verifica que la serie de patches reconstruye el estado final,
+separa la serie GBM de cualquier cambio adicional, documenta el build y
+evalúa qué modificación explica el funcionamiento correcto de 4K + VRR.
+
+Durante la auditoría no se modificaron los árboles fuente ni los binarios.
+La única operación de reproducción se realizó en un worktree temporal que
+fue eliminado inmediatamente después de la comprobación.
+
+
+2. RESULTADO GENERAL
+----------------------------------------------------------------------
+
+El árbol parcheado es un port trazable de una serie GBM experimental
+alojada en el repositorio oficial de Valve, adaptada desde su base original
+Gamescope 3.16.25 a Gamescope 3.16.30.
+
+Base limpia exacta:
+
+  ad2763da1c48860f649abfe842a087188dcb6e20
+
+Commit final local:
+
+  b211c9d3eab1310eda2e511c965da3cf5910290e
+
+Versión resultante:
+
+  gamescope 3.16.30-8-gb211c9d
+
+Árbol Git final:
+
+  b329fd0963e5ae797a14f4fe185f86c409937bc6
+
+Resumen del diff rastreado:
+
+  10 archivos modificados
+  613 inserciones
+  35 eliminaciones
+
+SHA256 del diff binario completo entre base y resultado:
+
+  addeda740a92a6995656113e618d7c69eca11b53d1f66e58b2723c9a9aeb9b13
+
+No se encontraron cambios adicionales de UGM, Decky Loader, NIS, FSR,
+Sharp Filter Selector, VRR o configuración de sesión dentro del árbol
+parcheado. Todo el diff rastreado pertenece al port de la serie GBM.
+
+
+3. ESTADO DE LOS ÁRBOLES
+----------------------------------------------------------------------
+
+3.1. Árbol limpio
+
+Ruta:
+
+  /home/n3ruk/src/gamescope-3.16.30
+
+HEAD:
+
+  ad2763da1c48860f649abfe842a087188dcb6e20
+
+Descripción:
+
+  Gamescope 3.16.30
+
+Elementos no rastreados generados por Meson:
+
+  subprojects/.wraplock
+  subprojects/glm/
+
+No forman parte del código fuente ni del diff auditado.
+
+3.2. Árbol parcheado
+
+Ruta:
+
+  /home/n3ruk/src/gamescope-3.16.30-gbm
+
+Rama local:
+
+  local/gbm-scanout-3.16.30
+
+HEAD:
+
+  b211c9d3eab1310eda2e511c965da3cf5910290e
+
+Descripción:
+
+  3.16.30-8-gb211c9d
+
+Elemento no rastreado:
+
+  subprojects/.wraplock
+
+El directorio glm no aparece como no rastreado porque el quinto commit de
+la serie añade la regla correspondiente a subprojects/.gitignore.
+
+3.3. Archivo de patches
+
+Ruta:
+
+  /home/n3ruk/src/UGM-2.0-gamescope-3.16.30
+
+Contenido original:
+
+  BUILD-INFO.txt
+  patches/0001-...patch
+  ...
+  patches/0008-...patch
+
+Esta carpeta no era todavía un repositorio Git en el momento de la auditoría.
+
+
+4. PROCEDENCIA DE LA SERIE GBM
+----------------------------------------------------------------------
+
+Repositorio oficial:
+
+  https://github.com/ValveSoftware/gamescope.git
+
+Base original de la serie experimental:
+
+  17baf4abd1ab3353fb705e4d0d023f84e870f7e8
+  Tag: 3.16.25
+
+Commit final original:
+
+  2bfc18c736520b7d4f9756977213ea439daa1c63
+
+URL del commit final:
+
+  https://github.com/ValveSoftware/gamescope/commit/2bfc18c736520b7d4f9756977213ea439daa1c63
+
+La serie está en el repositorio oficial de Valve, pero no forma parte del
+release estándar Gamescope 3.16.30. Debe describirse como serie experimental
+o POC GBM, no como funcionalidad integrada en el tag 3.16.30.
+
+
+5. MAPA DE COMMITS
+----------------------------------------------------------------------
+
+1. Original Valve:
+     6d46d29754035911854debc4a73167df2d1e2077
+   Port 3.16.30:
+     6359a7fcd32ac8fe9a311656e001d87797e6cf43
+   Asunto:
+     build: add optional gbm dependency
+   Propósito:
+     Añade libgbm como dependencia opcional, HAVE_GBM y la dependencia
+     libgbm-dev para builds Debian/Ubuntu.
+
+2. Original Valve:
+     a86849b566ce33d087b06de694bd3ac01708a609
+   Port 3.16.30:
+     c52eda7d09ee45fa87eeb8028f95d8cb626fa866
+   Asunto:
+     backend: add IBackendScanoutBuffer and scanout allocation hooks
+   Propósito:
+     Añade la abstracción IBackendScanoutBuffer y hooks para que el backend
+     asigne buffers aptos para scanout en vez de depender de Vulkan.
+
+3. Original Valve:
+     ebbaf8b880213cef7b3db71499264a7c37f8c702
+   Port 3.16.30:
+     96d612f75ca2121d5b66695568e1540508d9f6c6
+   Asunto:
+     drm: implement GBM-allocated scanout buffers (opt-in)
+   Propósito:
+     Crea el dispositivo GBM sobre el FD KMS, implementa la asignación
+     GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT y añade el convar opt-in:
+
+       gamescope_drm_gbm_scanout=1
+
+4. Original Valve:
+     b384ac4fcd357d0935bec443220f760f26da2b8f
+   Port 3.16.30:
+     1d55bd5c0dbcb33aff24308eb389f98d08446c0f
+   Asunto:
+     rendervulkan: import backend-allocated (GBM) scanout buffers
+   Propósito:
+     Importa en Vulkan los DMA-BUF asignados por GBM, calcula la intersección
+     de modifiers compatibles entre KMS y Vulkan y conserva fallback a la
+     ruta Vulkan existente.
+
+5. Original Valve:
+     977e4f56dc12c6ba3da6a04936a16a741cf403bf
+   Port 3.16.30:
+     7f935593a01f0cf274669043f4e963bfc9f0605e
+   Asunto:
+     gitignore: ignore meson-extracted glm subproject directory
+   Propósito:
+     Ignora el directorio subprojects/glm generado por Meson.
+
+6. Original Valve:
+     6605942d727c0e8e2c6cbd1f53d105b97b26102a
+   Port 3.16.30:
+     b5996b638a932843c9f443432e5762a0a26d5578
+   Asunto:
+     drm, rendervulkan: address GBM scanout review feedback
+   Propósito:
+     Añade reconstrucción de imágenes al cambiar el convar, fallback seguro,
+     limpieza/reintento, lifetime correcto del FD GBM y selección correcta
+     del tipo de memoria para DMA-BUF mediante vkGetMemoryFdPropertiesKHR.
+
+7. Original Valve:
+     092a2e7be28d12b1199dbdbbf1228f660af1e6f7
+   Port 3.16.30:
+     a924b3c0fdfa201b8ba77a367dd50a273bf07770
+   Asunto:
+     rendervulkan, steamcompmgr: address second review round
+   Propósito:
+     Distingue ownership de imágenes Vulkan/swapchain y consume de forma
+     atómica la solicitud de reconstrucción para evitar carreras.
+
+8. Original Valve:
+     2bfc18c736520b7d4f9756977213ea439daa1c63
+   Port 3.16.30:
+     b211c9d3eab1310eda2e511c965da3cf5910290e
+   Asunto:
+     drm, rendervulkan: apply final review findings
+   Propósito:
+     Corrige el tratamiento LINEAR/modifiers, evita fugas de image views,
+     unifica la comprobación de modifiers y limita los remakes innecesarios.
+
+Los commits conservan como autor a Claude <noreply@anthropic.com> y registran
+como committer del port a Wilson Local Port <wilson@localhost>.
+
+
+6. ADAPTACIONES ESPECÍFICAS PARA 3.16.30
+----------------------------------------------------------------------
+
+git range-diff clasificó como idénticos respecto a la serie original los
+commits 1, 2, 5 y 8.
+
+Los commits 3, 4, 6 y 7 necesitaron adaptación contextual porque entre
+Gamescope 3.16.25 y 3.16.30 habían cambiado las mismas zonas del código.
+
+Las resoluciones conservaron funcionalidad ya existente en 3.16.30:
+
+  - VK_FUNC(GetQueryPoolResults) se conserva junto al nuevo
+    VK_FUNC(GetMemoryFdPropertiesKHR).
+
+  - Se conserva currentOutputRotation y la orientación física del output.
+
+  - Se conserva currentHDRCapable en las condiciones de reconstrucción.
+
+  - Se integra g_bForceOutputImageRemake sin eliminar las condiciones de
+    resolución, refresco, rotación, HDR y capacidad HDR de 3.16.30.
+
+  - Se conservan includes y estructuras incorporadas por 3.16.30.
+
+Estas diferencias son resoluciones de compatibilidad con la nueva base. No
+constituyen características UGM adicionales.
+
+
+7. ARCHIVOS MODIFICADOS
+----------------------------------------------------------------------
+
+README.md
+  +1 / -1
+  Añade libgbm-dev a la lista de dependencias.
+
+src/Backends/DRMBackend.cpp
+  +203 / -1
+  Implementa dispositivo GBM, detección nvidia-drm, el convar, ownership de
+  gbm_bo, modifiers, planos DMA-BUF y asignación de buffers scanout.
+
+src/Backends/DeferredBackend.h
+  +19 / -0
+  Propaga SupportsExternalScanoutBuffers y CreateScanoutBuffer al backend hijo.
+
+src/backend.h
+  +24 / -0
+  Define IBackendScanoutBuffer y la API de asignación por backend.
+
+src/meson.build
+  +4 / -1
+  Detecta GBM >= 21.3, define HAVE_GBM y enlaza la dependencia.
+
+src/rendervulkan.cpp
+  +330 / -30
+  Importación DMA-BUF, modifiers, selección de memoria, lifetime de recursos,
+  fallback a Vulkan y creación de imágenes de salida mediante GBM.
+
+src/rendervulkan.hpp
+  +16 / -1
+  Añade ownership y estado de buffers/imágenes externos y la función Vulkan
+  GetMemoryFdPropertiesKHR.
+
+src/steamcompmgr.cpp
+  +10 / -1
+  Integra la reconstrucción atómica de imágenes de salida al cambiar la ruta.
+
+src/steamcompmgr.hpp
+  +5 / -0
+  Declara el flag atómico g_bForceOutputImageRemake.
+
+subprojects/.gitignore
+  +1 / -0
+  Ignora glm-* y glm generado por Meson.
+
+
+8. VERIFICACIÓN DE LOS PATCHES
+----------------------------------------------------------------------
+
+Se comprobó cada patch individualmente mediante:
+
+  - hash From completo;
+  - asunto y orden;
+  - git patch-id --stable;
+  - correspondencia con su commit local.
+
+Resultado:
+
+  8/8 patches con payload equivalente al commit correspondiente.
+
+Los archivos almacenados usan cabeceras de serie:
+
+  [PATCH 1/8]
+  ...
+  [PATCH 8/8]
+
+Por ello su SHA256 no coincide con ejecutar git format-patch -1 de forma
+independiente, que produciría [PATCH] sin numeración. El contenido de código,
+medido mediante patch-id estable, sí coincide exactamente.
+
+Prueba de reproducción real:
+
+  1. Se creó un worktree temporal desde ad2763d.
+  2. Se aplicaron los ocho patches en orden mediante git am.
+  3. Se calculó el árbol Git final.
+  4. Se comparó con el árbol de b211c9d.
+  5. Se eliminó el worktree temporal.
+
+Resultado:
+
+  patches_applied=8
+  actual_tree=b329fd0963e5ae797a14f4fe185f86c409937bc6
+  expected_tree=b329fd0963e5ae797a14f4fe185f86c409937bc6
+  match=true
+  tracked_status=0
+
+Conclusión:
+
+  La serie de patches reproduce exactamente el estado fuente final.
+
+
+9. SHA256 DE LOS PATCHES
+----------------------------------------------------------------------
+
+68de13a49356e2941a6141bad5ecb6e21f1c7c34303f54e43d89dd3f1a4d00c3
+  patches/0001-build-add-optional-gbm-dependency.patch
+
+c4577f8f7c3c9728a4da389e90778fc0d78946f8f5944655e180a9f988becd63
+  patches/0002-backend-add-IBackendScanoutBuffer-and-scanout-alloca.patch
+
+d5f43c0cb3841313dd34a12f2159c249855c60175d2e354eab0e00eaf139c3da
+  patches/0003-drm-implement-GBM-allocated-scanout-buffers-opt-in.patch
+
+88ecffc4454ddb9773b05a3c846c7f7ed6e4315d0fa4eb646df248057917015a
+  patches/0004-rendervulkan-import-backend-allocated-GBM-scanout-bu.patch
+
+fedfc2e82104656febbe594998dd7d02f4d2dcf206b296abac2f93884fa92575
+  patches/0005-gitignore-ignore-meson-extracted-glm-subproject-dire.patch
+
+02f595760ebea02e075dc7085d55a94c5eb950af01d15296e4274aa66920582f
+  patches/0006-drm-rendervulkan-address-GBM-scanout-review-feedback.patch
+
+82f7d9d98eb83766b64eaa188af09a9975b97a3dee03a2e86b8b6e3b12a946b8
+  patches/0007-rendervulkan-steamcompmgr-address-second-review-roun.patch
+
+da53ece95a45c4c6312b2048c0db3ca41f0b7cdfb7bd933b56dd0b362fede939
+  patches/0008-drm-rendervulkan-apply-final-review-findings.patch
+
+
+10. BUILD EXACTO
+----------------------------------------------------------------------
+
+Comandos empleados:
+
+  meson setup build --prefix=/usr/local --buildtype=release
+  ninja -C build
+  meson test -C build --print-errorlogs
+
+Toolchain:
+
+  Meson:       1.10.1
+  Ninja:       1.13.2
+  GCC:         Ubuntu 15.2.0-16ubuntu1
+  G++:         Ubuntu 15.2.0-16ubuntu1
+  GBM:         26.0.8-1ubuntu0.3
+
+Opciones Meson relevantes:
+
+  prefix=/usr/local
+  buildtype=release
+  optimization=3
+  debug=false
+  strip=false
+  b_lto=false
+  b_ndebug=false
+  b_pie=false
+  b_sanitize=[]
+  default_library=shared
+  wrap_mode=default
+  force_fallback_for=[libliftoff,vkroots]
+  pipewire=auto
+  enable_openvr_support=true
+
+Definiciones confirmadas en la compilación:
+
+  HAVE_DRM=1
+  HAVE_GBM=1
+  HAVE_PIPEWIRE=1
+  HAVE_OPENVR=1
+
+Resultado de tests:
+
+  Ok:   68
+  Fail: 0
+
+Binario resultante:
+
+  /home/n3ruk/src/gamescope-3.16.30-gbm/build/src/gamescope
+
+Versión:
+
+  gamescope 3.16.30-8-gb211c9d (gcc 15.2.0)
+
+Tamaño:
+
+  5.158.080 bytes
+
+SHA256:
+
+  96fbdd3f3c7e716e873cc66b79992f2b5e54d27c360ce4afb2c1bbb0628fffba
+
+
+11. ESTADO DE LOS BINARIOS INSTALADOS
+----------------------------------------------------------------------
+
+Runtime canónico de Ubuntu Gaming Mode:
+
+  /usr/lib/ubuntu-gaming-mode/gamescope
+
+Versión:
+
+  gamescope 3.16.30-8-gb211c9d
+
+SHA256:
+
+  96fbdd3f3c7e716e873cc66b79992f2b5e54d27c360ce4afb2c1bbb0628fffba
+
+Este hash coincide exactamente con el build parcheado.
+
+Binario general de /usr/local:
+
+  /usr/local/bin/gamescope
+
+Versión:
+
+  gamescope 3.16.30
+
+SHA256:
+
+  6b7def0efcf5097d803ae086e17d3f64ce7e14f0d336807999d7756826c580c3
+
+Ese hash coincide con el build limpio.
+
+Configuración UGM relevante:
+
+  GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope
+  gamescope_drm_gbm_scanout=1
+
+Por tanto, UGM selecciona el build parcheado mientras que el Gamescope de
+/usr/local permanece como referencia limpia.
+
+En el instante final de la auditoría no había un proceso Gamescope activo,
+por lo que no se obtuvo un log vivo de CreateScanoutBuffer.
+
+
+12. EXPLICACIÓN TÉCNICA DE 4K + VRR
+----------------------------------------------------------------------
+
+Ruta limpia:
+
+  Vulkan asigna el buffer
+    -> exporta DMA-BUF
+    -> nvidia-drm lo presenta mediante KMS
+
+Ruta parcheada:
+
+  GBM/KMS asigna un buffer apto para scanout
+    -> Vulkan importa ese DMA-BUF
+    -> nvidia-drm lo presenta mediante KMS
+
+El código de la serie documenta que, con el driver propietario NVIDIA, los
+buffers asignados por Vulkan pueden usar una colocación de memoria inadecuada
+para scanout. La ruta GBM con GBM_BO_USE_SCANOUT garantiza una asignación que
+el backend DRM puede presentar correctamente.
+
+La implementación además:
+
+  - intersecta modifiers soportados por el plano KMS y por Vulkan;
+  - valida el modifier devuelto por GBM;
+  - importa correctamente uno o varios planos DMA-BUF;
+  - valida que los planos pertenezcan al mismo buffer subyacente;
+  - mantiene vivos GBM device, gbm_bo y FDs durante toda la vida de la textura;
+  - selecciona el tipo de memoria Vulkan permitido por el FD externo;
+  - reconstruye las imágenes al activar/desactivar el convar;
+  - vuelve a la ruta Vulkan si la importación externa falla.
+
+Éste es el cambio diferencial que mejor explica que desaparezca la corrupción
+de scanout a 3840x2160.
+
+VRR no se modifica directamente en el diff GBM. Gamescope 3.16.30 limpio ya
+contiene la lógica Adaptive Sync y el commit upstream relacionado:
+
+  3521d6b steamcompmgr: allow uncapped frame rates with adaptive sync
+
+Ese commit existe tanto en el árbol limpio como en el parcheado, por lo que
+no explica la diferencia entre ambos.
+
+Conclusión precisa:
+
+  - la lógica VRR ya estaba presente;
+  - el problema diferencial era el scanout 4K de los buffers;
+  - la ruta GBM estabiliza el scanout 4K;
+  - una vez estable la presentación, el VRR existente puede funcionar a 4K.
+
+
+13. CAMBIOS QUE NO EXISTEN EN ESTE PORT
+----------------------------------------------------------------------
+
+El diff no contiene:
+
+  - integración Decky Loader;
+  - conector Sharp Filter Selector;
+  - modificaciones NIS;
+  - modificaciones FSR;
+  - nueva lógica Adaptive Sync/VRR;
+  - scripts UGM;
+  - configuración de sesión;
+  - cambios de Gamescope Session Plus;
+  - cambios específicos de Steam.
+
+Este port no reconstruye el antiguo conector Sharp Filter Selector que estaba
+presente en el binario histórico Gamescope 3.16.28 de UGM 1.0.0-3.
+
+No debe documentarse como recuperación total de aquel árbol perdido.
+
+
+14. PROPUESTA DOCUMENTAL PARA N3ruk/Ubuntu-Gaming-Mode
+----------------------------------------------------------------------
+
+Estructura recomendada:
+
+  gamescope/
+  |-- README.md
+  `-- versions/
+      `-- 3.16.30-gbm/
+          |-- README.md
+          |-- UPSTREAM.md
+          |-- BUILD.md
+          |-- VALIDATION.md
+          |-- BUILD-INFO.txt
+          |-- SHA256SUMS
+          `-- patches/
+              |-- series
+              |-- 0001-build-add-optional-gbm-dependency.patch
+              |-- 0002-backend-add-IBackendScanoutBuffer-and-scanout-alloca.patch
+              |-- 0003-drm-implement-GBM-allocated-scanout-buffers-opt-in.patch
+              |-- 0004-rendervulkan-import-backend-allocated-GBM-scanout-bu.patch
+              |-- 0005-gitignore-ignore-meson-extracted-glm-subproject-dire.patch
+              |-- 0006-drm-rendervulkan-address-GBM-scanout-review-feedback.patch
+              |-- 0007-rendervulkan-steamcompmgr-address-second-review-roun.patch
+              `-- 0008-drm-rendervulkan-apply-final-review-findings.patch
+
+Contenido recomendado:
+
+README.md
+  Resumen, alcance, GPU validada y activación con
+  gamescope_drm_gbm_scanout=1.
+
+UPSTREAM.md
+  Repositorio Valve, base 3.16.30, serie POC original 3.16.25, mapa de
+  commits y adaptaciones realizadas durante el port.
+
+BUILD.md
+  Dependencias, toolchain, comandos exactos, opciones Meson y tests.
+
+VALIDATION.md
+  Matriz física de 1440p/4K, SDR/HDR, 60/120 Hz, VRR, Steam UI y rollback.
+
+BUILD-INFO.txt
+  Commit base, commit final, tree hash, versiones de herramientas y hash del
+  binario.
+
+SHA256SUMS
+  Hashes de los ocho patches y del binario publicado en la release.
+
+patches/series
+  Orden canónico de aplicación.
+
+También deberá actualizarse en una revisión del repositorio:
+
+  SOURCE.md / SOURCE_es.md
+  gamescope/README.md / README_es.md
+  CHANGELOG.md / CHANGELOG_es.md
+  hash esperado por packaging/build-deb.sh para la nueva versión de paquete
+
+La documentación debe conservar la distinción entre:
+
+  1. Gamescope 3.16.28 histórico de UGM 1.0.0-3, cuyo árbol exacto sigue
+     perdido y que contenía integración Decky/NIS adicional.
+
+  2. Gamescope 3.16.30 GBM, que sí es reproducible mediante esta serie de
+     ocho patches.
+
+El binario compilado debe seguir fuera del historial Git si se mantiene la
+política actual del proyecto. Debe distribuirse como input o dentro del .deb
+de release acompañado por su SHA256.
+
+
+15. CHECKLIST DE PUBLICACIÓN FUTURA
+----------------------------------------------------------------------
+
+[ ] Incorporar la estructura versionada bajo gamescope/versions/3.16.30-gbm.
+[ ] Añadir patches/series.
+[ ] Añadir BUILD.md con la receta exacta.
+[ ] Añadir UPSTREAM.md con el mapa original -> port.
+[ ] Añadir VALIDATION.md con las pruebas físicas realizadas.
+[ ] Añadir SHA256SUMS.
+[ ] Actualizar SOURCE.md y SOURCE_es.md sin reescribir la historia 1.0.0-3.
+[ ] Actualizar README y changelog para una nueva versión de UGM.
+[ ] Actualizar packaging/build-deb.sh con el nuevo hash y versión.
+[ ] Repetir aceptación física tras construir el paquete definitivo.
+[ ] Verificar instalación limpia, upgrade y purge/rollback.
+[ ] Publicar los patches, no el árbol build ni subprojects descargados.
+
+
+16. CONCLUSIÓN
+----------------------------------------------------------------------
+
+La actualización a Gamescope 3.16.30 había eliminado la ruta GBM que evitaba
+la corrupción de scanout 4K en la RTX 2060 con el driver propietario NVIDIA.
+
+La serie recuperada y portada:
+
+  - es trazable hasta el repositorio oficial de Valve;
+  - aplica limpiamente sobre ad2763d;
+  - reproduce exactamente el árbol final b329fd0...;
+  - compila con HAVE_GBM=1;
+  - supera 68/68 tests;
+  - genera el binario 96fbdd3f...fffba;
+  - coincide con el runtime actualmente instalado por UGM;
+  - contiene la modificación técnicamente coherente con la corrección del
+    scanout 4K observada;
+  - no contiene cambios UGM/Decky/NIS adicionales.
+
+El siguiente paso documental correcto es publicar esta serie como una versión
+reproducible independiente dentro de N3ruk/Ubuntu-Gaming-Mode, sin afirmar que
+reconstruye el antiguo Gamescope 3.16.28 GOLD ni su conector Decky/NIS.
+

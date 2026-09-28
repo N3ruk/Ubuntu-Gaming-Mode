@@ -1,0 +1,106 @@
+From a924b3c0fdfa201b8ba77a367dd50a273bf07770 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 20 Aug 2026 08:28:41 +0000
+Subject: [PATCH 7/8] rendervulkan, steamcompmgr: address second review round
+
+- Track VkImage ownership with m_bOwnsImage: only images created by
+  BInitInternal are passed to vkDestroyImage. Swapchain images from
+  vkGetSwapchainImagesKHR (BInitFromSwapchain) are owned by the
+  swapchain and must never be destroyed individually; the previous
+  commit's unconditional destroy broke that for nested backends.
+- Consume g_bForceOutputImageRemake exactly once via exchange() before
+  evaluating the other output-change conditions, instead of storing
+  false inside the block. A concurrent request from the Wayland thread
+  can no longer be cleared unseen; a write racing past the exchange
+  stays set for the next iteration.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014ZqFjz2VRJrkstciYqbXbg
+---
+ src/rendervulkan.cpp | 13 ++++++++-----
+ src/rendervulkan.hpp |  3 +++
+ src/steamcompmgr.cpp | 12 ++++++++----
+ 3 files changed, 19 insertions(+), 9 deletions(-)
+
+diff --git a/src/rendervulkan.cpp b/src/rendervulkan.cpp
+index a4a90ab..45225d6 100644
+--- a/src/rendervulkan.cpp
++++ b/src/rendervulkan.cpp
+@@ -2385,7 +2385,8 @@ bool CVulkanTexture::BInitInternal( uint32_t width, uint32_t height, uint32_t de
+ 		vk_errorf( res, "vkCreateImage failed" );
+ 		return false;
+ 	}
+-	
++	m_bOwnsImage = true;
++
+ 	VkMemoryRequirements memRequirements;
+ 	g_device.vk.GetImageMemoryRequirements(g_device.device(), m_vkImage, &memRequirements);
+ 
+@@ -2894,13 +2895,15 @@ void CVulkanTexture::ReleaseResources()
+ 	if ( m_pBackendFb != nullptr )
+ 		m_pBackendFb = nullptr;
+ 
+-	// The image is destroyed even when the memory isn't ours (aliased
+-	// textures, or an init that failed before allocating memory).
+-	if ( m_vkImage != VK_NULL_HANDLE )
++	// Images we created are destroyed even when the memory isn't ours
++	// (aliased textures, or an init that failed before allocating memory).
++	// Swapchain-owned images are never destroyed here.
++	if ( m_vkImage != VK_NULL_HANDLE && m_bOwnsImage )
+ 	{
+ 		g_device.vk.DestroyImage( g_device.device(), m_vkImage, nullptr );
+-		m_vkImage = VK_NULL_HANDLE;
+ 	}
++	m_vkImage = VK_NULL_HANDLE;
++	m_bOwnsImage = false;
+ 
+ 	if ( m_vkImageMemory != VK_NULL_HANDLE )
+ 	{
+diff --git a/src/rendervulkan.hpp b/src/rendervulkan.hpp
+index e3f1828..4f0bff0 100644
+--- a/src/rendervulkan.hpp
++++ b/src/rendervulkan.hpp
+@@ -219,6 +219,9 @@ private:
+ 	bool m_bInitialized = false;
+ 	bool m_bExternal = false;
+ 	bool m_bOutputImage = false;
++	// False for swapchain images: those are owned by the swapchain and must
++	// never be passed to vkDestroyImage.
++	bool m_bOwnsImage = false;
+ 
+ 	uint32_t m_drmFormat = DRM_FORMAT_INVALID;
+ 
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index 5c2dd6a..2cb5eb5 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -10256,6 +10256,13 @@ steamcompmgr_main(int argc, char **argv)
+ 		// Pick our width/height for this potential frame, regardless of how it might change later
+ 		// At some point we might even add proper locking so we get real updates atomically instead
+ 		// of whatever jumble of races the below might cause over a couple of frames
++		// Consume the remake request exactly once, before evaluating the other
++		// conditions: a concurrent request (eg. the drm_gbm_scanout convar
++		// callback on the Wayland thread) must never be cleared unseen, only
++		// exchanged out - a write racing past this point stays set for the
++		// next iteration.
++		const bool bForceOutputImageRemake = g_bForceOutputImageRemake.exchange( false );
++
+ 		if ( currentOutputWidth != g_nOutputWidth ||
+ 			 currentOutputHeight != g_nOutputHeight ||
+ 			 currentOutputRefresh != g_nOutputRefresh ||
+@@ -10263,11 +10270,8 @@ steamcompmgr_main(int argc, char **argv)
+ 			 currentHDROutput != g_bOutputHDREnabled ||
+ 			 currentHDRCapable != bOutputHDRCapable ||
+ 			 currentHDRForce != g_bForceHDRSupportDebug ||
+-			 g_bForceOutputImageRemake.exchange( false ) )
++			 bForceOutputImageRemake )
+ 		{
+-			// May still be set if an earlier condition short-circuited the exchange.
+-			g_bForceOutputImageRemake = false;
+-
+ 			if ( g_nXWaylandCount > 1 )
+ 			{
+ 				g_nNestedHeight = ( g_nNestedWidth * g_nOutputHeight ) / g_nOutputWidth;
+-- 
+2.53.0
+

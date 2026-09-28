@@ -1,0 +1,95 @@
+From c52eda7d09ee45fa87eeb8028f95d8cb626fa866 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 20 Aug 2026 07:51:15 +0000
+Subject: [PATCH 2/8] backend: add IBackendScanoutBuffer and scanout allocation
+ hooks
+
+Adds SupportsExternalScanoutBuffers()/CreateScanoutBuffer() to IBackend
+so a backend can allocate scanout-capable buffers itself for the
+renderer to import, instead of the renderer allocating through Vulkan
+and exporting. Implements the long-standing TODO in
+CVulkanTexture::BInit about moving flippable-image allocation to the
+backend. Defaults keep every backend on the existing Vulkan path.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014ZqFjz2VRJrkstciYqbXbg
+---
+ src/Backends/DeferredBackend.h | 19 +++++++++++++++++++
+ src/backend.h                  | 24 ++++++++++++++++++++++++
+ 2 files changed, 43 insertions(+)
+
+diff --git a/src/Backends/DeferredBackend.h b/src/Backends/DeferredBackend.h
+index 7f76122..a7385b3 100644
+--- a/src/Backends/DeferredBackend.h
++++ b/src/Backends/DeferredBackend.h
+@@ -163,6 +163,25 @@ namespace gamescope
+             return m_pChild->ImportDmabufToBackend( pDmaBuf );
+ 		}
+ 
++		virtual bool SupportsExternalScanoutBuffers() const override
++		{
++            {
++                std::shared_lock lock{ m_mutInit };
++                if ( m_bInittedChild )
++                    return m_pChild->SupportsExternalScanoutBuffers();
++            }
++            return false;
++		}
++		virtual std::shared_ptr<IBackendScanoutBuffer> CreateScanoutBuffer( uint32_t uWidth, uint32_t uHeight, uint32_t uDrmFormat, std::span<const uint64_t> ulModifiers, bool bLinear ) override
++		{
++            {
++                std::shared_lock lock{ m_mutInit };
++                if ( m_bInittedChild )
++                    return m_pChild->CreateScanoutBuffer( uWidth, uHeight, uDrmFormat, ulModifiers, bLinear );
++            }
++            return nullptr;
++		}
++
+ 		virtual bool UsesModifiers() const override
+ 		{
+             return true;
+diff --git a/src/backend.h b/src/backend.h
+index bd57c42..12e4361 100644
+--- a/src/backend.h
++++ b/src/backend.h
+@@ -290,6 +290,17 @@ namespace gamescope
+         virtual ~IBackendPlane() = default;
+     };
+ 
++    // A scanout-capable buffer allocated by the backend rather than by Vulkan
++    // (GBM on the DRM backend). Owns the underlying allocation and the fds
++    // inside its wlr_dmabuf_attributes; callers must dup() any fds they keep.
++    class IBackendScanoutBuffer
++    {
++    public:
++        virtual ~IBackendScanoutBuffer() {}
++
++        virtual const wlr_dmabuf_attributes *GetDmabufAttributes() const = 0;
++    };
++
+     class CBaseBackendFb : public IBackendFb
+     {
+     public:
+@@ -341,6 +352,19 @@ namespace gamescope
+         // Rc manages acquire/release of buffer to/from client while imported.
+         virtual OwningRc<IBackendFb> ImportDmabufToBackend( wlr_dmabuf_attributes *pDmaBuf ) = 0;
+ 
++        // Whether the backend can allocate scanout-capable buffers itself
++        // (GBM on the DRM backend) for the renderer to import, instead of the
++        // renderer allocating through Vulkan and exporting.
++        virtual bool SupportsExternalScanoutBuffers() const { return false; }
++        // ulModifiers: final allowed modifier list -- already intersected by the
++        // caller across KMS support ( GetSupportedModifiers ) and Vulkan
++        // importability for every format that will alias this buffer.
++        // Never contains DRM_FORMAT_MOD_INVALID.
++        virtual std::shared_ptr<IBackendScanoutBuffer> CreateScanoutBuffer( uint32_t uWidth, uint32_t uHeight, uint32_t uDrmFormat, std::span<const uint64_t> ulModifiers, bool bLinear )
++        {
++            return nullptr;
++        }
++
+         virtual bool UsesModifiers() const = 0;
+         virtual std::span<const uint64_t> GetSupportedModifiers( uint32_t uDrmFormat ) const = 0;
+ 		inline bool SupportsFormat( uint32_t uDrmFormat ) const
+-- 
+2.53.0
+

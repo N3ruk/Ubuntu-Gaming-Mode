@@ -1,0 +1,37 @@
+# Validation record
+
+## Reference system
+
+- Ubuntu 26.04
+- NVIDIA GeForce RTX 2060 6 GB
+- Proprietary NVIDIA DRM/KMS path
+- UGM canonical runtime: `/usr/lib/ubuntu-gaming-mode/gamescope`
+- Feature flag: `gamescope_drm_gbm_scanout=1`
+
+## Completed validation
+
+- Source series applies cleanly to the exact 3.16.30 base.
+- Reproduced source tree matches `b211c9d` exactly.
+- Release build completed successfully.
+- Meson test suite: 68 passed, 0 failed.
+- Installed UGM runtime hash matches the validated build.
+- Physical 1440p output remains functional.
+- Physical 3840x2160 output no longer exhibits the previously observed displaced-band scan-out corruption.
+- 4K with the existing VRR/Adaptive Sync path was reported functional on the reference system.
+
+## Interpretation
+
+The patch does not add a new VRR implementation. It replaces the scan-out allocation route with backend-allocated GBM buffers imported into Vulkan. Existing 3.16.30 Adaptive Sync logic remains responsible for VRR.
+
+## Acceptance matrix for a packaged release
+
+Before promoting a new UGM package, record the result of each item:
+
+| Mode | SDR | HDR | VRR | Steam UI | Result |
+|---|---|---|---|---|---|
+| 2560x1440 @ 60 Hz | pending package test | pending | pending | pending | pending |
+| 2560x1440 @ 120 Hz | pending package test | pending | pending | pending | pending |
+| 3840x2160 @ 60 Hz | observed functional | pending package test | observed functional | observed functional | partial |
+| 3840x2160 @ 120 Hz, if display path permits | pending | pending | pending | pending | pending |
+
+Also repeat clean installation, upgrade, package removal and rollback tests. This file deliberately distinguishes the successful live source/binary test from final package acceptance.

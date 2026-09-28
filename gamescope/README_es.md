@@ -41,6 +41,12 @@ Sí se conoce un comportamiento histórico concreto aunque se haya perdido el pa
 
 Esto se documenta deliberadamente como un resultado observado antes/después, no como una afirmación sobre el cambio interno exacto ni sobre el comportamiento universal de NVIDIA.
 
-No se pretende hacer ingeniería inversa ni aproximar los parches perdidos únicamente para documentarlos. Cuando UGM necesite actualizar Gamescope a una versión más reciente, el comportamiento 4K necesario y la integración con Sharp Filter Selector se volverán a implementar sobre la nueva base de código y se documentarán como parte de esa futura versión.
+El conjunto de parches perdido de 1.0.0-3 no se reconstruye ni aproxima mediante ingeniería inversa únicamente para documentarlo. Existe ahora un port GBM separado y reproducible de Gamescope 3.16.30 para el trabajo futuro de UGM; no pretende reconstruir el conector histórico de Sharp Filter Selector.
 
 No sustituyas este binario dentro de un paquete 1.0.0-3 sin cambiar la versión del paquete y repetir las pruebas físicas de aceptación.
+
+## Port GBM reproducible de Gamescope 3.16.30
+
+La procedencia, la serie de ocho patches, la receta exacta, la auditoría y el alcance de validación del nuevo port se conservan en [`versions/3.16.30-gbm/`](versions/3.16.30-gbm/README_es.md).
+
+Éste es material para una versión futura. No altera el paquete histórico 1.0.0-3 ni convierte esa release en reproducible desde código fuente.
