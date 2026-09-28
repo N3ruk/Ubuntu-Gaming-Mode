@@ -17,7 +17,7 @@ STATE_ROOT="/var/lib/ubuntu-gaming-mode"
 ORIGINAL="$STATE_ROOT/original-state"
 MANAGED="$STATE_ROOT/managed-state"
 
-EXPECTED_GAMESCOPE_SHA="e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c"
+EXPECTED_GAMESCOPE_SHA="5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256"
 EXPECTED_RUNTIME_SHA="3671cbc698b05e6ae3e68492848af3fec33aa0fe64c2f94a5e3e3395b498e636"
 
 ok()   { printf '[ OK ] %s
@@ -171,7 +171,7 @@ if [ -x "$RUNTIME/gamescope" ]; then
 
     case "$VERSION" in
 
-        *"3.16.28-3-g0d07f6e"*)
+        *"3.16.30-8-gb211c9d"*)
             ok "versión Gamescope esperada"
             ;;
 

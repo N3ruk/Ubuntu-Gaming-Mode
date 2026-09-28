@@ -59,11 +59,25 @@ for f in "$WORK/usr/lib/ubuntu-gaming-mode/"*; do
     bash -n "$f"
 done
 
-EXPECTED_GAMESCOPE_SHA="e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c"
+EXPECTED_GAMESCOPE_SHA_1_0_0_3="e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c"
+EXPECTED_GAMESCOPE_SHA_2_0_0_1="5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256"
 ACTUAL_GAMESCOPE_SHA="$(sha256sum "$WORK/usr/lib/ubuntu-gaming-mode/gamescope" | awk '{print $1}')"
 
-if [[ "$VERSION" == "1.0.0-3" && "$ACTUAL_GAMESCOPE_SHA" != "$EXPECTED_GAMESCOPE_SHA" ]]; then
-    echo "ERROR: para 1.0.0-3 el Gamescope debe tener SHA256 $EXPECTED_GAMESCOPE_SHA" >&2
+case "$VERSION" in
+    1.0.0-3)
+        EXPECTED_GAMESCOPE_SHA="$EXPECTED_GAMESCOPE_SHA_1_0_0_3"
+        ;;
+    2.0.0-1)
+        EXPECTED_GAMESCOPE_SHA="$EXPECTED_GAMESCOPE_SHA_2_0_0_1"
+        ;;
+    *)
+        echo "ERROR: no hay un SHA256 Gamescope autorizado para la versión $VERSION" >&2
+        exit 1
+        ;;
+esac
+
+if [[ "$ACTUAL_GAMESCOPE_SHA" != "$EXPECTED_GAMESCOPE_SHA" ]]; then
+    echo "ERROR: para $VERSION el Gamescope debe tener SHA256 $EXPECTED_GAMESCOPE_SHA" >&2
     echo "Actual: $ACTUAL_GAMESCOPE_SHA" >&2
     exit 1
 fi

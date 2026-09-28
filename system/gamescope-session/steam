@@ -2,7 +2,7 @@
 
 # ============================================================
 # Steam Gaming Mode - Ubuntu 26.04 / NVIDIA
-# Gamescope 3.16.28
+# Gamescope 3.16.30 GBM + UGM safety patch
 # ============================================================
 
 export GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope

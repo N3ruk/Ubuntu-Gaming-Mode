@@ -9,7 +9,7 @@ MANAGED="$STATE_ROOT/managed-state"
 LEGACY="$STATE_ROOT/preinstall"
 LEGACY_MANAGED="$STATE_ROOT/managed.sha256"
 
-PKG_VERSION="1.0.0-3"
+PKG_VERSION="2.0.0-1"
 
 CONFIG="/etc/ubuntu-gaming-mode/session.conf"
 

@@ -1,5 +1,5 @@
 Package: ubuntu-gaming-mode
-Version: 1.0.0-3
+Version: 2.0.0-1
 Section: games
 Priority: optional
 Architecture: amd64

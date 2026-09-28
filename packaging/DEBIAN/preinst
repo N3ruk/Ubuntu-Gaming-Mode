@@ -6,7 +6,7 @@ STATE_ROOT="/var/lib/ubuntu-gaming-mode"
 ORIGINAL="$STATE_ROOT/original-state"
 LEGACY="$STATE_ROOT/preinstall"
 FORMAT_VERSION="1"
-PKG_VERSION="1.0.0-3"
+PKG_VERSION="2.0.0-1"
 ACTION="${1:-install}"
 OLD_VERSION="${2:-}"
 

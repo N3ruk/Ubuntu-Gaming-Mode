@@ -2,6 +2,21 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 2.0.0-1 — DESARROLLO
+
+### Cambiado
+
+- Preparado el paquete alrededor del runtime reproducible Gamescope 3.16.30 GBM.
+- Actualizadas las comprobaciones de integridad y el doctor para el runtime
+  validado `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
+- Incluido el arreglo de drenaje de sesión ya presente en la rama `main` actual.
+
+### Estado de validación
+
+- Preparados el build del paquete y su validación estática.
+- Antes de publicar siguen pendientes instalación limpia, actualización desde
+  1.0.0-3, Gaming Mode físico, purge y rollback.
+
 ## Sin publicar
 
 ### Conservación del código de Gamescope 3.16.30

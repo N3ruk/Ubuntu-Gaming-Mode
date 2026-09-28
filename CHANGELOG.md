@@ -2,6 +2,21 @@
 
 **English** | [Español](CHANGELOG_es.md)
 
+## 2.0.0-1 — DEVELOPMENT
+
+### Changed
+
+- Prepared the package around the reproducible Gamescope 3.16.30 GBM runtime.
+- Updated the package integrity checks and doctor for the validated runtime
+  `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
+- Included the session-drain fix already present on the current main branch.
+
+### Validation status
+
+- Package construction and static archive validation are prepared.
+- Clean install, upgrade from 1.0.0-3, physical Gaming Mode, purge and rollback
+  remain required before publishing this release.
+
 ## Unreleased
 
 ### Gamescope 3.16.30 source preservation
