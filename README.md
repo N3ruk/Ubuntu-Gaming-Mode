@@ -73,6 +73,14 @@ For NVIDIA users who already run Ubuntu, UGM offers a **different deployment mod
 
 The bundled Gamescope build was specifically adapted during development for the validated 4K path and the Sharp Filter Selector integration. Its modified source tree was later deleted, so the exact Gamescope-side changes are not reconstructed or claimed here.
 
+### Known issue: black background around Steam notifications
+
+On some NVIDIA configurations, Steam Big Picture notifications can appear
+inside a solid black rectangle. The problem is also reproducible on the desktop
+without Gamescope and the surface already reaches the compositor as opaque, so
+UGM cannot safely restore the missing transparency. See the [evidence, scope
+and upstream tracking](docs/known-issues.md).
+
 ## Acknowledgements
 
 Ubuntu Gaming Mode stands on the work of the wider Linux gaming community. **UGM would not exist in its current form without the projects below.**

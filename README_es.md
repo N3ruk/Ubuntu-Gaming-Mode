@@ -73,6 +73,15 @@ Para usuarios de NVIDIA que ya utilizan Ubuntu, UGM ofrece un **modelo de integr
 
 La build de Gamescope incluida se adaptó durante el desarrollo para la ruta 4K validada y la integración con Sharp Filter Selector. Su árbol fuente modificado se eliminó posteriormente, por lo que no se reconstruyen ni se atribuyen de memoria los cambios exactos realizados en Gamescope.
 
+### Problema conocido: fondo negro en notificaciones de Steam
+
+En determinadas configuraciones NVIDIA, Steam Big Picture puede mostrar sus
+notificaciones dentro de un rectángulo negro. El problema también se reproduce
+desde el escritorio sin Gamescope y la superficie ya llega opaca al compositor,
+por lo que UGM no puede recuperar esa transparencia de forma segura. Consulta
+la [explicación, evidencias y seguimiento
+upstream](docs/es/problemas-conocidos.md).
+
 ## Agradecimientos
 
 Ubuntu Gaming Mode se apoya en el trabajo de toda la comunidad de gaming en Linux. **UGM no existiría en su forma actual sin los proyectos siguientes.**
