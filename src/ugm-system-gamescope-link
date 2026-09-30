@@ -1,0 +1,147 @@
+#!/bin/bash
+set -eu
+umask 077
+
+TARGET="${UGM_GAMESCOPE_TARGET:-/usr/lib/ubuntu-gaming-mode/gamescope}"
+LINK="${UGM_GAMESCOPE_LINK:-/usr/local/bin/gamescope}"
+STATE_ROOT="${UGM_STATE_ROOT:-/var/lib/ubuntu-gaming-mode}"
+ORIGINAL="${UGM_ORIGINAL_STATE:-$STATE_ROOT/original-state}"
+MARKER="${UGM_GAMESCOPE_MARKER:-$STATE_ROOT/system-gamescope-link.managed}"
+
+log() {
+    printf 'ubuntu-gaming-mode: %s\n' "$*"
+}
+
+die() {
+    printf 'ubuntu-gaming-mode: ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+snapshot_valid() {
+    [ -d "$ORIGINAL" ] &&
+    [ -f "$ORIGINAL/.complete" ] &&
+    [ -f "$ORIGINAL/manifest" ] &&
+    [ -f "$ORIGINAL/manifest.sha256" ] &&
+    [ -f "$ORIGINAL/format-version" ] &&
+    [ "$(cat "$ORIGINAL/format-version" 2>/dev/null || true)" = "1" ] &&
+    (cd "$ORIGINAL" && sha256sum -c manifest.sha256 >/dev/null 2>&1)
+}
+
+link_is_managed_target() {
+    [ -L "$LINK" ] && [ "$(readlink "$LINK" 2>/dev/null || true)" = "$TARGET" ]
+}
+
+original_status() {
+    awk -F '\t' -v wanted="$LINK" '
+        $2 == wanted { print $1; found=1; exit }
+        END { if (!found) exit 1 }
+    ' "$ORIGINAL/manifest"
+}
+
+original_source() {
+    if [ -e "$ORIGINAL/files$LINK" ] || [ -L "$ORIGINAL/files$LINK" ]; then
+        printf '%s\n' "$ORIGINAL/files$LINK"
+        return 0
+    fi
+
+    if [ -e "$ORIGINAL$LINK" ] || [ -L "$ORIGINAL$LINK" ]; then
+        printf '%s\n' "$ORIGINAL$LINK"
+        return 0
+    fi
+
+    return 1
+}
+
+enable_link() {
+    [ -x "$TARGET" ] || die "el Gamescope canónico no existe o no es ejecutable: $TARGET"
+    snapshot_valid || die "el snapshot original no es válido"
+
+    if [ -d "$LINK" ] && [ ! -L "$LINK" ]; then
+        die "$LINK es un directorio; no se modificará"
+    fi
+
+    mkdir -p -- "$(dirname "$LINK")" "$STATE_ROOT"
+
+    tmp_link="${LINK}.ugm-new.$$"
+    rm -f -- "$tmp_link"
+    ln -s -- "$TARGET" "$tmp_link"
+
+    if ! mv -Tf -- "$tmp_link" "$LINK"; then
+        rm -f -- "$tmp_link"
+        die "no se pudo publicar $LINK"
+    fi
+
+    tmp_marker="${MARKER}.new.$$"
+    printf 'target=%s\n' "$TARGET" > "$tmp_marker"
+    chmod 0600 "$tmp_marker"
+    mv -f -- "$tmp_marker" "$MARKER"
+
+    link_is_managed_target || die "el enlace publicado no apunta al Gamescope canónico"
+    log "$LINK utiliza el Gamescope validado de UGM."
+}
+
+disable_link() {
+    [ -e "$MARKER" ] || {
+        log "El enlace global de Gamescope no está gestionado por UGM; no se modifica."
+        return 0
+    }
+
+    snapshot_valid || die "el snapshot original no es válido"
+
+    if ! link_is_managed_target; then
+        log "$LINK fue modificado externamente; se conserva sin cambios."
+        rm -f -- "$MARKER"
+        return 0
+    fi
+
+    status="$(original_status 2>/dev/null || true)"
+
+    case "$status" in
+        absent)
+            rm -f -- "$LINK"
+            ;;
+
+        present)
+            src="$(original_source 2>/dev/null || true)"
+            [ -n "$src" ] || die "falta la copia original de $LINK"
+
+            rm -f -- "$LINK"
+            mkdir -p -- "$(dirname "$LINK")"
+            cp -a -- "$src" "$LINK"
+            ;;
+
+        *)
+            die "el snapshot no describe el estado original de $LINK"
+            ;;
+    esac
+
+    rm -f -- "$MARKER"
+    log "Se ha restaurado el estado original de $LINK."
+}
+
+check_link() {
+    if [ -e "$MARKER" ]; then
+        link_is_managed_target || exit 1
+        [ -x "$TARGET" ] || exit 1
+        printf 'managed\n'
+    elif link_is_managed_target; then
+        printf 'unmanaged-same-target\n'
+    else
+        printf 'disabled\n'
+    fi
+}
+
+case "${1:-}" in
+    --enable)
+        enable_link
+        ;;
+    --disable)
+        disable_link
+        ;;
+    --check)
+        check_link
+        ;;
+    *)
+        die "uso: $0 --enable|--disable|--check"
+        ;;
+esac

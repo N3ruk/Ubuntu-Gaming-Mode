@@ -2,7 +2,7 @@
 
 [English](CHANGELOG.md) | **Español**
 
-## 2.0.0-1 — DESARROLLO
+## 2.0.0-1 — 2026-09-30
 
 ### Cambiado
 
@@ -10,14 +10,25 @@
 - Actualizadas las comprobaciones de integridad y el doctor para el runtime
   validado `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
 - Incluido el arreglo de drenaje de sesión ya presente en la rama `main` actual.
+- Añadido un puente opcional y reversible para el botón físico con suspensión
+  estilo consola. Está desactivado por defecto, captura pulsaciones cortas solo
+  en la sesión Steam Gaming Mode validada y delega la suspensión al flujo nativo
+  `steam://shortpowerpress` de Steam. El comportamiento del escritorio no cambia.
+  La entrega final se ejecuta mediante una unidad `systemd --user` para que el
+  launcher de Steam de 32 bits no herede el sandbox del daemon del sistema.
+- Añadida una opción Debconf, desactivada por defecto, para publicar el
+  Gamescope validado de UGM como comando global mediante
+  `/usr/local/bin/gamescope`. No desinstala el Gamescope de la distribución,
+  preserva el estado anterior y lo restaura al desactivar la opción o retirar
+  UGM.
 
 ### Estado de validación
 
-- Preparados el build del paquete y su validación estática.
-- Antes de publicar siguen pendientes instalación limpia, actualización desde
-  1.0.0-3, Gaming Mode físico, purge y rollback.
-
-## Sin publicar
+- Instalación limpia, transiciones Desktop/Gaming, botón físico, icono y Doctor
+  validados en el equipo de referencia.
+- Opción global de Gamescope validada con 8 pruebas deterministas de creación,
+  restauración y rechazo seguro; paquete construido dos veces de forma idéntica.
+- 11 pruebas del botón físico y 35 hashes internos del paquete superados.
 
 ### Conservación del código de Gamescope 3.16.30
 

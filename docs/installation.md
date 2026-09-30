@@ -1,10 +1,10 @@
-# Install Ubuntu Gaming Mode 1.0.0-3 on Ubuntu 26.04
+# Install Ubuntu Gaming Mode 2.0.0-1 on Ubuntu 26.04
 
 **English** | [Español](es/instalacion.md)
 
 ## Requirements
 
-Ubuntu Gaming Mode 1.0.0-3 is packaged for **Ubuntu 26.04 amd64**.
+Ubuntu Gaming Mode 2.0.0-1 is packaged for **Ubuntu 26.04 amd64**.
 
 The package includes the validated custom Gamescope runtime used by UGM and declares its runtime dependencies through APT.
 
@@ -12,7 +12,7 @@ The package includes the validated custom Gamescope runtime used by UGM and decl
 
 Download both files from the same GitHub Release:
 
-- `ubuntu-gaming-mode_1.0.0-3_amd64.deb`
+- `ubuntu-gaming-mode_2.0.0-1_amd64.deb`
 - `SHA256SUMS`
 
 Verify the package before installation:
@@ -24,19 +24,19 @@ sha256sum -c SHA256SUMS
 Expected result:
 
 ```text
-ubuntu-gaming-mode_1.0.0-3_amd64.deb: OK
+ubuntu-gaming-mode_2.0.0-1_amd64.deb: OK
 ```
 
-The GOLD package SHA256 is:
+The release package SHA256 is:
 
 ```text
-959afa06fd87eeeba8ffc1d4a3a6c965f9fa902d5678d43597b2ce7b20dca797
+48779954b0bc4518d2fadeb29ba636e370c84a143317f19475b4cf3f5dea369f
 ```
 
 ## Install
 
 ```bash
-sudo apt install ./ubuntu-gaming-mode_1.0.0-3_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.0.0-1_amd64.deb
 ```
 
 During a first installation UGM:
@@ -50,13 +50,44 @@ During a first installation UGM:
 
 The installer does **not** restart GDM and does **not** close the current desktop session.
 
-## Expected diagnostic result
+## Console-style physical power button (optional)
 
-For the validated 1.0.0-3 configuration:
+Version 2.0.0-1 can optionally bridge a short physical power-button press to
+Steam's native suspend flow. The option is **disabled by default** and captures
+the button only while UGM's managed Steam Gaming Mode session is active. The
+normal Ubuntu Desktop behavior remains unchanged.
+
+The system daemon only captures and validates the button. Steam's fixed URI is
+run by `ugm-steam-shortpowerpress.service` in the session's `systemd --user`,
+so Steam's launcher does not inherit the system daemon sandbox.
+
+The choice can be changed later and is fully reversible:
+
+```bash
+sudo dpkg-reconfigure ubuntu-gaming-mode
+```
+
+## UGM Gamescope as the system-wide command (optional)
+
+The installer detects whether a `gamescope` command already exists and can
+publish UGM's validated runtime through this link:
 
 ```text
-OK:       54
-Warnings: 0
+/usr/local/bin/gamescope -> /usr/lib/ubuntu-gaming-mode/gamescope
+```
+
+The option is disabled by default. It does not uninstall or modify Ubuntu's
+Gamescope package: `/usr/local/bin` normally takes precedence over `/usr/bin`.
+UGM preserves the previous file or link state and restores it when the option
+is disabled or the package is removed. The choice can also be changed with
+`sudo dpkg-reconfigure ubuntu-gaming-mode`.
+
+## Expected diagnostic result
+
+A valid installation must finish with zero failures. The number of checks can
+vary with hardware and selected options:
+
+```text
 Fallos:   0
 ```
 
@@ -76,14 +107,14 @@ UGM asks for confirmation before logging out of the desktop session.
 
 The next GDM login enters the managed `steam-gaming-mode` session.
 
-## Upgrade from 1.0.0-2
+## Upgrade from 1.0.0-3
 
-1.0.0-3 was explicitly tested as an in-place upgrade from 1.0.0-2:
+The package preserves UGM's original snapshot when upgrading from 1.0.0-3:
 
 ```bash
-sudo apt install ./ubuntu-gaming-mode_1.0.0-3_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.0.0-1_amd64.deb
 ```
 
-The upgrade preserves the immutable original snapshot and updates only the managed state.
-
-It also fixes the 1.0.0-2 permissions issue where `/etc/ubuntu-gaming-mode` could be created as `0700 root:root`. In 1.0.0-3 it is explicitly created as `0755 root:root`, while `session.conf` remains `0644 root:root`.
+The upgrade preserves the immutable baseline and renews only the state managed
+by the installed version. Review any installer warning and run Doctor when it
+finishes.

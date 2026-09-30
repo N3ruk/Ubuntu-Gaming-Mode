@@ -46,16 +46,20 @@ UGM utiliza su propio binario validado de Gamescope:
 Versión validada:
 
 ```text
-gamescope 3.16.28-3-g0d07f6e
+gamescope 3.16.30-8-gb211c9d
 ```
 
 SHA256 validado:
 
 ```text
-e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c
+5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
 ```
 
-Este binario de Gamescope es una build específica del proyecto. Durante el desarrollo de UGM se modificó para la ruta 4K validada y para interoperar con [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) mediante un pequeño conector. El árbol de código fuente modificado original ya no existe, por lo que el diff exacto de Gamescope no está documentado para 1.0.0-3.
+Este binario de Gamescope es una build 3.16.30 específica y reproducible. Su
+base upstream exacta, serie de nueve patches, árbol final, receta de compilación
+y validación se publican en `gamescope/versions/3.16.30-gbm/`. Sharp Filter
+Selector utiliza las capacidades que expone este runtime mediante
+Gamescope/Steam; la serie no contiene un conector oculto de selección de filtro.
 
 El wrapper/runtime de la sesión también se instala bajo `/usr/lib/ubuntu-gaming-mode/`.
 
@@ -109,4 +113,6 @@ Solo la operación específica necesaria para rearmar el autologin se expone med
 
 `ubuntu-gaming-mode-doctor` valida el runtime del paquete, hashes de Gamescope, configuración de sesión, unidades systemd, sudoers, GDM, AccountsService, estado de rollback, DRM, GPU y disponibilidad de Steam.
 
-Desde 1.0.0-3 también comprueba que `session.conf` sea realmente legible por el usuario UGM configurado, evitando la regresión de permisos detectada durante la aceptación física de 1.0.0-2.
+También comprueba que `session.conf` sea legible por el usuario UGM configurado,
+los hashes del runtime empaquetado, la integración opcional del botón físico y
+el enlace global opcional de Gamescope.

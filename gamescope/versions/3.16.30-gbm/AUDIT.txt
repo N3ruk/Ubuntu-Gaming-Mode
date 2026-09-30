@@ -18,13 +18,13 @@ Actualización 2026-09-28:
 Esta auditoría compara:
 
   1. Gamescope 3.16.30 limpio:
-     /home/n3ruk/src/gamescope-3.16.30
+     ~/src/gamescope-3.16.30
 
   2. Gamescope 3.16.30 con el port GBM:
-     /home/n3ruk/src/gamescope-3.16.30-gbm
+     ~/src/gamescope-3.16.30-gbm
 
   3. La serie de patches conservada en:
-     /home/n3ruk/src/UGM-2.0-gamescope-3.16.30/patches
+     ~/src/UGM-2.0-gamescope-3.16.30/patches
 
 La auditoría identifica todos los cambios respecto al commit upstream:
 
@@ -89,7 +89,7 @@ un fallback de seguridad que no selecciona filtros ni cambia VRR/GBM.
 
 Ruta:
 
-  /home/n3ruk/src/gamescope-3.16.30
+  ~/src/gamescope-3.16.30
 
 HEAD:
 
@@ -110,7 +110,7 @@ No forman parte del código fuente ni del diff auditado.
 
 Ruta:
 
-  /home/n3ruk/src/gamescope-3.16.30-gbm
+  ~/src/gamescope-3.16.30-gbm
 
 Rama local:
 
@@ -135,7 +135,7 @@ la serie añade la regla correspondiente a subprojects/.gitignore.
 
 Ruta:
 
-  /home/n3ruk/src/UGM-2.0-gamescope-3.16.30
+  ~/src/UGM-2.0-gamescope-3.16.30
 
 Contenido original:
 
@@ -465,7 +465,7 @@ Resultado de tests:
 
 Binario resultante:
 
-  /home/n3ruk/src/gamescope-3.16.30-gbm/build/src/gamescope
+  ~/src/gamescope-3.16.30-gbm/build/src/gamescope
 
 Versión:
 

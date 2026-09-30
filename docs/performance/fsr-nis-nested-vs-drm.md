@@ -143,7 +143,7 @@ That adds:
 
 FSR and NIS therefore still have their own processing cost, but in nested mode that processed frame also has to traverse the desktop compositor path.
 
-In UGM Gaming Mode, NIS is exposed/unlocked through the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin. The Gamescope binary bundled with 1.0.0-3 also contains project-specific integration work for that workflow. The exact Gamescope-side source changes are no longer available and are therefore not described here.
+In UGM Gaming Mode, scaling controls are exposed through the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin. UGM 2.0.0-1 uses the capabilities exposed by its reproducible Gamescope 3.16.30 runtime; its complete patch series is documented under `gamescope/versions/3.16.30-gbm/`.
 
 ## What the measurements show
 

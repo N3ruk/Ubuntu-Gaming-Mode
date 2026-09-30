@@ -1,0 +1,9 @@
+[Unit]
+Description=Ubuntu Gaming Mode Steam short power press
+Documentation=https://github.com/N3ruk/Ubuntu-Gaming-Mode
+ConditionPathExists=%t/ubuntu-gaming-mode/gaming-session.active
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ubuntu-gaming-mode/ugm-steam-shortpowerpress
+TimeoutStartSec=15s

@@ -1,0 +1,35 @@
+Template: ubuntu-gaming-mode/console-suspend-button
+Type: boolean
+Default: false
+Description: Enable the console-style physical power button in Gaming Mode?
+ When enabled, Ubuntu Gaming Mode captures a short press of the physical power
+ button only while the managed Steam Gaming Mode session is active and sends it
+ to Steam's native suspend flow. The normal Ubuntu Desktop behavior is left
+ unchanged. The option is disabled by default and can be changed later with
+ "dpkg-reconfigure ubuntu-gaming-mode".
+Description-es.UTF-8: ¿Activar el botón físico con suspensión estilo consola en Gaming Mode?
+ Al activarlo, Ubuntu Gaming Mode captura una pulsación corta del botón físico
+ únicamente durante la sesión Gaming Mode gestionada y la entrega al flujo
+ nativo de suspensión de Steam. El comportamiento normal de Ubuntu Desktop no
+ cambia. La opción está desactivada por defecto y puede modificarse después con
+ «dpkg-reconfigure ubuntu-gaming-mode».
+
+Template: ubuntu-gaming-mode/system-gamescope-command
+Type: boolean
+Default: false
+Description: Use UGM's Gamescope as the system-wide gamescope command?
+ ${CURRENT_GAMESCOPE}
+ If enabled, /usr/local/bin/gamescope will point to the validated Gamescope
+ runtime included with Ubuntu Gaming Mode. An existing distribution package is
+ not removed; /usr/local/bin normally takes precedence over /usr/bin. The
+ previous state is preserved and restored when UGM is removed. This option is
+ disabled by default and can be changed later with
+ "dpkg-reconfigure ubuntu-gaming-mode".
+Description-es.UTF-8: ¿Usar el Gamescope de UGM como comando gamescope global del sistema?
+ ${CURRENT_GAMESCOPE}
+ Al activarlo, /usr/local/bin/gamescope apuntará al runtime validado de
+ Gamescope incluido en Ubuntu Gaming Mode. No se desinstala ningún paquete de
+ la distribución: /usr/local/bin tiene normalmente prioridad sobre /usr/bin.
+ El estado anterior se conserva y se restaura al desinstalar UGM. La opción
+ está desactivada por defecto y puede modificarse después con
+ «dpkg-reconfigure ubuntu-gaming-mode».

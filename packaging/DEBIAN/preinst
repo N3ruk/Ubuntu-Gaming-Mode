@@ -221,6 +221,8 @@ done <<'EOF'
 /usr/bin/steamos-session-select
 /etc/gamescope-session-plus/sessions.d/steam
 /usr/lib/systemd/system/gaming-autologin-rearm.service
+/usr/lib/systemd/system/ugm-powerbuttond.service
+/usr/lib/systemd/user/ugm-steam-shortpowerpress.service
 /usr/lib/systemd/user/gamescope-session-plus@.service
 /usr/share/wayland-sessions/steam-gaming-mode.desktop
 /usr/share/applications/ubuntu-gaming-mode.desktop

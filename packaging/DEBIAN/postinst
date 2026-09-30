@@ -2,6 +2,8 @@
 set -eu
 umask 077
 
+. /usr/share/debconf/confmodule
+
 STATE_ROOT="/var/lib/ubuntu-gaming-mode"
 ORIGINAL="$STATE_ROOT/original-state"
 MANAGED="$STATE_ROOT/managed-state"
@@ -412,6 +414,29 @@ rm -f "$STATE_ROOT/last-package-adoption-backup"
 
 systemctl daemon-reload || true
 reload_user_systemd
+
+db_get ubuntu-gaming-mode/console-suspend-button || true
+
+if [ "${RET:-false}" = "true" ]; then
+    log "Activando el botón físico estilo consola para Gaming Mode."
+    systemctl enable --now ugm-powerbuttond.service ||
+        die "no se pudo activar ugm-powerbuttond.service"
+else
+    log "Botón físico estilo consola desactivado (valor predeterminado)."
+    systemctl disable --now ugm-powerbuttond.service >/dev/null 2>&1 || true
+fi
+
+db_get ubuntu-gaming-mode/system-gamescope-command || true
+
+if [ "${RET:-false}" = "true" ]; then
+    log "Publicando el Gamescope de UGM como comando gamescope global."
+    /usr/lib/ubuntu-gaming-mode/ugm-system-gamescope-link --enable ||
+        die "no se pudo publicar el Gamescope de UGM como comando global"
+else
+    log "Comando gamescope global de UGM desactivado (valor predeterminado)."
+    /usr/lib/ubuntu-gaming-mode/ugm-system-gamescope-link --disable ||
+        die "no se pudo restaurar el comando gamescope anterior"
+fi
 
 log "Ejecutando diagnóstico final."
 

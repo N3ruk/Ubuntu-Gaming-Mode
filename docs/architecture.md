@@ -46,16 +46,20 @@ UGM uses its own validated Gamescope binary:
 Validated version:
 
 ```text
-gamescope 3.16.28-3-g0d07f6e
+gamescope 3.16.30-8-gb211c9d
 ```
 
 Validated SHA256:
 
 ```text
-e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c
+5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
 ```
 
-This Gamescope binary is a project-specific build. It was modified during UGM development for the validated 4K path and for interoperability with the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin via a small connector. The original modified source tree no longer exists, so the exact Gamescope diff is not documented for 1.0.0-3.
+This Gamescope binary is a project-specific, reproducible 3.16.30 build. Its
+exact upstream base, nine-patch series, final tree, build recipe and validation
+record are published under `gamescope/versions/3.16.30-gbm/`. Sharp Filter
+Selector uses the Gamescope/Steam capabilities exposed by this runtime; the
+patch series does not contain a hidden filter-selection connector.
 
 The session wrapper/runtime is also installed under `/usr/lib/ubuntu-gaming-mode/`.
 
@@ -109,4 +113,6 @@ Only the specific system operation needed to rearm autologin is exposed through 
 
 `ubuntu-gaming-mode-doctor` validates the package runtime, Gamescope hashes, session configuration, systemd units, sudoers, GDM, AccountsService, rollback state, DRM, GPU and Steam availability.
 
-Since 1.0.0-3 it also verifies that `session.conf` is actually readable by the configured UGM user, preventing the permissions regression found during 1.0.0-2 physical acceptance.
+It also verifies that `session.conf` is readable by the configured UGM user,
+the packaged runtime hashes, optional physical-button integration and the
+optional system-wide Gamescope link.

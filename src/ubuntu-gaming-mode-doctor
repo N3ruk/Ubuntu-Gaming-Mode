@@ -9,6 +9,8 @@ CONFIG="/etc/ubuntu-gaming-mode/session.conf"
 RUNTIME="/usr/lib/ubuntu-gaming-mode"
 STEAM_CONFIG="/etc/gamescope-session-plus/sessions.d/steam"
 SYSTEM_SERVICE="/usr/lib/systemd/system/gaming-autologin-rearm.service"
+POWER_SERVICE="/usr/lib/systemd/system/ugm-powerbuttond.service"
+POWER_USER_SERVICE="/usr/lib/systemd/user/ugm-steam-shortpowerpress.service"
 USER_SERVICE="/usr/lib/systemd/user/gamescope-session-plus@.service"
 SUDOERS="/etc/sudoers.d/gaming-autologin-rearm"
 GDM="/etc/gdm3/custom.conf"
@@ -128,7 +130,7 @@ fi
 
 section "RUNTIME"
 
-for p in     "$RUNTIME/gamescope"     "$RUNTIME/gamescope-session-plus"     "$RUNTIME/gamescope-session-plus-runtime"     "$RUNTIME/ubuntu-gaming-mode-setup"     "$RUNTIME/ubuntu-gaming-mode-doctor"     "$RUNTIME/os-session-select"     "$RUNTIME/steamos-session-select"     "$RUNTIME/return-to-gaming-mode"     "$RUNTIME/gaming-autologin-rearm"
+for p in     "$RUNTIME/gamescope"     "$RUNTIME/gamescope-session-plus"     "$RUNTIME/gamescope-session-plus-runtime"     "$RUNTIME/ubuntu-gaming-mode-setup"     "$RUNTIME/ubuntu-gaming-mode-doctor"     "$RUNTIME/os-session-select"     "$RUNTIME/steamos-session-select"     "$RUNTIME/return-to-gaming-mode"     "$RUNTIME/gaming-autologin-rearm"     "$RUNTIME/ugm-gaming-session-marker"     "$RUNTIME/ugm-powerbuttond"     "$RUNTIME/ugm-steam-shortpowerpress"     "$RUNTIME/ugm-system-gamescope-link"
 do
     if [ -e "$p" ] || [ -L "$p" ]; then
         ok "$p"
@@ -202,6 +204,31 @@ if [ -f "$RUNTIME/gamescope-session-plus-runtime" ]; then
         fail "SHA256 gamescope-session-plus-runtime NO coincide"
 fi
 
+if [ -x "$RUNTIME/ugm-system-gamescope-link" ]; then
+    SYSTEM_GAMESCOPE_STATE="$(
+        "$RUNTIME/ugm-system-gamescope-link" --check 2>/dev/null ||
+        printf 'invalid\n'
+    )"
+
+    case "$SYSTEM_GAMESCOPE_STATE" in
+        managed)
+            ok "/usr/local/bin/gamescope publica el runtime validado de UGM"
+            ;;
+
+        disabled)
+            info "Publicación global opcional de Gamescope desactivada"
+            ;;
+
+        unmanaged-same-target)
+            warn "/usr/local/bin/gamescope apunta a UGM, pero no está marcado como gestionado por esta instalación"
+            ;;
+
+        *)
+            fail "estado incoherente del enlace global opcional de Gamescope"
+            ;;
+    esac
+fi
+
 # ============================================================
 # CONFIGURACIÓN GAMING MODE
 # ============================================================
@@ -272,6 +299,63 @@ systemctl cat     gaming-autologin-rearm.service     >/dev/null 2>&1 &&
     ok "gaming-autologin-rearm.service cargado (inactivo es normal)" ||
     warn "gaming-autologin-rearm.service aún no está visible para systemd"
 
+if [ -f "$POWER_SERVICE" ]; then
+    ok "$POWER_SERVICE existe"
+
+    grep -Fq 'ExecStart=/usr/lib/ubuntu-gaming-mode/ugm-powerbuttond' "$POWER_SERVICE" &&
+        ok "ugm-powerbuttond.service usa ruta canónica" ||
+        fail "ugm-powerbuttond.service usa ruta inesperada"
+
+    grep -Fq 'SystemCallArchitectures=native' "$POWER_SERVICE" &&
+    grep -Fq 'MemoryDenyWriteExecute=yes' "$POWER_SERVICE" &&
+        ok "ugm-powerbuttond conserva su sandbox" ||
+        fail "ugm-powerbuttond no conserva el sandbox esperado"
+
+    "$RUNTIME/ugm-powerbuttond" --self-test >/dev/null 2>&1 &&
+        ok "ugm-powerbuttond supera su self-test" ||
+        fail "ugm-powerbuttond no supera su self-test"
+
+    grep -Fq 'USER_SUSPEND_SERVICE = "ugm-steam-shortpowerpress.service"' "$RUNTIME/ugm-powerbuttond" &&
+    grep -Fq '["/usr/bin/systemctl", "--user", "start", USER_SUSPEND_SERVICE]' "$RUNTIME/ugm-powerbuttond" &&
+        ok "ugm-powerbuttond delega a la unidad user fija" ||
+        fail "ugm-powerbuttond no usa el handoff user esperado"
+
+    power_enabled="$(systemctl is-enabled ugm-powerbuttond.service 2>/dev/null || true)"
+    power_active="$(systemctl is-active ugm-powerbuttond.service 2>/dev/null || true)"
+
+    case "$power_enabled:$power_active" in
+        enabled:active)
+            ok "botón físico estilo consola activado y daemon activo"
+            ;;
+        disabled:inactive)
+            ok "botón físico estilo consola desactivado (estado válido)"
+            ;;
+        *)
+            fail "estado incoherente de ugm-powerbuttond: enabled=$power_enabled active=$power_active"
+            ;;
+    esac
+else
+    fail "falta $POWER_SERVICE"
+fi
+
+if [ -f "$POWER_USER_SERVICE" ]; then
+    ok "$POWER_USER_SERVICE existe"
+    grep -Fq 'ExecStart=/usr/lib/ubuntu-gaming-mode/ugm-steam-shortpowerpress' "$POWER_USER_SERVICE" &&
+        ok "unidad shortpowerpress usa ruta canónica" ||
+        fail "unidad shortpowerpress usa ruta inesperada"
+
+    grep -Fq 'Type=oneshot' "$POWER_USER_SERVICE" &&
+    grep -Fq 'ConditionPathExists=%t/ubuntu-gaming-mode/gaming-session.active' "$POWER_USER_SERVICE" &&
+        ok "unidad shortpowerpress está limitada a Gaming Mode" ||
+        fail "unidad shortpowerpress no tiene las restricciones esperadas"
+
+    "$RUNTIME/ugm-steam-shortpowerpress" --self-test >/dev/null 2>&1 &&
+        ok "helper shortpowerpress supera su self-test" ||
+        fail "helper shortpowerpress no supera su self-test"
+else
+    fail "falta $POWER_USER_SERVICE"
+fi
+
 if [ -f "$USER_SERVICE" ]; then
 
     ok "$USER_SERVICE existe"
@@ -283,6 +367,11 @@ if [ -f "$USER_SERVICE" ]; then
     grep -Fq         'GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope'         "$USER_SERVICE" &&
         ok "gamescope-session-plus@.service usa Gamescope canónico" ||
         fail "unidad user no usa Gamescope canónico"
+
+    grep -Fq 'ugm-gaming-session-marker start %i' "$USER_SERVICE" &&
+    grep -Fq 'ugm-gaming-session-marker stop %i' "$USER_SERVICE" &&
+        ok "unidad user publica y retira el marcador Gaming" ||
+        fail "unidad user no administra el marcador Gaming"
 
 else
     fail "falta $USER_SERVICE"
@@ -672,7 +761,7 @@ command -v steam >/dev/null 2>&1 &&
 section "REFERENCIAS ANTIGUAS"
 
 OLD_REFS="$(
-    grep -niE         '/usr/local/(bin|sbin|lib/systemd/user)/|/usr/lib/os-session-select'         "$RUNTIME/gamescope-session-plus"         "$RUNTIME/gamescope-session-plus-runtime"         "$RUNTIME/gaming-autologin-rearm"         "$RUNTIME/os-session-select"         "$RUNTIME/return-to-gaming-mode"         "$RUNTIME/steamos-session-select"         "$STEAM_CONFIG"         "$SYSTEM_SERVICE"         "$USER_SERVICE"         2>/dev/null ||
+    grep -niE         '/usr/local/(bin|sbin|lib/systemd/user)/|/usr/lib/os-session-select'         "$RUNTIME/gamescope-session-plus"         "$RUNTIME/gamescope-session-plus-runtime"         "$RUNTIME/gaming-autologin-rearm"         "$RUNTIME/os-session-select"         "$RUNTIME/return-to-gaming-mode"         "$RUNTIME/steamos-session-select"         "$RUNTIME/ugm-gaming-session-marker"         "$RUNTIME/ugm-powerbuttond"         "$RUNTIME/ugm-steam-shortpowerpress"         "$STEAM_CONFIG"         "$SYSTEM_SERVICE"         "$POWER_SERVICE"         "$POWER_USER_SERVICE"         "$USER_SERVICE"         2>/dev/null ||
     true
 )"
 

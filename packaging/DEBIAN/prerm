@@ -55,6 +55,8 @@ case "$ACTION" in
         ;;
 esac
 
+systemctl disable --now ugm-powerbuttond.service >/dev/null 2>&1 || true
+
 [ -r "$CONFIG" ] ||
     exit 0
 

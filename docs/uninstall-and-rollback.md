@@ -12,7 +12,7 @@ For a complete removal:
 sudo apt purge ubuntu-gaming-mode
 ```
 
-A validated purge of 1.0.0-3 restores the original baseline and removes the UGM state directory.
+A complete purge restores the original baseline and removes the UGM state directory. This includes restoring any `/usr/local/bin/gamescope` entry that existed before UGM.
 
 On the clean reference system this restored:
 

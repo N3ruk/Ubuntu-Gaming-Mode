@@ -1,0 +1,360 @@
+#!/usr/bin/python3
+"""Captura el botón físico solo durante UGM y delega la suspensión a Steam."""
+
+from __future__ import annotations
+
+import argparse
+import errno
+import fcntl
+import glob
+import os
+import pwd
+import re
+import select
+import stat
+import struct
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import BinaryIO
+
+
+EV_KEY = 0x01
+KEY_POWER = 116
+EVIOCGRAB = 0x40044590
+EVENT = struct.Struct("@llHHI")
+SHORT_PRESS_SECONDS = 1.5
+ACTION_COOLDOWN_SECONDS = 2.0
+SCAN_INTERVAL_SECONDS = 1.0
+MARKER_RELATIVE = Path("ubuntu-gaming-mode/gaming-session.active")
+SAFE_INSTANCE = "steam"
+SAFE_MARKER_KEYS = {"version", "uid", "instance", "pid"}
+USER_SUSPEND_SERVICE = "ugm-steam-shortpowerpress.service"
+
+
+@dataclass(frozen=True)
+class GamingSession:
+    uid: int
+    instance: str
+    pid: int
+    home: Path
+    runtime_dir: Path
+
+
+@dataclass
+class InputDevice:
+    path: Path
+    stream: BinaryIO
+    pressed_at: float | None = None
+
+
+def log(message: str) -> None:
+    print(f"ugm-powerbuttond: {message}", flush=True)
+
+
+def read_text(path: Path, limit: int = 4096) -> str:
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        return handle.read(limit)
+
+
+def read_cmdline(pid: int) -> list[str]:
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()[:65536]
+    except (FileNotFoundError, PermissionError, ProcessLookupError):
+        return []
+    return [part.decode(errors="replace") for part in raw.split(b"\0") if part]
+
+
+def process_uid(pid: int) -> int | None:
+    try:
+        for line in read_text(Path(f"/proc/{pid}/status")).splitlines():
+            if line.startswith("Uid:"):
+                return int(line.split()[1])
+    except (FileNotFoundError, PermissionError, ValueError):
+        pass
+    return None
+
+
+def parse_marker(path: Path) -> dict[str, str] | None:
+    try:
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
+            return None
+        if info.st_size > 512 or info.st_mode & 0o077:
+            return None
+        values: dict[str, str] = {}
+        for line in read_text(path, 512).splitlines():
+            if "=" not in line:
+                return None
+            key, value = line.split("=", 1)
+            if key not in SAFE_MARKER_KEYS or key in values:
+                return None
+            values[key] = value
+        if set(values) != SAFE_MARKER_KEYS:
+            return None
+        return values
+    except (FileNotFoundError, OSError):
+        return None
+
+
+def validate_marker(path: Path) -> GamingSession | None:
+    values = parse_marker(path)
+    if values is None:
+        return None
+    try:
+        uid = int(values["uid"])
+        pid = int(values["pid"])
+        runtime_uid = int(path.parents[1].name)
+        info = path.lstat()
+    except (ValueError, OSError, IndexError):
+        return None
+    if values["version"] != "1" or values["instance"] != SAFE_INSTANCE:
+        return None
+    if uid != runtime_uid or uid != info.st_uid or uid < 1000 or pid <= 1:
+        return None
+    if process_uid(pid) != uid:
+        return None
+    cmdline = read_cmdline(pid)
+    joined = "\0".join(cmdline)
+    if "gamescope-session-plus-runtime" not in joined or SAFE_INSTANCE not in cmdline:
+        return None
+    try:
+        account = pwd.getpwuid(uid)
+    except KeyError:
+        return None
+    runtime_dir = Path("/run/user") / str(uid)
+    if not runtime_dir.is_dir():
+        return None
+    return GamingSession(uid, SAFE_INSTANCE, pid, Path(account.pw_dir), runtime_dir)
+
+
+def find_gaming_session() -> GamingSession | None:
+    for marker_name in sorted(glob.glob("/run/user/[0-9]*/" + str(MARKER_RELATIVE))):
+        session = validate_marker(Path(marker_name))
+        if session is not None:
+            return session
+    return None
+
+
+def is_power_button(path: Path) -> bool:
+    sysfs = Path("/sys/class/input") / path.name / "device"
+    try:
+        name = read_text(sysfs / "name", 256).strip()
+        phys = read_text(sysfs / "phys", 256).strip()
+    except OSError:
+        return False
+    return name == "Power Button" and "/button/input" in phys
+
+
+def discover_power_buttons() -> list[Path]:
+    return [path for path in sorted(Path("/dev/input").glob("event*")) if is_power_button(path)]
+
+
+def open_and_grab(path: Path) -> InputDevice | None:
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_CLOEXEC)
+        stream = os.fdopen(fd, "rb", buffering=0)
+        fcntl.ioctl(stream.fileno(), EVIOCGRAB, 1)
+        return InputDevice(path, stream)
+    except OSError as exc:
+        try:
+            stream.close()  # type: ignore[possibly-undefined]
+        except (NameError, OSError):
+            pass
+        log(f"no se pudo capturar {path}: {exc}")
+        return None
+
+
+def release_devices(devices: dict[int, InputDevice]) -> None:
+    for device in list(devices.values()):
+        try:
+            fcntl.ioctl(device.stream.fileno(), EVIOCGRAB, 0)
+        except OSError:
+            pass
+        try:
+            device.stream.close()
+        except OSError:
+            pass
+    devices.clear()
+
+
+def steam_process(session: GamingSession) -> int | None:
+    for entry in os.scandir("/proc"):
+        if not entry.name.isdigit():
+            continue
+        pid = int(entry.name)
+        if process_uid(pid) != session.uid:
+            continue
+        args = read_cmdline(pid)
+        if "-gamepadui" not in args:
+            continue
+        executable = Path(args[0]).name.lower() if args else ""
+        if "steam" in executable:
+            return pid
+    return None
+
+
+def steam_environment(session: GamingSession, steam_pid: int) -> dict[str, str]:
+    env = {
+        "HOME": str(session.home),
+        "USER": pwd.getpwuid(session.uid).pw_name,
+        "LOGNAME": pwd.getpwuid(session.uid).pw_name,
+        "XDG_RUNTIME_DIR": str(session.runtime_dir),
+        "PATH": "/usr/local/bin:/usr/bin:/bin",
+    }
+    try:
+        raw = Path(f"/proc/{steam_pid}/environ").read_bytes()[:131072]
+        inherited = {}
+        for item in raw.split(b"\0"):
+            if b"=" in item:
+                key, value = item.split(b"=", 1)
+                inherited[key.decode(errors="ignore")] = value.decode(errors="replace")
+        for key in ("DISPLAY", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS"):
+            if inherited.get(key):
+                env[key] = inherited[key]
+    except (FileNotFoundError, PermissionError, ProcessLookupError):
+        pass
+    env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path={session.runtime_dir}/bus")
+    return env
+
+
+def drop_privileges(uid: int) -> None:
+    account = pwd.getpwuid(uid)
+    os.initgroups(account.pw_name, account.pw_gid)
+    os.setgid(account.pw_gid)
+    os.setuid(uid)
+
+
+def trigger_native_suspend(session: GamingSession) -> bool:
+    steam_pid = steam_process(session)
+    if steam_pid is None:
+        log("Steam Gamepad UI no está disponible; pulsación ignorada")
+        return False
+    # Steam incluye un launcher de 32 bits. No debe heredarse el sandbox del
+    # daemon root (SystemCallArchitectures=native); la acción fija se ejecuta
+    # mediante una unidad oneshot del systemd de la sesión de usuario.
+    argv = ["/usr/bin/systemctl", "--user", "start", USER_SUSPEND_SERVICE]
+    try:
+        result = subprocess.run(
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            env=steam_environment(session, steam_pid),
+            preexec_fn=lambda: drop_privileges(session.uid),
+            timeout=10,
+            check=False,
+            text=True,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        log(f"no se pudo entregar la pulsación a Steam: {exc}")
+        return False
+    if result.returncode != 0:
+        detail = (result.stderr or "").strip().replace("\n", " ")[:240]
+        log(f"systemd de usuario rechazó shortpowerpress (rc={result.returncode}): {detail}")
+        return False
+    log("pulsación corta entregada al flujo nativo de Steam")
+    return True
+
+
+def handle_event(device: InputDevice, event: tuple[int, int, int, int, int], now: float) -> bool:
+    _sec, _usec, event_type, code, value = event
+    if event_type != EV_KEY or code != KEY_POWER:
+        return False
+    if value == 1:
+        device.pressed_at = now
+        return False
+    if value != 0 or device.pressed_at is None:
+        return False
+    duration = now - device.pressed_at
+    device.pressed_at = None
+    return 0.0 <= duration <= SHORT_PRESS_SECONDS
+
+
+def run() -> int:
+    devices: dict[int, InputDevice] = {}
+    current_session: GamingSession | None = None
+    last_scan = 0.0
+    last_action = -ACTION_COOLDOWN_SECONDS
+    try:
+        while True:
+            now = time.monotonic()
+            if now - last_scan >= SCAN_INTERVAL_SECONDS:
+                session = find_gaming_session()
+                if session != current_session:
+                    release_devices(devices)
+                    current_session = session
+                    if session is None:
+                        log("Desktop/no Gaming Mode: botón físico liberado")
+                    else:
+                        for path in discover_power_buttons():
+                            device = open_and_grab(path)
+                            if device is not None:
+                                devices[device.stream.fileno()] = device
+                        log(f"Gaming Mode validado: {len(devices)} botón(es) capturado(s)")
+                elif current_session is not None:
+                    known = {device.path for device in devices.values()}
+                    for path in discover_power_buttons():
+                        if path not in known:
+                            device = open_and_grab(path)
+                            if device is not None:
+                                devices[device.stream.fileno()] = device
+                last_scan = now
+
+            if not devices:
+                time.sleep(0.25)
+                continue
+
+            readable, _, _ = select.select(list(devices), [], [], 0.5)
+            for fd in readable:
+                device = devices.get(fd)
+                if device is None:
+                    continue
+                try:
+                    data = os.read(fd, EVENT.size * 32)
+                except OSError as exc:
+                    if exc.errno not in (errno.EAGAIN, errno.EINTR):
+                        log(f"dispositivo perdido {device.path}: {exc}")
+                        try:
+                            device.stream.close()
+                        except OSError:
+                            pass
+                        devices.pop(fd, None)
+                    continue
+                for offset in range(0, len(data) - EVENT.size + 1, EVENT.size):
+                    if handle_event(device, EVENT.unpack_from(data, offset), time.monotonic()):
+                        action_time = time.monotonic()
+                        if action_time - last_action >= ACTION_COOLDOWN_SECONDS:
+                            last_action = action_time
+                            session = find_gaming_session()
+                            if session is not None:
+                                trigger_native_suspend(session)
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        release_devices(devices)
+
+
+def self_test() -> int:
+    fake = InputDevice(Path("/dev/null"), sys.stdin.buffer)
+    assert handle_event(fake, (0, 0, EV_KEY, KEY_POWER, 1), 10.0) is False
+    assert handle_event(fake, (0, 0, EV_KEY, KEY_POWER, 0), 10.5) is True
+    assert handle_event(fake, (0, 0, EV_KEY, KEY_POWER, 1), 20.0) is False
+    assert handle_event(fake, (0, 0, EV_KEY, KEY_POWER, 0), 22.0) is False
+    assert handle_event(fake, (0, 0, EV_KEY, 30, 1), 30.0) is False
+    assert USER_SUSPEND_SERVICE == "ugm-steam-shortpowerpress.service"
+    print("ugm-powerbuttond: self-test OK")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    return self_test() if args.self_test else run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

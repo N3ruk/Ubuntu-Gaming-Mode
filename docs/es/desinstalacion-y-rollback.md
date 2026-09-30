@@ -12,7 +12,7 @@ Para eliminar completamente Ubuntu Gaming Mode:
 sudo apt purge ubuntu-gaming-mode
 ```
 
-Un purge validado de 1.0.0-3 restaura el baseline original y elimina el directorio de estado de UGM.
+Un purge completo restaura el baseline original y elimina el directorio de estado de UGM. Esto incluye restaurar cualquier entrada `/usr/local/bin/gamescope` que existiera antes de UGM.
 
 En el sistema limpio de referencia esto restauró:
 

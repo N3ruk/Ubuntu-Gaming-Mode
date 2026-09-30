@@ -2,7 +2,7 @@
 
 **English** | [Español](CHANGELOG_es.md)
 
-## 2.0.0-1 — DEVELOPMENT
+## 2.0.0-1 — 2026-09-30
 
 ### Changed
 
@@ -10,14 +10,24 @@
 - Updated the package integrity checks and doctor for the validated runtime
   `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
 - Included the session-drain fix already present on the current main branch.
+- Added an optional, reversible console-style physical power-button bridge.
+  It is disabled by default, captures short presses only in the validated Steam
+  Gaming Mode session and delegates suspension to Steam's native
+  `steam://shortpowerpress` flow. Ubuntu Desktop behavior remains unchanged.
+  The final dispatch runs through a `systemd --user` oneshot unit so Steam's
+  32-bit launcher does not inherit the system daemon sandbox.
+- Added an opt-in Debconf option to publish UGM's validated Gamescope runtime as
+  the system-wide command through `/usr/local/bin/gamescope`. It does not remove
+  the distribution Gamescope package, preserves the previous state and restores
+  it when the option is disabled or UGM is removed.
 
 ### Validation status
 
-- Package construction and static archive validation are prepared.
-- Clean install, upgrade from 1.0.0-3, physical Gaming Mode, purge and rollback
-  remain required before publishing this release.
-
-## Unreleased
+- Clean installation, Desktop/Gaming transitions, physical power button, icon
+  and Doctor were validated on the reference system.
+- The global Gamescope option passed 8 deterministic creation, restoration and
+  safe-rejection tests; two package builds were byte-for-byte identical.
+- 11 physical-button tests and all 35 internal package hashes passed.
 
 ### Gamescope 3.16.30 source preservation
 

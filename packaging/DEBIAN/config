@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+
+. /usr/share/debconf/confmodule
+
+if command -v gamescope >/dev/null 2>&1; then
+    current_gamescope="$(command -v gamescope)"
+    current_description="Se ha detectado un comando gamescope en ${current_gamescope}."
+else
+    current_description="No se ha detectado actualmente ningún comando gamescope en PATH."
+fi
+
+db_subst ubuntu-gaming-mode/system-gamescope-command \
+    CURRENT_GAMESCOPE "$current_description"
+
+db_input high ubuntu-gaming-mode/console-suspend-button || true
+db_input high ubuntu-gaming-mode/system-gamescope-command || true
+db_go || true
+
+exit 0

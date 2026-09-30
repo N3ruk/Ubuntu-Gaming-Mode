@@ -1,0 +1,9 @@
+ubuntu-gaming-mode (2.0.0-1) unstable; urgency=medium
+
+  * Ship the reproducible Gamescope 3.16.30 GBM runtime and nine-patch source record.
+  * Add the optional console-style physical power-button integration.
+  * Add an optional reversible /usr/local/bin/gamescope link to UGM's runtime.
+  * Preserve Desktop power-button handling outside managed Gaming Mode.
+  * Extend diagnostics, rollback and clean-install validation for 2.0.0.
+
+ -- N3ruk <csz_11@hotmail.com>  Wed, 30 Sep 2026 00:00:00 +0200

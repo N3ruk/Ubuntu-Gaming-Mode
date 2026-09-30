@@ -10,6 +10,12 @@ CONFIG="/etc/ubuntu-gaming-mode/session.conf"
 
 ACTION="${1:-remove}"
 
+if [ "$ACTION" = "purge" ] && [ -r /usr/share/debconf/confmodule ]; then
+    # shellcheck disable=SC1091
+    . /usr/share/debconf/confmodule
+    db_purge || true
+fi
+
 RESTORE_OK=1
 
 log() {

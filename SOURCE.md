@@ -1,28 +1,26 @@
-# Ubuntu Gaming Mode source layout and reproducibility
+# Ubuntu Gaming Mode source and reproducibility
 
 **English** | [Español](SOURCE_es.md)
 
-The files in this repository are organized from the validated Ubuntu Gaming Mode 1.0.0-3 GOLD package.
+This repository contains **Ubuntu Gaming Mode 2.0.0-1** and the reproducible
+record for its bundled Gamescope runtime.
 
-## Directories
+## Layout
 
-- `src/`: UGM runtime scripts and session helpers.
-- `system/`: systemd units, desktop/session entries and the Gamescope session configuration.
-- `packaging/DEBIAN/`: Debian control and maintainer scripts.
-- `packaging/build-deb.sh`: assembles a Debian package from the repository sources.
-- `gamescope/`: information about the validated custom Gamescope runtime.
-- `docs/`: installation, rollback, architecture and performance documentation.
+- `src/`: runtime scripts and session helpers.
+- `system/`: systemd units, desktop/session entries and configuration.
+- `packaging/DEBIAN/`: Debian metadata and maintainer scripts.
+- `packaging/build-deb.sh`: reproducible package assembly.
+- `gamescope/versions/3.16.30-gbm/`: patches, provenance and validation.
+- `tests/`: tests for optional integrations.
+- `docs/`: installation, rollback, architecture and performance.
 
-## Binary inputs intentionally not stored in Git
+## Binary inputs not stored in Git
 
-The 1.0.0-3 package contains two binary assets that are not committed to the source history:
+The build requires:
 
-1. the custom Gamescope executable;
-2. the UGM PNG application icon.
-
-The GOLD `.deb` distributed through Releases contains both.
-
-The build script therefore requires:
+1. the validated Gamescope executable;
+2. the UGM PNG icon.
 
 ```bash
 GAMESCOPE_BIN=/path/to/gamescope \
@@ -30,23 +28,37 @@ UGM_ICON=/path/to/ubuntu-gaming-mode.png \
 bash packaging/build-deb.sh
 ```
 
-For UGM 1.0.0-3, `build-deb.sh` refuses a Gamescope binary whose SHA256 differs from the validated one.
+The script rejects a Gamescope binary whose SHA256 is not authorized for the
+package version. Both assets are included in the published `.deb`, not in Git.
 
-## Reproducibility note
+## Gamescope 3.16.30 GBM
 
-The repository is now suitable as the source of future UGM package revisions, but **1.0.0-3 is not claimed to be byte-for-byte reproducible from Git alone**.
+- Upstream base: `ad2763da1c48860f649abfe842a087188dcb6e20`.
+- Patches 0001–0008: upstream-derived GBM port.
+- Patch 0009: UGM safety fallback.
+- Final tree: `5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
+- Binary SHA256:
+  `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
 
-The Gamescope binary bundled with 1.0.0-3 was modified during UGM development for two project-specific requirements:
+Exact source preparation:
 
-- correct 4K operation in the validated UGM environment;
-- integration with the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin through a small connector used by the NIS workflow.
+```bash
+git clone https://github.com/ValveSoftware/gamescope.git
+cd gamescope
+git checkout ad2763da1c48860f649abfe842a087188dcb6e20
+git submodule update --init --recursive
+git am /path/to/gamescope/versions/3.16.30-gbm/patches/*.patch
+```
 
-The modified Gamescope source tree and exact patch set were deleted after the validated binary had been produced. Because those sources no longer exist, this repository **does not claim to know the exact code changes** and will not attempt to recreate them from memory.
+See [`BUILD.md`](gamescope/versions/3.16.30-gbm/BUILD.md) for the toolchain and
+[`VALIDATION.md`](gamescope/versions/3.16.30-gbm/VALIDATION.md) for test scope.
 
-The current 1.0.0-3 binary and its SHA256 therefore remain the canonical reference.
+The embedded version remains `3.16.30-8-gb211c9d` because the ninth change was
+built before its source diff became a numbered commit. Runtime identity is
+anchored by the binary SHA256 and final source tree above.
 
-## Future Gamescope 3.16.30 work
+## Historical 1.0.0-3 note
 
-A separate reproducible GBM scan-out port for Gamescope 3.16.30 is documented under [`gamescope/versions/3.16.30-gbm/`](gamescope/versions/3.16.30-gbm/README.md). It includes the exact upstream base, eight upstream-derived GBM patches, one separate UGM crash-safety patch, the build recipe, source-tree proof and validation record.
-
-That new port does not reconstruct the lost 1.0.0-3 Gamescope 3.16.28 source or its Sharp Filter Selector connector. It is maintained as source material for a future versioned UGM package.
+The modified Gamescope 3.16.28 tree used for release 1.0.0-3 was lost and cannot
+be reconstructed. That historical limitation does not apply to 2.0.0-1: the
+3.16.30 runtime and all nine patches are fully documented.

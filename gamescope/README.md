@@ -1,52 +1,40 @@
-# Custom Gamescope runtime for Ubuntu Gaming Mode
+# Gamescope bundled with Ubuntu Gaming Mode
 
 **English** | [Español](README_es.md)
 
-Ubuntu Gaming Mode 1.0.0-3 GOLD ships a validated **custom** Gamescope binary inside the release package.
-
-This is not an unmodified upstream build. During UGM development it was modified to:
-
-- work correctly with the project's validated 4K Gaming Mode configuration;
-- interoperate with the [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky Loader plugin through a small connector used by the NIS integration.
-
-Validated runtime:
+Ubuntu Gaming Mode 2.0.0-1 bundles a reproducible Gamescope 3.16.30 GBM build:
 
 ```text
-gamescope 3.16.28-3-g0d07f6e
+version:  gamescope 3.16.30-8-gb211c9d
+SHA256:   5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
+path:     /usr/lib/ubuntu-gaming-mode/gamescope
 ```
 
-SHA256:
+The compiled binary is distributed in the `.deb` and is not stored in Git.
 
-```text
-e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c
-```
+## Reproducible source
 
-Installed path:
+[`versions/3.16.30-gbm/`](versions/3.16.30-gbm/README.md) contains:
 
-```text
-/usr/lib/ubuntu-gaming-mode/gamescope
-```
+- upstream base commit `ad2763da1c48860f649abfe842a087188dcb6e20`;
+- eight upstream-derived GBM port patches;
+- one separate UGM safety-fallback patch;
+- exact application order;
+- final source tree `5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`;
+- build recipe, toolchain, audit and validation records.
 
-The compiled binary is distributed in the `.deb` release rather than committed to Git history.
+UGM enables the GBM path with `gamescope_drm_gbm_scanout=1`. It lets the DRM
+backend allocate scan-out buffers through GBM and Vulkan import them, avoiding
+the 4K corruption previously observed on the NVIDIA reference system. Patch
+0009 prevents an upscale-semaphore import failure from bringing down the session
+and falls back to normal composition.
 
-## Reproducibility status
+## Scope
 
-The UGM 1.0.0-3 repository publishes the UGM source/configuration files extracted from the validated GOLD package.
+The series does not select scaling filters or change HDR/VRR behavior. Sharp
+Filter Selector uses capabilities exposed by Gamescope/Steam rather than a
+hidden connector in this patch series.
 
-The modified Gamescope source tree used to produce the validated 1.0.0-3 binary was later deleted. As a result, the exact modifications, patch set and build recipe can no longer be recovered reliably and are intentionally **not reconstructed from memory** in this repository.
-
-For 1.0.0-3, the validated binary and SHA256 above are therefore the canonical integrity reference.
-
-One concrete historical behavior is known even though the exact patch is lost: before the final validated build, the RTX 2060 reference system suffered severe 4K DRM scan-out corruption, with the image split into misplaced sections and strong blue/cyan, pink/magenta and purple corruption. The current 1.0.0-3 Gamescope build no longer reproduces that failure on the validated system and its 4K path is stable.
-
-This is intentionally documented as an observed before/after result, not as a claim about the exact underlying fix or universal NVIDIA behavior.
-
-The lost 1.0.0-3 patch set is not reverse-engineered or approximated merely for documentation. A separate, reproducible Gamescope 3.16.30 GBM port now exists for future UGM work; it does not claim to reconstruct the historical Sharp Filter Selector connector.
-
-Do not replace this binary in a 1.0.0-3 package without changing the package version and re-running the physical acceptance tests.
-
-## Reproducible Gamescope 3.16.30 GBM port
-
-The source provenance, eight-patch upstream GBM port, separate ninth UGM crash-safety patch, exact build recipe, audit and validation scope for the newer port are preserved under [`versions/3.16.30-gbm/`](versions/3.16.30-gbm/README.md).
-
-This is future-version material. It does not alter the historical 1.0.0-3 package or make that release reproducible from source.
+The historical Gamescope 3.16.28 used in UGM 1.0.0-3 cannot be reproduced
+because its modified tree was lost. That limitation is confined to the old
+release; the 3.16.30 runtime in 2.0.0-1 is fully documented.

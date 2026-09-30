@@ -2,223 +2,149 @@
 
 [English](README.md) | **Español**
 
-**Ubuntu Gaming Mode (UGM)** ofrece un modo juego estilo SteamOS para **Ubuntu 26.04** basado en una sesión dedicada de **Gamescope DRM/KMS** y Steam Gamepad UI.
-
-Permite cambiar entre el escritorio normal de Ubuntu y una sesión de juego tipo consola sin sustituir Ubuntu ni convertir el sistema en otra distribución.
+**Ubuntu Gaming Mode (UGM)** añade a Ubuntu Desktop una sesión de juego tipo
+consola basada en Gamescope DRM/KMS y Steam Gamepad UI. Permite cambiar entre
+el escritorio normal y Gaming Mode sin sustituir Ubuntu por otra distribución.
 
 ## Versión actual
 
-**Ubuntu Gaming Mode 1.0.0-3 — GOLD**
+**Ubuntu Gaming Mode 2.0.0-1**
 
-Validado en Ubuntu 26.04 con una NVIDIA GeForce RTX 2060 y el runtime de Gamescope incluido en el paquete:
+- Ubuntu 26.04 amd64.
+- Gamescope `3.16.30-8-gb211c9d` con port GBM reproducible.
+- Salida 4K, HDR y VRR/Adaptive Sync validados en NVIDIA RTX 2060.
+- Steam Overlay, mando y MangoApp/MangoHud.
+- Escalado FSR, NIS y SGSR según las capacidades de Gamescope/Steam.
+- Cambio Desktop ↔ Gaming Mode mediante GDM y AccountsService.
+- Suspensión estilo consola mediante el botón físico, opcional.
+- Publicación del Gamescope de UGM como comando global, opcional y reversible.
+- Snapshot original, rollback y Doctor integrado.
 
-- Gamescope: `3.16.28-3-g0d07f6e`
-- sesión Gaming Mode dedicada sobre DRM/KMS
-- cambio Desktop ↔ Gaming Mode
-- salida 4K
-- HDR
-- VRR / Adaptive Sync
-- Steam Overlay
-- soporte de mando
-- MangoApp / MangoHud
-- escalado FSR
-- escalado NIS, desbloqueado mediante el plugin de Decky Loader [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector)
+El `.deb` y su `SHA256SUMS` se publican juntos en la release de GitHub.
 
-### SHA256 de la versión
+## Novedades de 2.0.0-1
+
+### Gamescope 3.16.30 reproducible
+
+UGM incluye un runtime dedicado en:
 
 ```text
-959afa06fd87eeeba8ffc1d4a3a6c965f9fa902d5678d43597b2ce7b20dca797  ubuntu-gaming-mode_1.0.0-3_amd64.deb
+/usr/lib/ubuntu-gaming-mode/gamescope
 ```
 
-## NVIDIA: Gamescope DRM 4K, HDR y VRR validados en una RTX 2060
+Su código se reconstruye desde el commit upstream
+`ad2763da1c48860f649abfe842a087188dcb6e20` y la serie versionada de nueve
+patches de [`gamescope/versions/3.16.30-gbm/`](gamescope/versions/3.16.30-gbm/README_es.md).
+Los patches producen el árbol final
+`5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
 
-UGM 1.0.0-3 se desarrolló y superó su aceptación física sobre una **NVIDIA GeForce RTX 2060 de 6 GB** utilizando el driver propietario **NVIDIA 595.91.07** en Ubuntu 26.04.
+Los ocho primeros trasladan la ruta de buffers GBM aptos para scan-out. El
+noveno añade un fallback seguro cuando falla la importación del semáforo de
+reescalado preventivo. En el sistema NVIDIA de referencia esto conserva una
+sesión 4K estable con HDR y VRR.
 
-La sesión dedicada Gamescope DRM/KMS validada incluye:
+### Botón físico estilo consola
 
-- salida 4K;
-- HDR;
-- VRR / Adaptive Sync;
-- Steam Overlay;
-- soporte de mando;
-- MangoApp / MangoHud;
-- escalado FSR y NIS;
-- cambio Desktop ↔ Gaming Mode.
+El instalador puede habilitar, de forma **opcional y desactivada por defecto**,
+una pulsación corta del botón físico que entrega a Steam su flujo nativo
+`steam://shortpowerpress`. Solo se captura en la sesión Gaming Mode gestionada;
+el escritorio conserva su comportamiento normal.
 
-NVIDIA continúa siendo una ruta más exigente dentro del ecosistema SteamOS/Gamescope que la configuración AMD habitual. Las referencias siguientes se incluyen como contexto técnico, **no como crítica hacia Bazzite o ChimeraOS**. Ambos proyectos han realizado aportaciones muy importantes al gaming en Linux y su documentación es especialmente valiosa precisamente porque expone con transparencia las limitaciones de hardware y sus workarounds:
+### Comando Gamescope global
 
-- Gamescope upstream admite el driver propietario de NVIDIA, pero exige un driver suficientemente reciente y soporte DRM KMS/modesetting ([README de Gamescope](https://github.com/ValveSoftware/gamescope));
-- Bazzite clasifica oficialmente Steam Gaming Mode con NVIDIA como soportado con **limitaciones importantes** frente a AMD. Su documentación explica que activar **GPU accelerated rendering in web views** puede mejorar el rendimiento de la interfaz de Steam en NVIDIA, aunque también advierte de posibles artefactos gráficos graves ([compatibilidad de hardware](https://docs.bazzite.gg/Gaming/Hardware_compatibility_for_gaming/), [quirks de Gaming Mode](https://docs.bazzite.gg/Handheld_and_HTPC_edition/quirks/));
-- ChimeraOS documentó históricamente las dificultades de NVIDIA con Wayland/Gamescope, retiró temporalmente el soporte NVIDIA y posteriormente volvió a ofrecer soporte oficial para GTX serie 16 y posteriores, manteniendo la advertencia de un rendimiento pobre de la interfaz de Steam en NVIDIA. Su documentación de troubleshooting recomienda la aceleración GPU de las webviews de Steam para reducir ese lag ([notas de versión](https://github.com/ChimeraOS/chimeraos/wiki/Release-Notes), [troubleshooting](https://github.com/ChimeraOS/chimeraos/wiki/Troubleshooting));
-- un reporte upstream de Gamescope de 2026 documenta **corrupción de scan-out 4K con NVIDIA**: aparecen columnas/bandas verticales con contenido del framebuffer desplazado a 3840×2160 @ 30/60/120, mientras 1080p y 1440p permanecen limpios. El problema se reprodujo en RTX 4080 SUPER y RTX 4070 y también aparece con contenido estático y con force-composition activado ([Gamescope issue #2309](https://github.com/ValveSoftware/gamescope/issues/2309)).
+Otra opción, también desactivada por defecto, permite crear:
 
-En el sistema de referencia de UGM con RTX 2060 se ha validado físicamente una **interfaz Steam Gamepad UI fluida tanto a 60 FPS como a 120 FPS** dentro de Gaming Mode, además de las pruebas 4K/HDR/VRR indicadas arriba. Durante esa aceptación no se observaron problemas de lag en la UI ni artefactos gráficos que rompieran los juegos.
+```text
+/usr/local/bin/gamescope -> /usr/lib/ubuntu-gaming-mode/gamescope
+```
 
-### Corrupción histórica de scan-out 4K en NVIDIA resuelta en la build validada de UGM
+No desinstala el Gamescope de Ubuntu. UGM conserva el estado anterior y lo
+restaura al desactivar la opción o purgar el paquete.
 
-Durante el desarrollo de UGM, el sistema de referencia con RTX 2060 sufrió anteriormente un fallo grave de presentación 4K sobre DRM que visualmente coincide con la misma familia de corrupción que ahora describe el issue #2309 de Gamescope:
+Ambas opciones pueden cambiarse posteriormente:
 
-- la imagen 4K aparecía cortada en varias secciones;
-- partes del framebuffer se mostraban colocadas en zonas de la pantalla que no correspondían;
-- aparecía corrupción intensa de color azul/cian, rosa/magenta y morado por la imagen;
-- el fallo estaba asociado a la ruta Gamescope DRM a 4K.
-
-La build actual de Gamescope incluida en UGM 1.0.0-3 ya no reproduce ese problema en la RTX 2060 validada: la salida 4K está estabilizada, incluidas las pruebas con HDR, VRR y la interfaz de Steam.
-
-Como el árbol fuente modificado de Gamescope se eliminó posteriormente, UGM no puede demostrar qué cambio exacto eliminó la corrupción ni afirmar que resuelva el issue upstream todavía abierto en otras GPU NVIDIA. La afirmación verificable es más concreta: **la corrupción de scan-out NVIDIA a 4K encontrada durante el desarrollo de UGM fue superada y la configuración RTX 2060 de referencia es actualmente estable a 4K**.
-
-UGM **no** afirma compatibilidad universal con NVIDIA ni que esos problemas de upstream o de otras distribuciones estén resueltos para todas las GPU. La afirmación probada es más concreta: el sistema de referencia con RTX 2060 ejecuta correctamente una sesión Gamescope DRM independiente a 4K con HDR, VRR, interfaz Steam fluida a 60/120 FPS y las funciones de Steam Gaming Mode indicadas arriba.
-
-Para usuarios de NVIDIA que ya utilizan Ubuntu, UGM ofrece un **modelo de integración diferente** al de distribuciones gaming dedicadas como SteamOS, Bazzite o ChimeraOS: añade una sesión Gamescope tipo consola independiente conservando el escritorio Ubuntu y la pila de drivers existente. Es una diferencia de enfoque e integración, no una afirmación de que UGM sustituya o sea superior a esos proyectos.
-
-La build de Gamescope incluida se adaptó durante el desarrollo para la ruta 4K validada y la integración con Sharp Filter Selector. Su árbol fuente modificado se eliminó posteriormente, por lo que no se reconstruyen ni se atribuyen de memoria los cambios exactos realizados en Gamescope.
-
-### Problema conocido: fondo negro en notificaciones de Steam
-
-En determinadas configuraciones NVIDIA, Steam Big Picture puede mostrar sus
-notificaciones dentro de un rectángulo negro. El problema también se reproduce
-desde el escritorio sin Gamescope y la superficie ya llega opaca al compositor,
-por lo que UGM no puede recuperar esa transparencia de forma segura. Consulta
-la [explicación, evidencias y seguimiento
-upstream](docs/es/problemas-conocidos.md).
-
-## Agradecimientos
-
-Ubuntu Gaming Mode se apoya en el trabajo de toda la comunidad de gaming en Linux. **UGM no existiría en su forma actual sin los proyectos siguientes.**
-
-Un agradecimiento especial a **Valve, SteamOS y el equipo de Steam Deck**. SteamOS estableció el modelo de sesión de juego dedicada en el que se inspira UGM, y el trabajo open source de Valve sobre el compositor evolucionó desde `steamos-compositor` hasta **Gamescope**, la tecnología central que hace posible el Gaming Mode DRM/KMS de UGM. Steam Deck y SteamOS también constituyen la referencia práctica de una interfaz Gaming Mode orientada a mando que convive con un escritorio Linux normal.
-
-Un agradecimiento especialmente importante a **ChimeraOS**. Su proyecto **gamescope-session-plus** está basado explícitamente en el trabajo de Valve con Gamescope/Steam Deck, está diseñado para poder utilizarse más allá de ChimeraOS y aportó tanto documentación como una base técnica fundamental para el runtime de sesión de UGM. UGM adapta ese trabajo a su entorno Ubuntu/GDM/systemd y conserva la atribución upstream y la licencia MIT correspondientes.
-
-Gracias también a **Bazzite** por su amplia implementación de Steam Gaming Mode y por su documentación sobre una gran variedad de hardware. Su forma transparente de documentar las limitaciones y workarounds de NVIDIA ha sido una referencia útil para validar y explicar el comportamiento NVIDIA de UGM.
-
-UGM es un proyecto independiente y no está afiliado ni respaldado por Valve, ChimeraOS, Bazzite, NVIDIA o Canonical. Las comparaciones de este README pretenden documentar comportamiento probado y contexto técnico, no restar valor al trabajo de los proyectos que han hecho posible este ecosistema.
+```bash
+sudo dpkg-reconfigure ubuntu-gaming-mode
+```
 
 ## Instalación
 
-Descarga el `.deb` y `SHA256SUMS` desde la misma GitHub Release, verifica el checksum e instala el paquete:
+Descarga el `.deb` y `SHA256SUMS` desde la release, y ejecuta:
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_1.0.0-3_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.0.0-1_amd64.deb
 ```
 
-El paquete ejecuta automáticamente su diagnóstico final durante la instalación. También puede ejecutarse manualmente en cualquier momento:
+El instalador crea el snapshot original, configura la sesión y ejecuta Doctor.
+No reinicia GDM ni cierra la sesión actual.
+
+Diagnóstico manual:
 
 ```bash
 sudo ubuntu-gaming-mode-doctor
 ```
 
-Una instalación saludable de 1.0.0-3 devuelve:
+Consulta la [guía de instalación](docs/es/instalacion.md).
 
-```text
-OK:       54
-Warnings: 0
-Fallos:   0
-```
+## Cambiar de modo
 
-Consulta la [guía de instalación en español](docs/es/instalacion.md) para más detalles.
-
-## Cambiar entre Desktop y Gaming Mode
-
-Desde Ubuntu Desktop, ejecuta **Volver a Gaming Mode**.
-
-El lanzador prepara la siguiente sesión de GDM, solicita confirmación, cierra limpiamente la sesión de Ubuntu y entra en Steam Gaming Mode.
-
-Al volver desde Gaming Mode, UGM restaura la sesión de escritorio de Ubuntu configurada.
+Desde Ubuntu Desktop abre **Volver a Gaming Mode**. UGM prepara la siguiente
+sesión GDM, solicita confirmación y cierra el escritorio de forma ordenada.
+Al salir de Gaming Mode restaura la sesión Ubuntu configurada.
 
 ## Desinstalación y rollback
-
-Para eliminar UGM y restaurar el baseline capturado antes de la primera instalación:
 
 ```bash
 sudo apt purge ubuntu-gaming-mode
 ```
 
-UGM conserva un snapshot inmutable del estado original, de forma que una actualización no sustituya la referencia utilizada para el rollback.
+UGM restaura el baseline capturado antes de la primera instalación. Consulta
+[desinstalación y rollback](docs/es/desinstalacion-y-rollback.md).
 
-Consulta [Desinstalación y rollback](docs/es/desinstalacion-y-rollback.md).
+## Plataforma validada
 
-## Rendimiento de Gamescope: DRM frente a modo nested
+La aceptación física principal se realizó sobre Ubuntu 26.04, una NVIDIA RTX
+2060 de 6 GB y el driver propietario NVIDIA 595.91.07. UGM no afirma
+compatibilidad universal con todas las GPU: NVIDIA sigue siendo una ruta más
+exigente que la configuración AMD habitual dentro del ecosistema Gamescope.
 
-UGM existe específicamente para evitar que Gamescope se ejecute nested dentro de GNOME/Mutter durante Gaming Mode.
+## Rendimiento
 
-Mediciones en Dragon Ball Z: Kakarot, con resolución interna 1920×1080 y salida 2560×1440:
+UGM evita ejecutar Gamescope anidado dentro de GNOME/Mutter. En la medición de
+Dragon Ball Z: Kakarot, 1080p interno → 1440p, la sesión DRM dedicada alcanzó
+aproximadamente un 18–25 % más rendimiento lineal y un 25–33 % más con FSR/NIS
+que las rutas nested probadas. Consulta la
+[metodología completa](docs/es/rendimiento-fsr-nis-gamescope-nested-vs-drm.md).
 
-| Escenario | Linear | FSR / NIS |
-|---|---:|---:|
-| Gamescope nested, SDL | ~96 FPS | ~88–91 FPS |
-| Gamescope nested, Wayland | ~101–102 FPS | ~88 FPS |
-| Gamescope DRM / Gaming Mode | ~120 FPS | ~114–117 FPS |
+## Problema conocido de Steam
 
-En esta prueba, la sesión DRM dedicada ofreció aproximadamente **+18–25 %** de rendimiento en linear y **+25–33 %** con FSR/NIS frente a las rutas nested probadas.
+Algunas notificaciones de Steam Big Picture muestran un rectángulo negro en la
+pila NVIDIA probada. También ocurre desde el escritorio sin Gamescope y la
+superficie ya llega opaca al compositor, por lo que actualmente no existe una
+corrección segura dentro de UGM. Consulta
+[problemas conocidos](docs/es/problemas-conocidos.md).
 
-Metodología, resultados e interpretación completos: [Rendimiento FSR/NIS: Gamescope nested frente a DRM](docs/es/rendimiento-fsr-nis-gamescope-nested-vs-drm.md).
+## Código fuente y reproducibilidad
 
-## Arquitectura
+- `src/`: runtime y helpers de UGM.
+- `system/`: unidades systemd, sesión y configuración de Gamescope.
+- `packaging/`: metadatos y construcción del paquete Debian.
+- `gamescope/versions/3.16.30-gbm/`: patches, procedencia, build y validación.
+- `tests/`: pruebas deterministas de las integraciones opcionales.
 
-Ruta simplificada de Gaming Mode:
+El binario Gamescope y el icono no se guardan en Git; se incluyen en el `.deb`
+versionado y se verifican mediante SHA256. Consulta [SOURCE_es.md](SOURCE_es.md).
 
-```text
-Juego
-  -> Gamescope
-  -> FSR/NIS cuando está activado
-  -> DRM/KMS
-  -> Pantalla
-```
+## Agradecimientos
 
-Esto elimina GNOME/Mutter de la ruta final de presentación del juego.
-
-Para NIS, UGM utiliza [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector), un plugin de Decky Loader que desbloquea y permite seleccionar el filtro dentro de Gaming Mode.
-
-Consulta la [arquitectura de Ubuntu Gaming Mode](docs/es/arquitectura.md).
-
-## Comportamiento importante
-
-UGM gestiona:
-
-- la sesión Steam Gaming Mode de GDM/Wayland;
-- la sesión seleccionada en AccountsService;
-- los valores de autologin necesarios para cambiar entre Desktop y Gaming Mode;
-- una regla sudoers mínima utilizada únicamente por el servicio de rearme del autologin;
-- su propio runtime de Gamescope bajo `/usr/lib/ubuntu-gaming-mode/`.
-
-La instalación y las actualizaciones **no reinician GDM ni cierran la sesión actual**.
-
-## Código fuente y empaquetado
-
-El código y los archivos del paquete están publicados en este repositorio:
-
-- `src/` — scripts de runtime y helpers de sesión de UGM
-- `system/` — unidades systemd, entradas de escritorio/sesión y configuración de Gamescope
-- `packaging/DEBIAN/` — control y scripts de mantenimiento de Debian
-- `packaging/build-deb.sh` — script de ensamblado del paquete
-- `gamescope/` — información sobre el runtime custom de Gamescope validado
-
-Consulta [Estructura del código fuente y reproducibilidad](SOURCE_es.md).
-
-El binario custom de Gamescope y el icono de la aplicación no se almacenan dentro del historial Git; son entradas del proceso de build y están incluidos en el artefacto de release validado.
-
-El Gamescope incluido en 1.0.0-3 **no es una build upstream sin modificar**. Durante el desarrollo de UGM se adaptó para funcionar correctamente a 4K y para interoperar con [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) mediante un pequeño conector de integración. El árbol de código fuente modificado se eliminó posteriormente, por lo que ya no es posible reconstruir de forma fiable el conjunto exacto de cambios. Si en una versión futura de UGM es necesario actualizar Gamescope, esa integración se volverá a implementar sobre la nueva base y se documentará entonces.
-
-## Documentación en español
-
-- [Instalación](docs/es/instalacion.md)
-- [Desinstalación y rollback](docs/es/desinstalacion-y-rollback.md)
-- [Arquitectura](docs/es/arquitectura.md)
-- [Rendimiento FSR/NIS: Gamescope nested frente a DRM](docs/es/rendimiento-fsr-nis-gamescope-nested-vs-drm.md)
-- [Estructura del código fuente](SOURCE_es.md)
-- [Runtime custom de Gamescope](gamescope/README_es.md)
-- [Historial de cambios](CHANGELOG_es.md)
-- [Notas de la release v1.0.0-3 GOLD](docs/releases/v1.0.0-3.md)
-- [Avisos de terceros](THIRD_PARTY_NOTICES_es.md) · [English](THIRD_PARTY_NOTICES.md)
-
-## Estado
-
-1.0.0-3 es la primera versión candidata promovida a **GOLD** después de validar instalación limpia, actualización, purge/rollback y el ciclo físico Desktop ↔ Gaming Mode.
+UGM se apoya en Valve/SteamOS/Gamescope y en la infraestructura de sesión de
+ChimeraOS `gamescope-session-plus`. También agradece la documentación y el
+trabajo de Bazzite y de la comunidad Linux gaming. UGM es un proyecto
+independiente, no afiliado ni respaldado por Valve, ChimeraOS, Bazzite, NVIDIA
+o Canonical.
 
 ## Licencia
 
-El código original del proyecto UGM se publica bajo la [Licencia MIT](LICENSE).
-
-Los componentes de terceros conservan sus propias licencias y avisos de copyright. Consulta [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) y el [resumen en español](THIRD_PARTY_NOTICES_es.md), incluyendo el aviso MIT de ChimeraOS gamescope-session y la licencia BSD 2-Clause de Gamescope.
+El código original de UGM usa [MIT](LICENSE). Los componentes de terceros
+mantienen sus licencias; consulta [THIRD_PARTY_NOTICES_es.md](THIRD_PARTY_NOTICES_es.md).

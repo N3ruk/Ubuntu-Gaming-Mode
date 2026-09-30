@@ -1,0 +1,54 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+ACTION="${1:-}"
+INSTANCE="${2:-}"
+STATE_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ubuntu-gaming-mode"
+MARKER="$STATE_DIR/gaming-session.active"
+
+case "$INSTANCE" in
+    steam) ;;
+    *) exit 0 ;;
+esac
+
+case "$ACTION" in
+    start)
+        mkdir -p -- "$STATE_DIR"
+        chmod 0700 -- "$STATE_DIR"
+
+        main_pid="$(
+            systemctl --user show \
+                "gamescope-session-plus@${INSTANCE}.service" \
+                --property=MainPID --value 2>/dev/null || true
+        )"
+
+        case "$main_pid" in
+            ''|*[!0-9]*) exit 1 ;;
+        esac
+
+        [ "$main_pid" -gt 1 ] || exit 1
+
+        tmp="${MARKER}.tmp.$$"
+        trap 'rm -f -- "${tmp:-}"' EXIT
+
+        {
+            printf 'version=1\n'
+            printf 'uid=%s\n' "$(id -u)"
+            printf 'instance=%s\n' "$INSTANCE"
+            printf 'pid=%s\n' "$main_pid"
+        } > "$tmp"
+
+        chmod 0600 -- "$tmp"
+        mv -f -- "$tmp" "$MARKER"
+        trap - EXIT
+        ;;
+
+    stop)
+        rm -f -- "$MARKER"
+        ;;
+
+    *)
+        printf 'Uso: %s {start|stop} steam\n' "$0" >&2
+        exit 2
+        ;;
+esac

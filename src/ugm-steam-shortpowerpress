@@ -1,0 +1,139 @@
+#!/usr/bin/python3
+"""Entrega una pulsación corta fija a Steam desde la sesión del usuario."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import stat
+import subprocess
+import sys
+from pathlib import Path
+
+
+MARKER_RELATIVE = Path("ubuntu-gaming-mode/gaming-session.active")
+SAFE_MARKER_KEYS = {"version", "uid", "instance", "pid"}
+
+
+def read_cmdline(pid: int) -> list[str]:
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()[:65536]
+    except (FileNotFoundError, PermissionError, ProcessLookupError):
+        return []
+    return [part.decode(errors="replace") for part in raw.split(b"\0") if part]
+
+
+def process_uid(pid: int) -> int | None:
+    try:
+        for line in Path(f"/proc/{pid}/status").read_text(errors="replace").splitlines():
+            if line.startswith("Uid:"):
+                return int(line.split()[1])
+    except (FileNotFoundError, PermissionError, ProcessLookupError, ValueError):
+        pass
+    return None
+
+
+def marker_is_valid(runtime_dir: Path, uid: int) -> bool:
+    marker = runtime_dir / MARKER_RELATIVE
+    try:
+        info = marker.lstat()
+        if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
+            return False
+        if info.st_uid != uid or info.st_size > 512 or info.st_mode & 0o077:
+            return False
+        values: dict[str, str] = {}
+        for line in marker.read_text(errors="replace")[:512].splitlines():
+            if "=" not in line:
+                return False
+            key, value = line.split("=", 1)
+            if key not in SAFE_MARKER_KEYS or key in values:
+                return False
+            values[key] = value
+        if set(values) != SAFE_MARKER_KEYS:
+            return False
+        pid = int(values["pid"])
+    except (FileNotFoundError, OSError, ValueError):
+        return False
+    if values["version"] != "1" or values["instance"] != "steam":
+        return False
+    if values["uid"] != str(uid) or process_uid(pid) != uid:
+        return False
+    args = read_cmdline(pid)
+    return "gamescope-session-plus-runtime" in "\0".join(args) and "steam" in args
+
+
+def steam_process(uid: int) -> int | None:
+    for entry in os.scandir("/proc"):
+        if not entry.name.isdigit():
+            continue
+        pid = int(entry.name)
+        if process_uid(pid) != uid:
+            continue
+        args = read_cmdline(pid)
+        executable = Path(args[0]).name.lower() if args else ""
+        if "-gamepadui" in args and "steam" in executable:
+            return pid
+    return None
+
+
+def steam_binary(home: Path) -> Path | None:
+    for candidate in (
+        home / ".steam/root/ubuntu12_32/steam",
+        Path("/usr/bin/steam"),
+        Path("/usr/games/steam"),
+    ):
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def self_test() -> int:
+    assert MARKER_RELATIVE == Path("ubuntu-gaming-mode/gaming-session.active")
+    assert SAFE_MARKER_KEYS == {"version", "uid", "instance", "pid"}
+    assert ["steam", "-ifrunning", "steam://shortpowerpress"][-1] == "steam://shortpowerpress"
+    print("ugm-steam-shortpowerpress: self-test OK")
+    return 0
+
+
+def run() -> int:
+    uid = os.getuid()
+    runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{uid}"))
+    home = Path.home()
+    if uid < 1000 or runtime_dir != Path("/run/user") / str(uid):
+        print("ugm-steam-shortpowerpress: identidad de usuario no válida", file=sys.stderr)
+        return 1
+    if not marker_is_valid(runtime_dir, uid):
+        print("ugm-steam-shortpowerpress: no hay una sesión Gaming Mode válida", file=sys.stderr)
+        return 1
+    if steam_process(uid) is None:
+        print("ugm-steam-shortpowerpress: Steam Gamepad UI no está disponible", file=sys.stderr)
+        return 1
+    binary = steam_binary(home)
+    if binary is None:
+        print("ugm-steam-shortpowerpress: no se encontró el launcher de Steam", file=sys.stderr)
+        return 1
+    result = subprocess.run(
+        [str(binary), "-ifrunning", "steam://shortpowerpress"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        timeout=10,
+        check=False,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or "").strip().replace("\n", " ")[:240]
+        print(f"ugm-steam-shortpowerpress: Steam devolvió rc={result.returncode}: {detail}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    return self_test() if args.self_test else run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
