@@ -14,7 +14,8 @@ and Gaming Mode without replacing Ubuntu with another distribution.
 - Gamescope `3.16.30-8-gb211c9d` with a reproducible GBM port.
 - 4K output, HDR and VRR/Adaptive Sync validated on an NVIDIA RTX 2060.
 - Steam Overlay, gamepad and MangoApp/MangoHud.
-- FSR, NIS and SGSR scaling according to Gamescope/Steam capabilities.
+- FSR, NIS and SGSR scaling, with optional Quick Access Menu control through
+  [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector).
 - Desktop ↔ Gaming Mode switching through GDM and AccountsService.
 - Optional console-style physical power-button suspension.
 - Optional reversible publication of UGM's Gamescope as the global command.
@@ -41,6 +42,33 @@ The patches produce final tree
 The first eight patches port the GBM scan-out-capable buffer path. The ninth
 adds a safe fallback when pre-emptive-upscale semaphore import fails. On the
 NVIDIA reference system this preserves a stable 4K session with HDR and VRR.
+
+### Sharp Filter Selector: SGSR, FSR and NIS from QAM
+
+UGM 2.0.0-1's Gamescope 3.16.30 exposes the modern scaling properties used by
+[Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector), an
+optional Decky Loader plugin that adds explicit **Use FSR** and **Use NIS**
+controls to the Quick Access Menu while preserving Gamescope's native Sharp
+path. Download the current packaged plugin from its
+[releases page](https://github.com/N3ruk/Sharp-Filter-Selector/releases/latest).
+
+Together they provide:
+
+- native **SGSR** for SDR application input when both overrides are disabled;
+- Gamescope's native **FSR fallback** when the application supplies HDR input;
+- explicit FSR or NIS selection and a shared 0–5 sharpness control;
+- correct availability based on the active application's HDR feedback, not
+  merely on whether the display output is in HDR mode; and
+- synchronization across Gamescope's Xwayland roots without overriding the
+  scaler selected by Steam/QAM (`Auto`, `Fit`, `Integer` or `Stretch`).
+
+The connection is deliberately narrow: Steam/QAM continues to own
+`GAMESCOPE_NEW_SCALING_SCALER`; the plugin reads the active Gamescope/Xwayland
+session and writes only the filter/sharpness properties such as
+`GAMESCOPE_NEW_SCALING_FILTER`, `GAMESCOPE_SHARP_FILTER` and
+`GAMESCOPE_FSR_SHARPNESS`. Gamescope then performs the actual scaling. The
+plugin does not patch, replace or install Gamescope, and UGM does not bundle or
+install Decky Loader or the plugin.
 
 ### Console-style physical power button
 

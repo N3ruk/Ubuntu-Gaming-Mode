@@ -14,7 +14,8 @@ el escritorio normal y Gaming Mode sin sustituir Ubuntu por otra distribución.
 - Gamescope `3.16.30-8-gb211c9d` con port GBM reproducible.
 - Salida 4K, HDR y VRR/Adaptive Sync validados en NVIDIA RTX 2060.
 - Steam Overlay, mando y MangoApp/MangoHud.
-- Escalado FSR, NIS y SGSR según las capacidades de Gamescope/Steam.
+- Escalado FSR, NIS y SGSR, con control opcional desde el menú de acceso rápido
+  mediante [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector).
 - Cambio Desktop ↔ Gaming Mode mediante GDM y AccountsService.
 - Suspensión estilo consola mediante el botón físico, opcional.
 - Publicación del Gamescope de UGM como comando global, opcional y reversible.
@@ -42,6 +43,34 @@ Los ocho primeros trasladan la ruta de buffers GBM aptos para scan-out. El
 noveno añade un fallback seguro cuando falla la importación del semáforo de
 reescalado preventivo. En el sistema NVIDIA de referencia esto conserva una
 sesión 4K estable con HDR y VRR.
+
+### Sharp Filter Selector: SGSR, FSR y NIS desde el QAM
+
+El Gamescope 3.16.30 de UGM 2.0.0-1 expone las propiedades modernas de escalado
+que utiliza [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector),
+un plugin opcional de Decky Loader que añade al menú de acceso rápido controles
+explícitos **Usar FSR** y **Usar NIS**, conservando a la vez la ruta Sharp nativa
+de Gamescope. El plugin empaquetado actual puede descargarse desde su
+[página de releases](https://github.com/N3ruk/Sharp-Filter-Selector/releases/latest).
+
+La combinación permite:
+
+- **SGSR nativo** cuando la entrada de la aplicación es SDR y ambos overrides
+  están desactivados;
+- el **fallback FSR nativo** de Gamescope cuando la aplicación entrega HDR;
+- seleccionar explícitamente FSR o NIS y ajustar una nitidez común de 0 a 5;
+- mostrar las opciones según el feedback HDR de la aplicación activa, no solo
+  porque la salida de pantalla esté configurada en HDR; y
+- sincronizar los distintos Xwayland de Gamescope sin sobrescribir el modo de
+  reescalado elegido en Steam/QAM (`Automático`, `Ajustar`, `Entero` o `Estirar`).
+
+La conexión es deliberadamente limitada: Steam/QAM continúa controlando
+`GAMESCOPE_NEW_SCALING_SCALER`; el plugin detecta la sesión Gamescope/Xwayland
+activa y escribe únicamente propiedades de filtro/nitidez como
+`GAMESCOPE_NEW_SCALING_FILTER`, `GAMESCOPE_SHARP_FILTER` y
+`GAMESCOPE_FSR_SHARPNESS`. Gamescope realiza después el reescalado real. El
+plugin no parchea, sustituye ni instala Gamescope, y UGM no incluye ni instala
+Decky Loader ni el propio plugin.
 
 ### Botón físico estilo consola
 
