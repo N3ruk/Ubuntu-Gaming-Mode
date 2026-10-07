@@ -162,8 +162,9 @@ corrección segura dentro de UGM. Consulta
 - `gamescope/versions/3.16.30-gbm/`: patches, procedencia, build y validación.
 - `tests/`: pruebas deterministas de las integraciones opcionales.
 
-El binario Gamescope y el icono no se guardan en Git; se incluyen en el `.deb`
-versionado y se verifican mediante SHA256. Consulta [SOURCE_es.md](SOURCE_es.md).
+El binario Gamescope no se guarda en Git. El icono de la aplicación está en
+`system/icons/` y ambos se incluyen en el `.deb` versionado. Consulta
+[SOURCE_es.md](SOURCE_es.md).
 
 ## Agradecimientos
 

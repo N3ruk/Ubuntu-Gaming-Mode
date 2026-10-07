@@ -159,8 +159,9 @@ fix. See [known issues](docs/known-issues.md).
 - `gamescope/versions/3.16.30-gbm/`: patches, provenance, build and validation.
 - `tests/`: deterministic tests for optional integrations.
 
-The Gamescope binary and application icon are not stored in Git; they are
-included in the versioned `.deb` and verified by SHA256. See [SOURCE.md](SOURCE.md).
+The Gamescope binary is not stored in Git. The application icon is available
+in `system/icons/` and both are included in the versioned `.deb`. See
+[SOURCE.md](SOURCE.md).
 
 ## Acknowledgements
 

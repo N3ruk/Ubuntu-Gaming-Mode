@@ -15,21 +15,19 @@ record for its bundled Gamescope runtime.
 - `tests/`: tests for optional integrations.
 - `docs/`: installation, rollback, architecture and performance.
 
-## Binary inputs not stored in Git
+## Binary input and application icon
 
-The build requires:
-
-1. the validated Gamescope executable;
-2. the UGM PNG icon.
+The build requires the validated Gamescope executable. The UGM PNG icon is
+tracked at `system/icons/ubuntu-gaming-mode.png` and used by default.
 
 ```bash
 GAMESCOPE_BIN=/path/to/gamescope \
-UGM_ICON=/path/to/ubuntu-gaming-mode.png \
 bash packaging/build-deb.sh
 ```
 
 The script rejects a Gamescope binary whose SHA256 is not authorized for the
-package version. Both assets are included in the published `.deb`, not in Git.
+package version. `UGM_ICON` can override the tracked icon when needed. Both
+assets are included in the `.deb`; the Gamescope binary remains outside Git.
 
 ## Gamescope 3.16.30 GBM
 

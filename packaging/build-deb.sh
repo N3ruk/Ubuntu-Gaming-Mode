@@ -11,15 +11,15 @@ VERSION="$(sed -n 's/^Version:[[:space:]]*//p' "$ROOT/packaging/DEBIAN/control" 
 ARCH="$(sed -n 's/^Architecture:[[:space:]]*//p' "$ROOT/packaging/DEBIAN/control" | head -n1)"
 
 GAMESCOPE_BIN="${GAMESCOPE_BIN:-}"
-UGM_ICON="${UGM_ICON:-}"
+UGM_ICON="${UGM_ICON:-$ROOT/system/icons/ubuntu-gaming-mode.png}"
 
 if [[ -z "$GAMESCOPE_BIN" || ! -f "$GAMESCOPE_BIN" ]]; then
     echo "ERROR: define GAMESCOPE_BIN con la ruta al binario Gamescope que se incluirá." >&2
     exit 1
 fi
 
-if [[ -z "$UGM_ICON" || ! -f "$UGM_ICON" ]]; then
-    echo "ERROR: define UGM_ICON con la ruta al icono PNG de UGM." >&2
+if [[ ! -f "$UGM_ICON" ]]; then
+    echo "ERROR: no se encuentra el icono PNG de UGM: $UGM_ICON" >&2
     exit 1
 fi
 
