@@ -1,0 +1,360 @@
+#!/usr/bin/env python3
+"""Manage opt-in BlueZ controller wake and the corresponding USB wake route."""
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+STATE = Path("/var/lib/ubuntu-gaming-mode/bt-wake.json")
+HID_UUIDS = {"00001124-0000-1000-8000-00805f9b34fb",
+             "00001812-0000-1000-8000-00805f9b34fb"}
+BLUEZ = "org.bluez"
+DEVICE = "org.bluez.Device1"
+PROPERTIES = "org.freedesktop.DBus.Properties"
+
+
+def read(path):
+    try:
+        return path.read_text(encoding="ascii").strip()
+    except (OSError, UnicodeError):
+        return None
+
+
+def boot_id():
+    return read(Path("/proc/sys/kernel/random/boot_id"))
+
+
+def bluez_objects():
+    import dbus
+    bus = dbus.SystemBus()
+    manager = dbus.Interface(bus.get_object(BLUEZ, "/"), "org.freedesktop.DBus.ObjectManager")
+    return bus, manager.GetManagedObjects()
+
+
+def wake_route(adapter):
+    """Resolve the live hci USB interface; never trust a stored sysfs path."""
+    if not re.fullmatch(r"hci[0-9]+", adapter):
+        return None
+    iface = (Path("/sys/class/bluetooth") / adapter / "device").resolve()
+    if not iface.exists() or not str(iface).startswith("/sys/devices/"):
+        return None
+    if not (iface / "driver").exists() or (iface / "driver").resolve().name != "btusb":
+        return None
+    usb = next((p for p in (iface, *iface.parents)
+                if (p / "idVendor").is_file() and (p / "idProduct").is_file()), None)
+    if usb is None:
+        return None
+    hub = next((p for p in usb.parents if re.fullmatch(r"usb[0-9]+", p.name)), None)
+    pci = next((p for p in usb.parents if re.fullmatch(
+        r"[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]", p.name)), None)
+    if hub is None or pci is None:
+        return None
+    nodes = [p / "power/wakeup" for p in (usb, hub, pci)]
+    if any(read(p) not in ("enabled", "disabled") for p in nodes):
+        return None
+    return {
+        "adapter": adapter, "usb_id": f"{read(usb / 'idVendor')}:{read(usb / 'idProduct')}",
+        "driver": "btusb", "nodes": [str(p) for p in nodes],
+        "wake": {str(p): read(p) for p in nodes},
+        "pci": pci.name,
+    }
+
+
+def devices(objects):
+    found = []
+    for path, interfaces in objects.items():
+        props = interfaces.get(DEVICE)
+        if props is None or not bool(props.get("Paired", False)):
+            continue
+        uuids = {str(x).lower() for x in props.get("UUIDs", [])}
+        if not (uuids & HID_UUIDS) or "WakeAllowed" not in props:
+            continue
+        adapter_path = str(props.get("Adapter", ""))
+        adapter = adapter_path.rsplit("/", 1)[-1]
+        found.append({
+            "path": str(path), "name": str(props.get("Name", "Mando Bluetooth")),
+            "adapter": adapter, "paired": True, "trusted": bool(props.get("Trusted", False)),
+            "wake_allowed": bool(props["WakeAllowed"]),
+        })
+    return sorted(found, key=lambda item: (item["adapter"], item["name"], item["path"]))
+
+
+def probe():
+    result = {
+        "schema_version": 1,
+        "sleep_modes": read(Path("/sys/power/mem_sleep")),
+        "bios_wake": "unverifiable",
+        "board": {"vendor": read(Path("/sys/class/dmi/id/board_vendor")),
+                  "name": read(Path("/sys/class/dmi/id/board_name"))},
+        "routes": [], "controllers": [], "hid_without_wake_allowed": 0,
+        "missing": [],
+        "candidate": False, "eligible": False, "ready_to_test": False,
+        "validated": False,
+    }
+    for cmd in ("pkexec", "systemctl"):
+        if shutil.which(cmd) is None:
+            result["missing"].append(cmd)
+    try:
+        import dbus  # noqa: F401
+    except ImportError:
+        result["missing"].append("python3-dbus")
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except (ImportError, ValueError):
+        result["missing"].append("python3-gi/gir1.2-gtk-3.0")
+    if shutil.which("bluetoothctl") is None:
+        result["missing"].append("bluez")
+    adapters = sorted(p.name for p in Path("/sys/class/bluetooth").glob("hci[0-9]*"))
+    result["routes"] = [route for adapter in adapters if (route := wake_route(adapter))]
+    try:
+        _bus, objects = bluez_objects()
+        result["controllers"] = devices(objects)
+        result["hid_without_wake_allowed"] = sum(
+            1 for interfaces in objects.values()
+            if (props := interfaces.get(DEVICE)) is not None
+            and bool(props.get("Paired", False))
+            and {str(x).lower() for x in props.get("UUIDs", [])} & HID_UUIDS
+            and "WakeAllowed" not in props
+        )
+    except Exception as exc:
+        result["missing"].append(f"BlueZ D-Bus: {type(exc).__name__}")
+    acpi = read(Path("/proc/acpi/wakeup")) or ""
+    for route in result["routes"]:
+        route["acpi_wake"] = next(
+            (("enabled" if "*enabled" in line else "disabled")
+             for line in acpi.splitlines() if route["pci"] in line), "unknown")
+    result["candidate"] = bool(result["routes"]) and bool(
+        result["sleep_modes"] and "deep" in result["sleep_modes"])
+    result["eligible"] = result["candidate"] and not result["missing"]
+    result["ready_to_test"] = result["eligible"] and any(
+        item["trusted"] and item["wake_allowed"] for item in result["controllers"]
+    ) and any(all(value == "enabled" for value in route["wake"].values())
+              and route["acpi_wake"] == "enabled" for route in result["routes"])
+    result["reason"] = (
+        "Ruta USB/BlueZ candidata; BIOS y despertar real requieren prueba manual."
+        if result["candidate"] else "No se ha detectado una ruta btusb para deep."
+    )
+    return result
+
+
+def load_state():
+    try:
+        data = json.loads(STATE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"version": 1, "controllers": {}, "bus": {}}
+    if data.get("version") != 1 or not isinstance(data.get("controllers"), dict) or not isinstance(data.get("bus"), dict):
+        raise ValueError("Estado de Bluetooth wake no válido")
+    return data
+
+
+def save_state(data):
+    STATE.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(STATE.parent, 0o700)
+    fd, name = tempfile.mkstemp(prefix=".bt-wake.", dir=STATE.parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump(data, out, sort_keys=True, indent=2)
+            out.write("\n")
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(name, STATE)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def set_bluez(bus, path, value):
+    import dbus
+    obj = bus.get_object(BLUEZ, path)
+    dbus.Interface(obj, PROPERTIES).Set(DEVICE, "WakeAllowed", dbus.Boolean(value))
+
+
+def enable_bus(state, route):
+    this_boot = boot_id()
+    for name in route["nodes"]:
+        node = Path(name)
+        current = read(node)
+        if current not in ("enabled", "disabled"):
+            raise RuntimeError(f"No se puede leer wake: {name}")
+        saved = state["bus"].get(name)
+        if not isinstance(saved, dict) or saved.get("boot_id") != this_boot:
+            saved = {"boot_id": this_boot, "original": current, "last": current}
+        if current != "enabled":
+            node.write_text("enabled\n", encoding="ascii")
+            if read(node) != "enabled":
+                raise RuntimeError(f"No se activó wake: {name}")
+        saved["last"] = "enabled"
+        state["bus"][name] = saved
+
+
+def restore_bus(state):
+    this_boot = boot_id()
+    conflict = False
+    for name, saved in list(state["bus"].items()):
+        if saved.get("boot_id") != this_boot:
+            del state["bus"][name]
+            continue
+        current = read(Path(name))
+        if current is None:
+            # El nodo físico puede haber desaparecido; no se reutiliza esa ruta.
+            del state["bus"][name]
+            continue
+        if current != saved.get("last"):
+            conflict = True
+            continue
+        original = saved.get("original")
+        if original not in ("enabled", "disabled"):
+            conflict = True
+            continue
+        if current != original:
+            Path(name).write_text(original + "\n", encoding="ascii")
+            if read(Path(name)) != original:
+                conflict = True
+                continue
+        del state["bus"][name]
+    return not conflict
+
+
+def selected(state):
+    return any(item.get("desired") is True for item in state["controllers"].values())
+
+
+def set_controller(path, desired):
+    if os.geteuid() != 0:
+        raise PermissionError("Se necesitan permisos de administrador")
+    bus, objects = bluez_objects()
+    current = next((x for x in devices(objects) if x["path"] == path), None)
+    if current is None or not current["trusted"]:
+        raise ValueError("El mando debe estar emparejado, ser de confianza y exponer WakeAllowed")
+    route = wake_route(current["adapter"])
+    if desired and route is None:
+        raise ValueError("No se detecta una ruta USB btusb apta para wake")
+    state = load_state()
+    previous = state["controllers"].get(path)
+    if previous is None:
+        previous = {"original": current["wake_allowed"]}
+    had_selected = selected(state)
+    if desired:
+        subprocess.run(["systemctl", "enable", "ugm-bt-wake-apply.service"],
+                       check=True, stdout=subprocess.DEVNULL)
+    try:
+        if desired:
+            enable_bus(state, route)
+        set_bluez(bus, path, desired)
+        previous["desired"] = desired
+        previous["last"] = desired
+        state["controllers"][path] = previous
+        save_state(state)
+    except Exception:
+        try:
+            if current["wake_allowed"] != desired:
+                set_bluez(bus, path, current["wake_allowed"])
+        except Exception:
+            pass
+        if desired and not had_selected:
+            restore_bus(state)
+        raise
+    if not desired and not selected(state):
+        if not restore_bus(state):
+            print("Aviso: wake USB cambió fuera de UGM; se conserva.", file=sys.stderr)
+        save_state(state)
+
+
+def apply():
+    if os.geteuid() != 0:
+        raise PermissionError("Se necesitan permisos de administrador")
+    state = load_state()
+    if not selected(state):
+        return
+    bus, objects = bluez_objects()
+    live = {x["path"]: x for x in devices(objects)}
+    failures = []
+    for path, saved in state["controllers"].items():
+        if saved.get("desired") is not True:
+            continue
+        item = live.get(path)
+        if item is None:
+            failures.append(f"Mando no disponible: {path}")
+            continue
+        route = wake_route(item["adapter"])
+        if route is None:
+            failures.append(f"Ruta USB no disponible: {item['adapter']}")
+            continue
+        if item["wake_allowed"] != saved.get("last"):
+            failures.append(f"WakeAllowed modificado fuera de UGM: {path}")
+            continue
+        enable_bus(state, route)
+        if not item["wake_allowed"]:
+            set_bluez(bus, path, True)
+        saved["last"] = True
+    save_state(state)
+    if failures:
+        raise RuntimeError("; ".join(failures))
+
+
+def reset():
+    if os.geteuid() != 0:
+        raise PermissionError("Se necesitan permisos de administrador")
+    state = load_state()
+    try:
+        bus, objects = bluez_objects()
+        live = {x["path"]: x for x in devices(objects)}
+    except Exception:
+        bus, live = None, {}
+    failures = []
+    for path, saved in list(state["controllers"].items()):
+        item = live.get(path)
+        if item is None:
+            failures.append(f"Mando no disponible: {path}")
+            continue
+        if item["wake_allowed"] != saved.get("last"):
+            failures.append(f"WakeAllowed modificado fuera de UGM: {path}")
+            continue
+        set_bluez(bus, path, bool(saved["original"]))
+        del state["controllers"][path]
+    if not restore_bus(state):
+        failures.append("Wake USB modificado fuera de UGM")
+    if failures:
+        save_state(state)
+        raise RuntimeError("; ".join(failures))
+    STATE.unlink(missing_ok=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("probe")
+    sub.add_parser("eligible")
+    sub.add_parser("apply")
+    sub.add_parser("reset")
+    setter = sub.add_parser("set")
+    setter.add_argument("device_path")
+    setter.add_argument("value", choices=("on", "off"))
+    args = parser.parse_args()
+    try:
+        if args.command == "probe":
+            print(json.dumps(probe(), ensure_ascii=False, sort_keys=True, indent=2))
+        elif args.command == "eligible":
+            return 0 if probe()["eligible"] else 1
+        elif args.command == "apply":
+            apply()
+        elif args.command == "reset":
+            reset()
+        else:
+            set_controller(args.device_path, args.value == "on")
+    except Exception as exc:
+        print(f"ugm-bt-wake: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Install only the selected experimental Vulkan layer into UGM state."""
+import os
+from pathlib import Path
+import shutil
+import sys
+import tempfile
+
+BUNDLED = Path("/usr/lib/ubuntu-gaming-mode/vrs-bundled")
+ACTIVE = Path("/var/lib/ubuntu-gaming-mode/vrs")
+ROUTES = ("nvidia", "amd")
+
+
+def filenames(route):
+    return tuple(f"{stem}_{arch}.{ext}"
+                 for stem, ext in ((f"libugm_{route}_vrs", "so"),
+                                   (f"VK_LAYER_UGM_{route}_vrs", "json"))
+                 for arch in ("32", "64"))
+
+
+def activate(route, bundled=BUNDLED, active=ACTIVE):
+    if route not in (*ROUTES, "radv", "none"):
+        raise ValueError("ruta VRS desconocida")
+    wanted = filenames(route) if route in ROUTES else ()
+    if wanted:
+        for name in wanted:
+            if not (bundled / name).is_file():
+                raise FileNotFoundError(bundled / name)
+        active.mkdir(parents=True, exist_ok=True)
+        if active.is_symlink():
+            raise OSError("directorio VRS activo es un enlace simbólico")
+        for name in wanted:
+            fd, tmp = tempfile.mkstemp(prefix=".vrs-", dir=active)
+            try:
+                with os.fdopen(fd, "wb") as output, (bundled / name).open("rb") as source:
+                    shutil.copyfileobj(source, output)
+                os.chmod(tmp, 0o644)
+                os.replace(tmp, active / name)
+            finally:
+                if os.path.exists(tmp):
+                    os.unlink(tmp)
+    # Remove only UGM-known files; do not delete unrelated state.
+    if active.is_dir() and not active.is_symlink():
+        for other in ROUTES:
+            if other != route:
+                for name in filenames(other):
+                    (active / name).unlink(missing_ok=True)
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("uso: ugm-vrs-activate nvidia|amd|radv|none", file=sys.stderr)
+        return 2
+    try:
+        activate(sys.argv[1])
+    except (OSError, ValueError) as error:
+        print(f"No se pudo instalar la ruta VRS: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

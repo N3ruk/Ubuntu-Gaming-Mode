@@ -63,11 +63,10 @@ patch series does not contain a hidden filter-selection connector.
 
 The session wrapper/runtime is also installed under `/usr/lib/ubuntu-gaming-mode/`.
 
-Validated runtime SHA256:
-
-```text
-3671cbc698b05e6ae3e68492848af3fec33aa0fe64c2f94a5e3e3395b498e636
-```
+The wrapper/runtime changed for 2.5 and is checked as part of the package;
+the historical 2.0 wrapper SHA256 is not a 2.5 integrity value. Gamescope's
+binary SHA256 above is unchanged. See the 2.5 candidate manifest for the
+packaged files.
 
 ## DRM scanout
 

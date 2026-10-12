@@ -20,7 +20,7 @@ ORIGINAL="$STATE_ROOT/original-state"
 MANAGED="$STATE_ROOT/managed-state"
 
 EXPECTED_GAMESCOPE_SHA="5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256"
-EXPECTED_RUNTIME_SHA="3671cbc698b05e6ae3e68492848af3fec33aa0fe64c2f94a5e3e3395b498e636"
+EXPECTED_RUNTIME_SHA="a6bab2e74ff2db65121f8864247f84fec8062b55348925f84294c1cd2b724d9f"
 
 ok()   { printf '[ OK ] %s
 ' "$*"; OK=$((OK+1)); }
@@ -130,7 +130,7 @@ fi
 
 section "RUNTIME"
 
-for p in     "$RUNTIME/gamescope"     "$RUNTIME/gamescope-session-plus"     "$RUNTIME/gamescope-session-plus-runtime"     "$RUNTIME/ubuntu-gaming-mode-setup"     "$RUNTIME/ubuntu-gaming-mode-doctor"     "$RUNTIME/os-session-select"     "$RUNTIME/steamos-session-select"     "$RUNTIME/return-to-gaming-mode"     "$RUNTIME/gaming-autologin-rearm"     "$RUNTIME/ugm-gaming-session-marker"     "$RUNTIME/ugm-powerbuttond"     "$RUNTIME/ugm-steam-shortpowerpress"     "$RUNTIME/ugm-system-gamescope-link"
+for p in     "$RUNTIME/gamescope"     "$RUNTIME/gamescope-session-plus"     "$RUNTIME/gamescope-session-plus-runtime"     "$RUNTIME/ubuntu-gaming-mode-setup"     "$RUNTIME/ubuntu-gaming-mode-doctor"     "$RUNTIME/os-session-select"     "$RUNTIME/steamos-session-select"     "$RUNTIME/return-to-gaming-mode"     "$RUNTIME/gaming-autologin-rearm"     "$RUNTIME/ugm-gaming-session-marker"     "$RUNTIME/ugm-powerbuttond"     "$RUNTIME/ugm-steam-shortpowerpress"     "$RUNTIME/ugm-system-gamescope-link"     "$RUNTIME/ugm-capabilities"     "$RUNTIME/ugm-vrs-select"     "$RUNTIME/ugm-vrs-stage"     "$RUNTIME/ugm-vrs-activate"
 do
     if [ -e "$p" ] || [ -L "$p" ]; then
         ok "$p"
@@ -239,17 +239,22 @@ if [ -f "$STEAM_CONFIG" ]; then
 
     ok "$STEAM_CONFIG existe"
 
-    grep -Fq         'GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope'         "$STEAM_CONFIG" &&
-        ok "GAMESCOPE_BIN usa el runtime canónico" ||
+    if grep -Fq 'GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope' "$STEAM_CONFIG" ||
+       { grep -Fq 'UGM_RUNTIME_DIR=${UGM_RUNTIME_DIR:-/usr/lib/ubuntu-gaming-mode}' "$STEAM_CONFIG" &&
+         grep -Fq 'export GAMESCOPE_BIN="$UGM_RUNTIME_DIR/gamescope"' "$STEAM_CONFIG"; }
+    then
+        ok "GAMESCOPE_BIN usa el runtime canónico"
+    else
         fail "GAMESCOPE_BIN no usa el runtime canónico"
+    fi
 
     grep -Fq         'gamescope_drm_gbm_scanout=1'         "$STEAM_CONFIG" &&
         ok "gamescope_drm_gbm_scanout=1 está preservado" ||
         fail "falta gamescope_drm_gbm_scanout=1"
 
-    grep -Fq         'detect_output_connector'         "$STEAM_CONFIG" &&
-        ok "detección automática de conector DRM presente" ||
-        fail "falta detección automática de conector DRM"
+    grep -Fq         'ugm-capabilities'         "$STEAM_CONFIG" &&
+        ok "sesión usa el detector común de conector DRM" ||
+        fail "sesión no usa el detector común de conector DRM"
 
 else
     fail "falta $STEAM_CONFIG"
@@ -629,119 +634,109 @@ case "$ACC_STATUS" in
 esac
 
 # ============================================================
-# DRM
+# RUTA VRS INSTALADA (sin inferir de una caché Vulkan)
 # ============================================================
 
-section "DRM"
-
-CONNECTED=""
-
-for d in /sys/class/drm/card*-*; do
-
-    [ -r "$d/status" ] ||
-        continue
-
-    if [ "$(cat "$d/status")" = "connected" ]; then
-
-        name="$(basename "$d")"
-        name="${name#card*-}"
-
-        printf 'Conectado: %s
-' "$name"
-
-        CONNECTED=1
-    fi
-done
-
-[ -n "$CONNECTED" ] &&
-    ok "al menos un conector DRM conectado" ||
-    warn "no se detecta ningún conector DRM conectado"
-
-# ============================================================
-# GPU
-# ============================================================
-
-section "GPU"
-
-GPU_INFO="$(
-    lspci 2>/dev/null |
-    grep -Ei         'VGA compatible controller|3D controller|Display controller' ||
-    true
-)"
-
-if [ -n "$GPU_INFO" ]; then
-
-    printf '%s
-' "$GPU_INFO"
-
-    if printf '%s
-' "$GPU_INFO" |
-       grep -qiE            'VMware|VirtualBox|Virtio|QXL'
-    then
-
-        warn "GPU virtual detectada; Gamescope DRM puede no ser validable en esta VM"
-
-    elif printf '%s
-' "$GPU_INFO" |
-         grep -qi NVIDIA
-    then
-
-        ok "GPU NVIDIA detectada"
-
-    elif printf '%s
-' "$GPU_INFO" |
-         grep -qiE              'AMD|ATI'
-    then
-
-        warn "GPU AMD detectada; soporte físico AMD aún no validado en esta rama"
-
-    else
-
-        warn "GPU no clasificada por el doctor"
-    fi
-
+section "VRS INSTALADO Y SEÑAL QAM"
+VRS_CONFIG="/etc/ubuntu-gaming-mode/vrs.conf"
+VRS_ACTIVE="$STATE_ROOT/vrs"
+VRS_BUNDLED="$RUNTIME/vrs-bundled"
+VRS_ROUTE=""
+if [ -r "$VRS_CONFIG" ]; then
+    VRS_ROUTE="$(sed -n 's/^UGM_VRS_ROUTE=//p' "$VRS_CONFIG")"
+    case "$VRS_ROUTE" in
+        none|radv|nvidia|amd) ok "ruta VRS instalada: $VRS_ROUTE" ;;
+        *) fail "vrs.conf no contiene una ruta VRS única y válida" ;;
+    esac
 else
-
-    warn "lspci no devolvió una GPU"
+    fail "falta o no se puede leer $VRS_CONFIG"
 fi
 
-if command -v vulkaninfo >/dev/null 2>&1; then
+if [ -f "$STEAM_CONFIG" ] &&
+   grep -Fq '. /etc/ubuntu-gaming-mode/vrs.conf' "$STEAM_CONFIG" &&
+   grep -Fq 'case "${UGM_VRS_ROUTE:-none}" in' "$STEAM_CONFIG" &&
+   grep -Fq 'unset STEAM_USE_DYNAMIC_VRS RADV_FORCE_VRS_CONFIG_FILE UGM_VRS_CONFIG_FILE' "$STEAM_CONFIG" &&
+   grep -Fq 'export STEAM_USE_DYNAMIC_VRS=1' "$STEAM_CONFIG"; then
+    ok "Gamescope Session Plus condiciona el botón VRS a la ruta instalada"
+else
+    fail "Gamescope Session Plus no contiene la política VRS/QAM esperada"
+fi
 
-    VK="$(
-        vulkaninfo --summary 2>&1 |
-        head -n 160 ||
-        true
-    )"
+for route in nvidia amd; do
+    for arch in 32 64; do
+        for name in "libugm_${route}_vrs_${arch}.so" "VK_LAYER_UGM_${route}_vrs_${arch}.json"; do
+            if [ "$VRS_ROUTE" = "$route" ]; then
+                if [ -f "$VRS_ACTIVE/$name" ] &&
+                   [ -f "$VRS_BUNDLED/$name" ] &&
+                   cmp -s "$VRS_BUNDLED/$name" "$VRS_ACTIVE/$name"; then
+                    ok "capa $route activa e íntegra: $name"
+                else
+                    fail "falta o no coincide la capa $route activa: $name"
+                fi
+            elif [ -e "$VRS_ACTIVE/$name" ] || [ -L "$VRS_ACTIVE/$name" ]; then
+                fail "capa $route activa pese a ruta ${VRS_ROUTE:-inválida}: $name"
+            fi
+        done
+    done
+done
 
-    VULKAN_HW="$(
-        printf '%s
-' "$VK" |
-        grep -Ei             'deviceType.*(DISCRETE_GPU|INTEGRATED_GPU)|deviceName.*(NVIDIA|GeForce|AMD|Radeon|Intel)' ||
-        true
-    )"
+# ============================================================
+# INVENTARIO DE CAPACIDADES (mismo detector que la sesión)
+# ============================================================
 
-    if printf '%s
-' "$VK" |
-       grep -qi llvmpipe
-    then
-
-        if [ -n "$VULKAN_HW" ]; then
-
-            info "llvmpipe también está registrado como renderer software, pero Vulkan detecta una GPU hardware"
-
-        else
-
-            warn "Vulkan solo parece disponer de llvmpipe/software rendering; Gaming Mode DRM no puede validarse en este entorno"
-        fi
-
-    elif [ -n "$VULKAN_HW" ]; then
-
-        ok "Vulkan detecta una GPU hardware"
-
+section "GPU, PANTALLA Y CAPACIDADES"
+CAPABILITY_READER="$RUNTIME/ugm-capabilities"
+if [ -x "$CAPABILITY_READER" ]; then
+    # La caché del inventario pertenece al usuario de la sesión de escritorio.
+    # Doctor suele ejecutarse con sudo: leer como root consultaría otra caché.
+    if [ "$(id -u)" -eq 0 ] && id "${UGM_USER:-__missing__}" >/dev/null 2>&1; then
+        CAPABILITY_JSON="$(runuser -u "$UGM_USER" -- env -u XDG_CACHE_HOME "$CAPABILITY_READER" --cached --context desktop --runtime-version 2.5-dev 2>/dev/null)" || CAPABILITY_JSON=""
     else
-
-        info "vulkaninfo disponible; no se detectó llvmpipe pero no se pudo clasificar el dispositivo Vulkan"
+        CAPABILITY_JSON="$("$CAPABILITY_READER" --cached --context desktop --runtime-version 2.5-dev 2>/dev/null)" || CAPABILITY_JSON=""
     fi
+    if [ -n "$CAPABILITY_JSON" ]; then
+        CAPABILITY_REPORT="$(printf '%s' "$CAPABILITY_JSON" | python3 -c '
+import json, sys
+d=json.load(sys.stdin)
+o=d["output"] or {}
+v=d["vulkan"]["selected"] or {}
+print("Salidas DRM disponibles:")
+for c in d.get("connectors", []):
+    print("  %s / %s: %s%s" % (
+        c["drm_card"], c["connector"], c["status"],
+        " (candidata)" if c["status"] == "connected" else ""))
+print("Preferencia de arranque: %s" % (",".join([*d.get("output_candidates", []), "*"])))
+print("Salida DRM: %s / %s / %s / %s" % (
+    o.get("drm_card", "desconocida"), o.get("connector", "desconocido"),
+    o.get("gpu_pci_id", "desconocida"), o.get("driver", "desconocido")))
+print("Pantalla (hash EDID): %s" % (o.get("display_id") or "desconocida"))
+print("Vulkan inferido: %s / %s / %s" % (
+    v.get("deviceName", "desconocida"), v.get("driverID", "desconocido"),
+    v.get("deviceUUID", "desconocido")))
+print("Relación: %s — %s" % (d["relation"]["state"], d["relation"]["reason"]))
+for k, title in (("hdr", "HDR"), ("vrr", "VRR"), ("vrs_hardware", "VRS Vulkan (hardware)"), ("radv_vrs", "VRS ruta RADV"), ("nvidia_native_vrs", "VRS nativo NVIDIA"), ("nvidia_layer_vrs", "VRS capa NVIDIA")):
+    c=d["capabilities"][k]
+    print("%s: %s — %s" % (title, c["state"], c["reason"]))
+status=d.get("inventory_status", "unknown")
+print("Inventario: %s; último dato: %s; contexto de toma: %s" % (
+    status, d["observed_at"], d["context"]["session"]))
+if status in ("no_cache", "stale"):
+    print("DRM actual leído; Vulkan no comprobado. Refrescar: ugm-inventory --refresh")
+else:
+    print("Datos Vulkan en caché, no confirmación de GPU efectiva de Gamescope.")
+' 2>/dev/null)" || CAPABILITY_REPORT=""
+        if [ -n "$CAPABILITY_REPORT" ]; then
+            printf '%s\n' "$CAPABILITY_REPORT"
+            ok "inventario común consultado sin bloquear por Vulkan"
+            info "HDR/VRR de sesión aún usan política 2.0; esta lectura no valida modos físicos"
+        else
+            warn "inventario común ilegible"
+        fi
+    else
+        warn "detector de capacidades no pudo ejecutarse"
+    fi
+else
+    warn "detector de capacidades no instalado"
 fi
 
 # ============================================================

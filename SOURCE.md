@@ -2,8 +2,9 @@
 
 **English** | [Español](SOURCE_es.md)
 
-This repository contains **Ubuntu Gaming Mode 2.0.0-1** and the reproducible
-record for its bundled Gamescope runtime.
+This tree contains the **Ubuntu Gaming Mode 2.5.0-5** pre-release source
+and the reproducible record of the Gamescope 3.16.30 runtime retained from
+2.0.0-1.
 
 ## Layout
 
@@ -14,6 +15,9 @@ record for its bundled Gamescope runtime.
 - `gamescope/versions/3.16.30-gbm/`: patches, provenance and validation.
 - `tests/`: tests for optional integrations.
 - `docs/`: installation, rollback, architecture and performance.
+- `prototypes/nvidia-vrs/` and `prototypes/amd-vrs/`: source, build scripts and
+  tests for the bundled VRS layers. Generated `.so` files are not tracked.
+- `system/icons/`: tracked PNG icons for UGM and the Bluetooth app.
 
 ## Binary input and application icon
 
@@ -28,6 +32,9 @@ bash packaging/build-deb.sh
 The script rejects a Gamescope binary whose SHA256 is not authorized for the
 package version. `UGM_ICON` can override the tracked icon when needed. Both
 assets are included in the `.deb`; the Gamescope binary remains outside Git.
+The build script compiles both NVIDIA and AMD VRS layers for 32/64-bit Vulkan
+and generates manifests under `vrs-bundled`. A compiler and multilib support
+are required; see each layer's README. Prototype build artifacts are ignored.
 
 ## Gamescope 3.16.30 GBM
 

@@ -5,9 +5,15 @@ set -x
 SYS_ID="$(cat /sys/devices/virtual/dmi/id/product_name)"
 
 declare -r CLIENT=$1
-declare -r CLIENT_CONFIG_DIR_USR=/usr/share/gamescope-session-plus/sessions.d
-declare -r CLIENT_CONFIG_DIR_ETC=/etc/gamescope-session-plus/sessions.d
-declare -r CLIENT_CONFIG_DIR_LOCAL="${XDG_CONFIG_HOME:-$HOME/.config}/gamescope-session-plus/sessions.d"
+if [[ -n "${UGM_DEV_CONFIG_DIR:-}" ]]; then
+    declare -r CLIENT_CONFIG_DIR_USR=/nonexistent/ugm-dev/sessions.d
+    declare -r CLIENT_CONFIG_DIR_ETC="$UGM_DEV_CONFIG_DIR"
+    declare -r CLIENT_CONFIG_DIR_LOCAL=/nonexistent/ugm-dev/local-sessions.d
+else
+    declare -r CLIENT_CONFIG_DIR_USR=/usr/share/gamescope-session-plus/sessions.d
+    declare -r CLIENT_CONFIG_DIR_ETC=/etc/gamescope-session-plus/sessions.d
+    declare -r CLIENT_CONFIG_DIR_LOCAL="${XDG_CONFIG_HOME:-$HOME/.config}/gamescope-session-plus/sessions.d"
+fi
 
 # default empty session recovery function
 short_session_recover() {
@@ -59,8 +65,6 @@ export SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS=0
 # Enable Mangoapp
 export MANGOHUD_CONFIGFILE=$(mktemp /tmp/mangohud.XXXXXXXX)
 
-export RADV_FORCE_VRS_CONFIG_FILE=$(mktemp /tmp/radv_vrs.XXXXXXXX)
-
 # Plop GAMESCOPE_MODE_SAVE_FILE into $XDG_CONFIG_HOME (defaults to ~/.config).
 export GAMESCOPE_MODE_SAVE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/gamescope/modes.cfg"
 export GAMESCOPE_PATCHED_EDID_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/gamescope/edid.bin"
@@ -92,11 +96,6 @@ export VKD3D_SWAPCHAIN_LATENCY_FRAMES=3
 # on OOBE and stuff.
 mkdir -p "$(dirname "$MANGOHUD_CONFIGFILE")"
 echo "no_display" >"$MANGOHUD_CONFIGFILE"
-
-# Prepare our initial VRS config file
-# for dynamic VRS in Mesa.
-mkdir -p "$(dirname "$RADV_FORCE_VRS_CONFIG_FILE")"
-echo "1x1" >"$RADV_FORCE_VRS_CONFIG_FILE"
 
 # To expose vram info from radv
 export WINEDLLOVERRIDES=dxgi=n
@@ -136,7 +135,7 @@ set +a
 
 # Setup socket for gamescope
 # Create run directory file for startup and stats sockets
-tmpdir="$([[ -n ${XDG_RUNTIME_DIR+x} ]] && mktemp -p "$XDG_RUNTIME_DIR" -d -t gamescope.XXXXXXX)"
+tmpdir="$([[ -n ${XDG_RUNTIME_DIR+x} ]] && mktemp -d -p "$XDG_RUNTIME_DIR" gamescope.XXXXXXX)"
 socket="${tmpdir:+$tmpdir/startup.socket}"
 stats="${tmpdir:+$tmpdir/stats.pipe}"
 # Fail early if we don't have a proper runtime directory setup
@@ -153,9 +152,14 @@ mkfifo -- "$socket"
 linkname="gamescope-stats"
 #   shellcheck disable=SC2031 # (broken warning)
 sessionlink="${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/}${linkname}" # Account for XDG_RUNTIME_DIR="" (notfragileatall)
+if [[ "${UGM_DEV_MODE:-0}" == 1 ]]; then
+    sessionlink="$UGM_DEV_STATE_DIR/$linkname"
+fi
 lockfile="$sessionlink".lck
 exec 9>"$lockfile" # Keep as an fd such that the lock lasts as long as the session if it is taken
-if flock -n 9 && rm -f "$sessionlink" && ln -sf "$tmpdir" "$sessionlink"; then
+if [[ "${UGM_DEV_MODE:-0}" == 1 ]]; then
+    echo >&2 "UGM dev: omitiendo enlace global de estadísticas"
+elif flock -n 9 && rm -f "$sessionlink" && ln -sf "$tmpdir" "$sessionlink"; then
 	# Took the lock.  Don't blow up if those commands fail, though.
 	echo >&2 "Claimed global gamescope stats session at \"$sessionlink\""
 else
@@ -269,11 +273,12 @@ if [ -n "$VULKAN_ADAPTER" ]; then
 fi
 
 # Attempt to fallback to a desktop session if something goes wrong too many times
-short_session_tracker_file="/tmp/chimeraos-short-session-tracker"
+short_session_tracker_file="${UGM_DEV_STATE_DIR:-/tmp}/chimeraos-short-session-tracker"
 short_session_duration=60
 short_session_count_before_reset=5
 SECONDS=0
 
+touch "$short_session_tracker_file"
 short_session_count=$(wc <"$short_session_tracker_file" -l)
 
 if [[ "$short_session_count" -ge "$short_session_count_before_reset" ]]; then
@@ -290,7 +295,9 @@ fi
 $GAMESCOPECMD &
 gamescope_pid="$!"
 
-if read -r -t 5 response_x_display response_wl_display <>"$socket"; then
+startup_timeout=5
+[[ "${UGM_DEV_MODE:-0}" == 1 ]] && startup_timeout=20
+if read -r -t "$startup_timeout" response_x_display response_wl_display <>"$socket"; then
 	export DISPLAY="$response_x_display"
 	export GAMESCOPE_WAYLAND_DISPLAY="$response_wl_display"
 	# We're done!
@@ -349,13 +356,13 @@ sleep 5 &
 sleep_pid="$!"
 
 # Catch reboot and powerof sentinels here
-if [[ -e "$REBOOT_SENTINEL" ]]; then
+if [[ "${UGM_DEV_MODE:-0}" != 1 && -n "${REBOOT_SENTINEL:-}" && -e "$REBOOT_SENTINEL" ]]; then
 	rm -f "$REBOOT_SENTINEL"
 	# rearm short session tracker
 	rm "$short_session_tracker_file"
 	reboot
 fi
-if [[ -e "$SHUTDOWN_SENTINEL" ]]; then
+if [[ "${UGM_DEV_MODE:-0}" != 1 && -n "${SHUTDOWN_SENTINEL:-}" && -e "$SHUTDOWN_SENTINEL" ]]; then
 	rm -f "$SHUTDOWN_SENTINEL"
 	# rearm short session tracker
 	rm "$short_session_tracker_file"

@@ -1,6 +1,27 @@
-# Instalar Ubuntu Gaming Mode 2.0.0-1 en Ubuntu 26.04
+# Instalar Ubuntu Gaming Mode en Ubuntu 26.04
 
 [English](../installation.md) | **Español**
+
+## Versión preliminar 2.5.0-5
+
+Descarga el `.deb` y `SHA256SUMS` de la release `v2.5.0-5` en GitHub. Para
+instalar desde una terminal interactiva:
+
+```bash
+sudo apt install ./ubuntu-gaming-mode_2.5.0-5_amd64.deb
+```
+
+Antes de instalarlo, verifica el paquete con `sha256sum -c SHA256SUMS`.
+Debconf permite activar opcionalmente las capas VRS experimentales si la GPU es
+inequívocamente compatible; la ruta nativa RADV reconocida es automática. La
+app Bluetooth es opcional y está desactivada por defecto. Consulta
+[VRS](../vrs-y-capacidades-steamos.md) y [despertar por mando](despertar-mando-bluetooth.md).
+Tras instalar, ejecutar `sudo ubuntu-gaming-mode-doctor`. La prueba del botón
+VRS en GamepadUI y del efecto en juegos sigue pendiente. Una actualización
+conserva el snapshot original; reinstalar o reconfigurar vuelve a evaluar la
+selección VRS según la ruta de instalación.
+
+## Referencia histórica: release publicada 2.0.0-1
 
 ## Requisitos
 
@@ -119,3 +140,26 @@ sudo apt install ./ubuntu-gaming-mode_2.0.0-1_amd64.deb
 La actualización conserva el baseline inmutable y renueva únicamente el estado
 gestionado por la versión instalada. Antes de continuar revisa cualquier aviso
 del instalador y ejecuta Doctor al finalizar.
+
+## Despertar por mando Bluetooth (opcional en 2.5)
+
+El candidato 2.5 se instala directamente desde su único `.deb`:
+
+```bash
+sudo apt install ./ubuntu-gaming-mode_2.5.0-5_amd64.deb
+```
+
+Debconf presenta las preguntas de UGM durante la instalación. Si detecta un
+adaptador Bluetooth USB, también muestra el aviso sobre wake USB/PCIe en BIOS y
+pregunta si se desea **activar el servicio Bluetooth y mostrar la app de despertar en el menú**. La respuesta
+predeterminada es no. La app forma parte del paquete; no se necesita un script ni un segundo `.deb`.
+APT intenta instalar BlueZ y las demás dependencias de la app como paquetes recomendados de forma predeterminada. Si se desactivan las recomendaciones o se usa `dpkg -i`, APT no los instala. Si se aceptó la app y BlueZ sigue ausente, UGM continúa y muestra un aviso; la app de mandos no funcionará
+hasta que se instale BlueZ. Al aceptar la pregunta, UGM habilita y arranca `bluetooth.service` si BlueZ
+está instalado. Si falla, avisa sin cancelar UGM. Al rechazarla, no cambia el
+servicio. Aceptar no activa ningún mando: hay que elegirlos en la app y probar
+una suspensión real.
+La elección puede cambiarse con `sudo dpkg-reconfigure ubuntu-gaming-mode`.
+
+Consulte [la guía de inventario y prueba](despertar-mando-bluetooth.md). Para
+asegurar que las preguntas aparezcan, instale desde una terminal interactiva;
+en entornos no interactivos Debconf aplica las respuestas predeterminadas.

@@ -15,6 +15,18 @@ db_subst ubuntu-gaming-mode/system-gamescope-command \
 
 db_input high ubuntu-gaming-mode/console-suspend-button || true
 db_input high ubuntu-gaming-mode/system-gamescope-command || true
+# Preguntar solo si el kernel enumera un adaptador Bluetooth USB.
+# La BIOS y la prueba física no son detectables desde debconf.
+for hci in /sys/class/bluetooth/hci[0-9]*; do
+    [ -e "$hci/device" ] || continue
+    case "$(readlink -f "$hci/device")" in
+        */usb[0-9]*/*)
+            db_input high ubuntu-gaming-mode/bluetooth-controller-wake-notice || true
+            db_input high ubuntu-gaming-mode/bluetooth-controller-wake-app || true
+            break
+            ;;
+    esac
+done
 db_go || true
 
 exit 0

@@ -524,6 +524,18 @@ restore_gdm_properties ||
 
 restore_accountsservice
 restore_manifest_paths
+
+# vrs.conf se genera al instalar; retirarlo solo si conserva el hash administrado.
+vrs_config="/etc/ubuntu-gaming-mode/vrs.conf"
+vrs_hash="$(awk '$2 == "/etc/ubuntu-gaming-mode/vrs.conf" {print $1}' "$MANAGED/generated.sha256" 2>/dev/null | head -n1)"
+if [ -n "$vrs_hash" ] && [ -f "$vrs_config" ] && [ ! -L "$vrs_config" ]; then
+    current_hash="$(sha256sum "$vrs_config" | cut -d' ' -f1)"
+    if [ "$current_hash" = "$vrs_hash" ]; then
+        rm -f -- "$vrs_config"
+    else
+        warn "vrs.conf modificado localmente; se conserva"
+    fi
+fi
 cleanup_package_backups
 
 systemctl daemon-reload     >/dev/null 2>&1 || true
@@ -535,6 +547,11 @@ update-desktop-database     /usr/share/applications     >/dev/null 2>&1 || true
 
 command -v gtk-update-icon-cache     >/dev/null 2>&1 &&
 gtk-update-icon-cache     -q -t -f     /usr/share/icons/hicolor     >/dev/null 2>&1 || true
+
+if [ -e "$STATE_ROOT/bt-wake.json" ]; then
+    warn "Bluetooth wake conserva cambios/conflictos pendientes; no se borra su estado."
+    RESTORE_OK=0
+fi
 
 if [ "$RESTORE_OK" -eq 1 ]; then
     CONFIG_DIR_ORIGINAL="$(

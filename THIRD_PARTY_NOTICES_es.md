@@ -22,7 +22,7 @@ El texto legal completo de la licencia upstream se conserva sin traducir en:
 
 ## Valve Gamescope
 
-UGM 2.0.0-1 distribuye un binario modificado de Gamescope basado en
+UGM 2.0.0-1 y 2.5.0-5 distribuyen un binario modificado de Gamescope basado en
 [ValveSoftware/gamescope](https://github.com/ValveSoftware/gamescope).
 
 El proyecto principal Gamescope utiliza BSD 2-Clause y su archivo LICENSE
@@ -38,7 +38,7 @@ El texto legal upstream completo y sus avisos se conservan sin traducir en:
 
 - [licenses/GAMESCOPE-LICENSE](licenses/GAMESCOPE-LICENSE)
 
-El binario Gamescope incluido con UGM 2.0.0-1 es una build custom reproducible.
+El binario Gamescope incluido con UGM 2.0.0-1 y 2.5.0-5 es una build custom reproducible.
 Su base upstream, serie completa de patches, árbol final y registro de build se
 publican en `gamescope/versions/3.16.30-gbm/`; consulta
 [gamescope/README_es.md](gamescope/README_es.md).

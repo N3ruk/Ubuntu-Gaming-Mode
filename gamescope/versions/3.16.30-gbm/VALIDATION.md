@@ -31,6 +31,8 @@ down the session while that working pipeline is in use.
 
 ## Acceptance matrix for a packaged release
 
+Historical status clarification (2026-10-07): this table was written as a pre-release, mode-by-mode checklist and was not reconciled after publishing UGM 2.0.0-1. The 2.0 release notes report successful 4K/HDR/VRR and session acceptance on the RTX 2060 reference system, but do not supply a result for every resolution/refresh/HDR/VRR combination below. Treat “pending” as missing granular evidence, not as a failed test; do not infer that all combinations passed from the release summary. Record fresh package-specific results before promoting 2.5.
+
 Before promoting a new UGM package, record the result of each item:
 
 | Mode | SDR | HDR | VRR | Steam UI | Result |

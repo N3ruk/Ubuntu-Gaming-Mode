@@ -1,3 +1,16 @@
+ubuntu-gaming-mode (2.5.0-5) unstable; urgency=low
+
+  * Retain the validated Gamescope 3.16.30 GBM runtime and nine-patch source.
+  * Add GPU/Vulkan inventory, HDR/VRR preferences and capability diagnostics.
+  * Bundle native RADV VRS support and opt-in AMD/NVIDIA Vulkan VRS layers
+    built for 32- and 64-bit applications.
+  * Stage selected VRS layers from the readable package payload, keeping
+    private installation state inaccessible to the Steam session.
+  * Bundle the optional Bluetooth controller-wake app, icon, Polkit policy and
+    service; recommend BlueZ and keep the option disabled by default.
+
+ -- N3ruk <csz_11@hotmail.com>  Mon, 12 Oct 2026 00:00:00 +0200
+
 ubuntu-gaming-mode (2.0.0-1) unstable; urgency=medium
 
   * Ship the reproducible Gamescope 3.16.30 GBM runtime and nine-patch source record.

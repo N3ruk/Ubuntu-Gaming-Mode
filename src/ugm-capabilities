@@ -1,0 +1,391 @@
+#!/usr/bin/env python3
+"""Read-only hardware inventory shared by the Gaming session and Doctor."""
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+
+
+def read(path):
+    try:
+        return path.read_text(encoding="ascii").strip()
+    except (OSError, UnicodeError):
+        return None
+
+
+def cap(state, reason, evidence=()):
+    return {"state": state, "reason": reason, "evidence": list(evidence)}
+
+
+def edid_hdr(data):
+    if len(data) < 128 or data[:8] != bytes.fromhex("00ffffffffffff00"):
+        return None
+    if len(data) < 128 * (1 + data[126]):
+        return None
+    for off in range(128, len(data), 128):
+        block = data[off:off + 128]
+        if block[0] != 2:
+            continue
+        end = block[2] or 127
+        pos = 4
+        while pos < min(end, 127):
+            tag_len = block[pos]
+            size = tag_len & 31
+            nxt = pos + size + 1
+            if nxt > end:
+                break
+            if tag_len >> 5 == 7 and size >= 2 and block[pos + 1] == 6:
+                return bool(block[pos + 2])
+            pos = nxt
+    return False
+
+
+def drm(root):
+    cards, connectors = {}, []
+    base = root / "sys/class/drm"
+    for path in sorted(base.glob("card[0-9]*")):
+        if not re.fullmatch(r"card[0-9]+", path.name):
+            continue
+        dev = path / "device"
+        addr = dev.resolve().name
+        vendor, device = read(dev / "vendor"), read(dev / "device")
+        cards[path.name] = {
+            "drm_card": path.name,
+            "gpu_pci_id": f"{vendor[2:]}:{device[2:]}".lower()
+            if vendor and device and vendor.startswith("0x") and device.startswith("0x") else None,
+            "gpu_pci_address": addr if re.fullmatch(
+                r"[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]", addr) else None,
+            "driver": (dev / "driver").resolve().name if (dev / "driver").exists() else None,
+        }
+    for path in sorted(base.glob("card[0-9]*-*")):
+        match = re.fullmatch(r"(card[0-9]+)-(.+)", path.name)
+        if not match:
+            continue
+        status = read(path / "status")
+        if status not in ("connected", "disconnected", "unknown"):
+            status = "unknown"
+        edid = b""
+        try:
+            if status == "connected":
+                edid = (path / "edid").read_bytes()
+        except OSError:
+            pass
+        connectors.append({
+            "drm_card": match.group(1), "connector": match.group(2),
+            "status": status,
+            "display_id": hashlib.sha256(edid).hexdigest() if edid else None,
+            "edid_hdr": edid_hdr(edid), "vrr_capable": read(path / "vrr_capable"),
+        })
+    return cards, connectors
+
+
+def vk_devices(summary):
+    devices, current = [], None
+    for line in summary.splitlines():
+        gpu = re.fullmatch(r"GPU([0-9]+):", line.strip())
+        if gpu:
+            if current is not None:
+                devices.append(current)
+            current = {"vulkaninfo_index": int(gpu.group(1))}
+        elif current is not None:
+            match = re.match(
+                r"\s*(vendorID|deviceID|deviceType|deviceName|driverID|driverName|driverInfo|deviceUUID)\s*=\s*(.*)",
+                line,
+            )
+            if match:
+                current[match.group(1)] = match.group(2).strip()
+    if current is not None:
+        devices.append(current)
+    for dev in devices:
+        vendor = dev.get("vendorID", "").removeprefix("0x").lower()
+        device = dev.get("deviceID", "").removeprefix("0x").lower()
+        dev["gpu_pci_id"] = f"{vendor}:{device}" if vendor and device else None
+        dev["software"] = "CPU" in dev.get("deviceType", "") or "llvmpipe" in dev.get("deviceName", "").lower()
+    return devices
+
+
+def vk_vrs_features(details):
+    """Read per-device Vulkan VRS evidence; never infer it from the GPU brand."""
+    if details is None:
+        return {}
+    devices, index = {}, None
+    for line in details.splitlines():
+        match = re.fullmatch(r"GPU([0-9]+):", line.strip())
+        if match:
+            index = int(match.group(1))
+            devices[index] = {"extension": False, "pipeline": None, "primitive": None,
+                              "attachment": None, "deviceUUID": None}
+        elif index is not None:
+            uuid = re.match(r"\s*deviceUUID\s*=\s*(\S+)", line)
+            if uuid:
+                devices[index]["deviceUUID"] = uuid.group(1)
+            if re.match(r"\s*VK_KHR_fragment_shading_rate\s*:", line):
+                devices[index]["extension"] = True
+            match = re.match(
+                r"\s*(pipeline|primitive|attachment)FragmentShadingRate\s*=\s*(true|false)\s*$",
+                line,
+            )
+            if match:
+                devices[index][match.group(1)] = match.group(2) == "true"
+    return devices
+
+
+def inspect(root, summary, version, context, preferred=None, details=None):
+    cards, connectors = drm(root)
+    outputs = [c for c in connectors if c["status"] == "connected"]
+    # Recomputed for each invocation; a disconnected port is visible in the
+    # inventory but is not preferred until a display is plugged into it.
+    candidates = list(dict.fromkeys(c["connector"] for c in outputs))
+    output = None
+    reason = None
+    if len(outputs) == 1:
+        output = {**cards.get(outputs[0]["drm_card"], {}), **outputs[0]}
+        if not output.get("gpu_pci_id") or not output.get("gpu_pci_address"):
+            reason = "GPU DRM sin identidad PCI verificable"
+    elif not outputs:
+        reason = "ningún conector DRM conectado"
+    else:
+        reason = "varios conectores conectados; salida efectiva de Gamescope desconocida"
+    devices = vk_devices(summary) if summary is not None else []
+    hardware = [d for d in devices if not d["software"]]
+    selected = None
+    if summary is None:
+        reason = reason or "vulkaninfo ausente o falló"
+    elif preferred:
+        matches = [d for d in hardware if d.get("deviceUUID") == preferred]
+        if len(matches) == 1:
+            selected = matches[0]
+        else:
+            reason = reason or "preferencia Vulkan no resuelta de forma única"
+    elif len(hardware) == 1:
+        selected = hardware[0]
+    else:
+        reason = reason or ("ninguna GPU Vulkan hardware" if not hardware else
+                            "varias GPUs Vulkan; selección efectiva de Gamescope desconocida")
+    relation = {"state": "unknown", "reason": reason or "GPU Vulkan efectiva no identificada"}
+    if selected and output and not reason:
+        if sum(d.get("gpu_pci_id") == selected.get("gpu_pci_id") for d in hardware) > 1:
+            relation["reason"] = "varias GPUs con el mismo PCI ID; falta dirección PCI Vulkan"
+        elif selected.get("gpu_pci_id") == output.get("gpu_pci_id"):
+            relation = {"state": "matched", "reason": "GPU Vulkan única coincide por PCI ID con DRM; inferencia previa al arranque"}
+        else:
+            relation = {"state": "mismatched", "reason": "GPU Vulkan y salida DRM tienen distinto PCI ID"}
+    if relation["state"] != "matched":
+        capabilities = {k: cap("unknown", relation["reason"])
+                        for k in ("hdr", "vrr", "vrs_hardware", "radv_vrs", "nvidia_native_vrs", "nvidia_layer_vrs")}
+    else:
+        pending = "sin prueba funcional vigente para esta GPU, pantalla y runtime"
+        hdr = output["edid_hdr"]
+        vrr = output["vrr_capable"]
+        driver_id = selected.get("driverID")
+        radv = driver_id == "DRIVER_ID_MESA_RADV"
+        vrs = vk_vrs_features(details).get(selected["vulkaninfo_index"])
+        if (vrs is None or not selected.get("deviceUUID")
+                or vrs["deviceUUID"] != selected["deviceUUID"]):
+            vrs_hardware = cap("unknown", "features o identidad Vulkan VRS no verificables")
+        elif not vrs["extension"]:
+            vrs_hardware = cap("absent", "falta VK_KHR_fragment_shading_rate",
+                               ("vulkaninfo --text",))
+        elif any(vrs[k] is True for k in ("pipeline", "primitive", "attachment")):
+            vrs_hardware = cap("present_unvalidated", "Vulkan anuncia VRS; no demuestra una ruta UGM aplicable",
+                               ("VK_KHR_fragment_shading_rate", "VkPhysicalDeviceFragmentShadingRateFeaturesKHR"))
+        elif all(vrs[k] is False for k in ("pipeline", "primitive", "attachment")):
+            vrs_hardware = cap("absent", "todas las features Vulkan VRS son falsas",
+                               ("vulkaninfo --text",))
+        else:
+            vrs_hardware = cap("unknown", "features Vulkan VRS incompletas")
+        if not driver_id:
+            radv_vrs = cap("unknown", "driverID Vulkan no disponible")
+        elif not radv:
+            radv_vrs = cap("absent", "ruta RADV_FORCE_VRS no aplicable a este driver",
+                           ("vulkaninfo driverID",))
+        elif vrs_hardware["state"] == "absent" or (vrs is not None and vrs["pipeline"] is False):
+            radv_vrs = cap("absent", "pipelineFragmentShadingRate no disponible para RADV",
+                           ("vulkaninfo --text",))
+        elif vrs_hardware["state"] == "unknown" or (vrs is not None and vrs["pipeline"] is None):
+            radv_vrs = cap("unknown", "RADV detectado, pero falta pipelineFragmentShadingRate")
+        else:
+            radv_vrs = cap("present_unvalidated", "RADV con VRS por pipeline; capa AMD 2x2 experimental sin validar",
+                           ("VK_KHR_fragment_shading_rate", "pipelineFragmentShadingRate"))
+        if not driver_id:
+            nvidia_native_vrs = cap("unknown", "driverID Vulkan no disponible")
+        elif driver_id != "DRIVER_ID_NVIDIA_PROPRIETARY":
+            nvidia_native_vrs = cap("absent", "ruta nativa NVIDIA no aplicable a este driver",
+                                    ("vulkaninfo driverID",))
+        elif vrs_hardware["state"] == "absent":
+            nvidia_native_vrs = cap("absent", "faltan features Vulkan VRS en esta GPU NVIDIA",
+                                    ("vulkaninfo --text",))
+        elif vrs_hardware["state"] == "unknown":
+            nvidia_native_vrs = cap("unknown", "NVIDIA detectada, pero faltan features Vulkan VRS")
+        else:
+            nvidia_native_vrs = cap("present_unvalidated",
+                                    "VRS nativo posible si el juego lo implementa; distinto de la capa UGM",
+                                    ("VK_KHR_fragment_shading_rate", "vulkaninfo driverID"))
+        if not driver_id:
+            nvidia_layer_vrs = cap("unknown", "driverID Vulkan no disponible")
+        elif driver_id != "DRIVER_ID_NVIDIA_PROPRIETARY":
+            nvidia_layer_vrs = cap("absent", "capa VRS NVIDIA no aplicable a este driver")
+        elif vrs_hardware["state"] == "absent" or (vrs is not None and vrs["pipeline"] is False):
+            nvidia_layer_vrs = cap("absent", "VRS por pipeline no disponible para la capa NVIDIA")
+        elif vrs_hardware["state"] == "unknown" or (vrs is not None and vrs["pipeline"] is None):
+            nvidia_layer_vrs = cap("unknown", "faltan datos de VRS por pipeline NVIDIA")
+        else:
+            nvidia_layer_vrs = cap("present_unvalidated",
+                                   "capa NVIDIA candidata; tasa 2x2 y efecto real se verifican al ejecutar",
+                                   ("VK_KHR_fragment_shading_rate", "pipelineFragmentShadingRate"))
+        capabilities = {
+            "hdr": cap("present_unvalidated" if hdr else "absent" if hdr is False else "unknown",
+                       pending if hdr else "EDID sin bloque HDR" if hdr is False else "EDID no disponible",
+                       ("EDID CTA HDR",) if hdr else ()),
+            "vrr": cap("present_unvalidated" if vrr == "1" else "absent" if vrr == "0" else "unknown",
+                       pending if vrr == "1" else "DRM vrr_capable=0" if vrr == "0" else "propiedad VRR no disponible",
+                       ("DRM vrr_capable",) if vrr in ("0", "1") else ()),
+            "vrs_hardware": vrs_hardware,
+            "radv_vrs": radv_vrs,
+            "nvidia_native_vrs": nvidia_native_vrs,
+            "nvidia_layer_vrs": nvidia_layer_vrs,
+        }
+    return {
+        "schema_version": 1, "observed_at": datetime.now(timezone.utc).isoformat(),
+        "context": {"uid": os.getuid(), "session": context, "runtime_version": version},
+        "output": output, "output_reason": reason,
+        "drm_cards": list(cards.values()), "connectors": connectors,
+        "connected_connectors": outputs, "output_candidates": candidates,
+        "vulkan": {"selected": selected, "devices": devices},
+        "relation": relation, "capabilities": capabilities,
+        "observations": [{"source": "sysfs DRM", "state": "observed"},
+                         {"source": "vulkaninfo --summary", "state": "observed" if summary is not None else "unavailable"}],
+    }
+
+
+
+def cache_path():
+    base = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    return base / "ubuntu-gaming-mode" / "inventory-v1.json"
+
+
+def hardware_key(data):
+    """Identity needed to tell whether an old observation describes this display path."""
+    return {
+        "drm_cards": data["drm_cards"],
+        "connectors": data["connectors"],
+        "runtime_version": data["context"]["runtime_version"],
+    }
+
+
+def save_cache(data, path):
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if path.parent.is_symlink() or path.parent.stat().st_uid != os.getuid():
+        raise OSError("directorio de caché no pertenece al usuario")
+    fd, temporary = tempfile.mkstemp(prefix=".inventory-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as output:
+            json.dump(data, output, ensure_ascii=False)
+            output.write("\n")
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def load_cache(path):
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(fd, "r", encoding="utf-8") as source:
+            metadata = os.fstat(source.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or metadata.st_size > 1024 * 1024:
+                return None
+            data = json.load(source)
+        if (data.get("schema_version") != 1
+                or not {"vrs_hardware", "radv_vrs", "nvidia_native_vrs", "nvidia_layer_vrs"}.issubset(data.get("capabilities", {}))):
+            return None
+        return data
+    except (OSError, ValueError, TypeError, KeyError, UnicodeError):
+        return None
+
+
+def cached_report(root, version, context, path):
+    live = inspect(root, None, version, context)
+    stored = load_cache(path)
+    if stored is None:
+        live["inventory_status"] = "no_cache"
+        return live
+    try:
+        matches = hardware_key(stored) == hardware_key(live)
+    except (KeyError, TypeError):
+        matches = False
+    if not matches:
+        live["inventory_status"] = "stale"
+        live["last_observed_at"] = stored.get("observed_at")
+        return live
+    stored["inventory_status"] = "cached_unverified"
+    return stored
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--session", action="store_true", help="solo conectores DRM; no invoca Vulkan")
+    mode.add_argument("--refresh", action="store_true", help="inventario completo y caché del usuario")
+    mode.add_argument("--cached", action="store_true", help="caché contrastada con DRM actual, sin Vulkan")
+    parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--sys-root", type=Path, default=Path("/"), help=argparse.SUPPRESS)
+    parser.add_argument("--vulkan-summary", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--vulkan-text", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--runtime-version", default="unknown")
+    parser.add_argument("--context", choices=("gaming", "desktop", "offline"), default="offline")
+    parser.add_argument("--prefer-vk-device")
+    args = parser.parse_args()
+    if args.quiet and not args.refresh:
+        parser.error("--quiet requiere --refresh")
+    details = None
+    if args.session or args.cached:
+        summary = None
+    elif args.vulkan_summary:
+        summary = args.vulkan_summary.read_text(encoding="utf-8")
+        if args.vulkan_text:
+            details = args.vulkan_text.read_text(encoding="utf-8")
+    else:
+        try:
+            summary = subprocess.run(["vulkaninfo", "--summary"], capture_output=True,
+                                     text=True, timeout=10, check=True).stdout
+        except (OSError, subprocess.SubprocessError):
+            summary = None
+        if summary is not None:
+            try:
+                details = subprocess.run(["vulkaninfo", "--text"], capture_output=True,
+                                         text=True, timeout=10, check=True).stdout
+            except (OSError, subprocess.SubprocessError):
+                pass
+    if args.cached:
+        data = cached_report(args.sys_root, args.runtime_version, args.context, cache_path())
+    else:
+        data = inspect(args.sys_root, summary, args.runtime_version, args.context,
+                       args.prefer_vk_device, details)
+    if args.refresh:
+        try:
+            save_cache(data, cache_path())
+        except OSError as error:
+            print(f"No se pudo guardar inventario: {error}", file=sys.stderr)
+            return 1
+        data["inventory_status"] = "refreshed"
+    if args.session:
+        print(",".join([*data["output_candidates"], "*"]))
+        for name in ("hdr", "vrr", "vrs_hardware", "radv_vrs", "nvidia_native_vrs", "nvidia_layer_vrs"):
+            print(data["capabilities"][name]["state"])
+        print(data["relation"]["state"])
+    elif not args.quiet:
+        json.dump(data, sys.stdout, ensure_ascii=False, indent=2)
+        print()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

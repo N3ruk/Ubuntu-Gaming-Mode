@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Experimental per-game VRS launcher: select RADV or NVIDIA from live inventory."""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+DETECTOR = ROOT / "src/ugm-capabilities"
+NVIDIA_LAYER_DIR = Path(os.environ.get(
+    "UGM_VRS_LAYER_DIR", str(ROOT / "prototypes/nvidia-vrs")))
+NVIDIA_LAYER = "VK_LAYER_UGM_nvidia_vrs"
+REDIRECTORS = (
+    "DRI_PRIME", "MESA_VK_DEVICE_SELECT", "VK_ICD_FILENAMES", "VK_DRIVER_FILES",
+    "DXVK_FILTER_DEVICE_NAME", "VKD3D_FILTER_DEVICE_NAME", "__NV_PRIME_RENDER_OFFLOAD",
+)
+
+
+def select_route(data, environ):
+    if data.get("relation", {}).get("state") != "matched":
+        return None, "No se ha identificado de forma inequívoca la GPU Vulkan de la salida."
+    selected = data.get("vulkan", {}).get("selected") or {}
+    devices = data.get("vulkan", {}).get("devices") or []
+    hardware = [d for d in devices if not d.get("software")]
+    if len(hardware) != 1 or not selected.get("deviceUUID") or selected["deviceUUID"] != hardware[0].get("deviceUUID"):
+        return None, "Hay varias GPU Vulkan o la GPU efectiva del juego es incierta."
+    changed = [name for name in REDIRECTORS if environ.get(name)]
+    if changed:
+        return None, "Hay selección GPU/ICD externa: " + ", ".join(changed)
+    driver = selected.get("driverID")
+    pci = (selected.get("gpu_pci_id") or "").lower()
+    caps = data.get("capabilities", {})
+    if driver == "DRIVER_ID_MESA_RADV" and pci.startswith("1002:"):
+        if caps.get("radv_vrs", {}).get("state") == "present_unvalidated":
+            return "radv", "RADV VRS candidato; GFX10.3+ y efecto real requieren prueba A/B."
+        return None, "La ruta RADV VRS no aparece como candidata en esta GPU."
+    if driver == "DRIVER_ID_NVIDIA_PROPRIETARY" and pci.startswith("10de:"):
+        if caps.get("nvidia_layer_vrs", {}).get("state") != "present_unvalidated":
+            return None, "VRS Vulkan NVIDIA no aparece como candidato en esta GPU."
+        if not all((NVIDIA_LAYER_DIR / name).is_file() for name in (
+                "libugm_nvidia_vrs_64.so", "libugm_nvidia_vrs_32.so",
+                NVIDIA_LAYER + "_64.json", NVIDIA_LAYER + "_32.json")):
+            return None, "Falta compilar la capa Vulkan NVIDIA experimental."
+        return "nvidia", "Capa NVIDIA candidata; 2x2 y efecto real requieren prueba A/B."
+    return None, "No hay ruta VRS implementada para este driver."
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--rate", choices=("1x1", "1x2", "2x1", "2x2"), default="1x1")
+    parser.add_argument("--probe", action="store_true", help="solo informa, no ejecuta el juego")
+    parser.add_argument("--steam-toggle", action="store_true",
+                        help="usar el archivo de 1x1/2x2 de Steam como señal VRS dinámica")
+    parser.add_argument("--confirm-gfx103", action="store_true",
+                        help="confirmación experimental de GFX10.3+ para RADV")
+    parser.add_argument("--inventory-json", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    command = args.command[1:] if args.command and args.command[0] == "--" else args.command
+    if not args.probe and not command:
+        parser.error("indica -- comando_del_juego, o usa --probe")
+    try:
+        if args.inventory_json:
+            data = json.loads(args.inventory_json.read_text(encoding="utf-8"))
+        else:
+            output = subprocess.run([str(DETECTOR)], capture_output=True, text=True,
+                                    timeout=25, check=True)
+            data = json.loads(output.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"No se pudo verificar la GPU Vulkan: {error}", file=sys.stderr)
+        return 2
+    route, reason = select_route(data, os.environ)
+    print(reason, file=sys.stderr)
+    if not route:
+        return 2
+    if args.probe:
+        return 0
+    env = os.environ.copy()
+    steam_file = env.get("RADV_FORCE_VRS_CONFIG_FILE") if args.steam_toggle else None
+    if args.steam_toggle:
+        if not steam_file or not Path(steam_file).is_file():
+            print("Steam no ha proporcionado un archivo RADV_FORCE_VRS_CONFIG_FILE legible.", file=sys.stderr)
+            return 2
+        try:
+            steam_rate = Path(steam_file).read_text(encoding="ascii").strip()
+        except (OSError, UnicodeError):
+            steam_rate = None
+        if steam_rate not in ("1x1", "2x2"):
+            print("El archivo VRS de Steam no contiene 1x1 ni 2x2.", file=sys.stderr)
+            return 2
+    if route == "radv":
+        if not args.confirm_gfx103:
+            print("Falta --confirm-gfx103; no se activará VRS sin verificar la generación AMD.", file=sys.stderr)
+            return 2
+        if args.steam_toggle:
+            device_type = (data.get("vulkan", {}).get("selected") or {}).get("deviceType", "")
+            if device_type != "PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU":
+                print("La ruta RADV por archivo de Steam requiere APU AMD; no se aplicará a una GPU discreta.", file=sys.stderr)
+                return 2
+            env.pop("RADV_FORCE_VRS", None)
+            # Mantener la llamada original de Steam a Mesa en APU RADV.
+        else:
+            env.pop("RADV_FORCE_VRS_CONFIG_FILE", None)  # Tiene prioridad sobre RADV_FORCE_VRS.
+            env["RADV_FORCE_VRS"] = args.rate
+    else:
+        if args.rate not in ("1x1", "2x2"):
+            print("La capa NVIDIA solo admite 1x1 y 2x2.", file=sys.stderr)
+            return 2
+        env.pop("RADV_FORCE_VRS", None)
+        env.pop("RADV_FORCE_VRS_CONFIG_FILE", None)
+        if args.steam_toggle:
+            env["UGM_VRS_CONFIG_FILE"] = steam_file
+            env.pop("UGM_VRS_RATE", None)
+        else:
+            env.pop("UGM_VRS_CONFIG_FILE", None)
+            env["UGM_VRS_RATE"] = args.rate
+        layer_path = env.get("VK_LAYER_PATH")
+        env["VK_LAYER_PATH"] = str(NVIDIA_LAYER_DIR) + ((":" + layer_path) if layer_path else "")
+        layers = [name for name in env.get("VK_INSTANCE_LAYERS", "").split(":") if name]
+        if NVIDIA_LAYER not in layers:
+            layers.append(NVIDIA_LAYER)
+        env["VK_INSTANCE_LAYERS"] = ":".join(layers)
+    print(f"Prueba {route.upper()} VRS {'Steam 1x1/2x2' if args.steam_toggle else args.rate} "
+          "solo para este juego; no implica validación.", file=sys.stderr)
+    os.execvpe(command[0], command, env)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

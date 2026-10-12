@@ -5,51 +5,104 @@
 # Gamescope 3.16.30 GBM + UGM safety patch
 # ============================================================
 
-export GAMESCOPE_BIN=/usr/lib/ubuntu-gaming-mode/gamescope
+UGM_RUNTIME_DIR=${UGM_RUNTIME_DIR:-/usr/lib/ubuntu-gaming-mode}
+export GAMESCOPE_BIN="$UGM_RUNTIME_DIR/gamescope"
 export gamescope_drm_gbm_scanout=1
 
 # ------------------------------------------------------------
 # Gamescope DRM
 # ------------------------------------------------------------
 
-BACKEND=drm
-# Detectar automáticamente el conector DRM físicamente conectado
-detect_output_connector() {
-    local d name
+BACKEND=${UGM_DEV_BACKEND:-drm}
+# Lectura DRM rápida en sesión; el inventario Vulkan completo se hace en escritorio.
+# Enumera las salidas conectadas
+# como candidatas en cada arranque; las preferencias HDR/VRR se resuelven
+# por separado. No se evalúa ninguna salida como shell.
+CAPABILITY_READER="$UGM_RUNTIME_DIR/ugm-capabilities"
+CAPABILITY_FIELDS=()
+if [ -x "$CAPABILITY_READER" ]; then
+    CAPABILITY_ARGS=()
+    if [ -n "${VULKAN_ADAPTER:-}" ]; then
+        CAPABILITY_ARGS=(--prefer-vk-device "$VULKAN_ADAPTER")
+    fi
+    mapfile -t CAPABILITY_FIELDS < <("$CAPABILITY_READER" --session --context gaming --runtime-version 2.5-dev "${CAPABILITY_ARGS[@]}")
+fi
+OUTPUT_CONNECTOR="${CAPABILITY_FIELDS[0]:-*}"
 
-    for d in /sys/class/drm/card*-*; do
-        [ -r "$d/status" ] || continue
-        [ "$(cat "$d/status")" = "connected" ] || continue
-
-        name="$(basename "$d")"
-        printf '%s\n' "${name#card*-}"
-        return 0
-    done
-
-    return 1
-}
-
-ACTIVE_CONNECTOR="$(detect_output_connector || true)"
-
-if [ -n "$ACTIVE_CONNECTOR" ]; then
-    OUTPUT_CONNECTOR="${ACTIVE_CONNECTOR},*"
-else
-    # Fallback: dejar que Gamescope elija una salida disponible
-    OUTPUT_CONNECTOR="*"
+# La preferencia manual tiene prioridad. En auto, 1 anuncia capacidad general
+# del compositor, NO compatibilidad del monitor. Gamescope publica y actualiza
+# GAMESCOPE_DISPLAY_SUPPORTS_HDR/GAMESCOPE_VRR_CAPABLE para la salida activa.
+# No decidir por EDID aquí: una decisión de arranque no seguiría el hotplug.
+# El lector imprime dos valores 0/1, nunca código shell para evaluar.
+HDR_ENABLED=1
+VRR_ENABLED=1
+DISPLAY_OPTIONS="$UGM_RUNTIME_DIR/ugm-display-options"
+if [ -x "$DISPLAY_OPTIONS" ]; then
+    mapfile -t DISPLAY_VALUES < <("$DISPLAY_OPTIONS" --session)
+    if [[ "${DISPLAY_VALUES[0]:-}" =~ ^[01]$ && "${DISPLAY_VALUES[1]:-}" =~ ^[01]$ ]]; then
+        HDR_ENABLED="${DISPLAY_VALUES[0]}"
+        VRR_ENABLED="${DISPLAY_VALUES[1]}"
+    fi
 fi
 
-# VRR real en Gamescope
-ADAPTIVE_SYNC=1
-
-# HDR real en Gamescope
-ENABLE_GAMESCOPE_HDR=1
-export ENABLE_GAMESCOPE_WSI=1
+# Parámetros efectivos de Gamescope.
+ADAPTIVE_SYNC=
+if [[ "$VRR_ENABLED" == 1 ]]; then
+    ADAPTIVE_SYNC=1
+fi
+ENABLE_GAMESCOPE_HDR="$HDR_ENABLED"
+export ENABLE_GAMESCOPE_WSI="$HDR_ENABLED"
 
 # ------------------------------------------------------------
 # Steam GamepadUI
 # ------------------------------------------------------------
 
 CLIENTCMD="steam -gamepadui -steamos3 -steampal -steamdeck"
+
+# La ruta se decide durante la instalación. Al entrar en UGM solo se aplica
+# esa decisión; Steam y sus juegos reciben la señal tras arrancar Gamescope.
+UGM_VRS_ROUTE=none
+if [[ -r /etc/ubuntu-gaming-mode/vrs.conf ]]; then
+    . /etc/ubuntu-gaming-mode/vrs.conf
+fi
+post_gamescope_start() {
+    local layer_dir layer_name layer_route
+    case "${UGM_VRS_ROUTE:-none}" in
+        nvidia|amd)
+            layer_route="$UGM_VRS_ROUTE"
+            layer_name="VK_LAYER_UGM_${layer_route}_vrs"
+            # Steam Runtime/Proton comparte HOME: espejar las dos arquitecturas.
+            layer_dir="$(/usr/lib/ubuntu-gaming-mode/ugm-vrs-stage "$layer_route")" || return
+            [[ -f "$layer_dir/${layer_name}_64.json" && \
+               -f "$layer_dir/${layer_name}_32.json" && \
+               -f "$layer_dir/libugm_${layer_route}_vrs_64.so" && \
+               -f "$layer_dir/libugm_${layer_route}_vrs_32.so" ]] || return
+            ;;
+        radv) ;;  # Archivo dinámico nativo de Mesa en APU GFX10.3.
+        *)
+            # Sin ruta VRS no anunciar el control dinámico al QAM.
+            unset STEAM_USE_DYNAMIC_VRS RADV_FORCE_VRS_CONFIG_FILE UGM_VRS_CONFIG_FILE
+            return ;;
+
+    esac
+    # El QAM de Steam escribe la tasa en RADV_FORCE_VRS_CONFIG_FILE. En AMD
+    # moderno nuestra capa lee el mismo archivo mediante UGM_VRS_CONFIG_FILE.
+    # Steam Runtime/Proton comparte HOME, pero no todo XDG_RUNTIME_DIR.
+    local vrs_dir="$HOME/.local/state/ubuntu-gaming-mode" file
+    mkdir -p -m 700 "$vrs_dir" || return
+    file="$(mktemp "$vrs_dir/vrs.XXXXXXXX")" || return
+    printf '1x1\n' > "$file"
+    export RADV_FORCE_VRS_CONFIG_FILE="$file"
+    export STEAM_USE_DYNAMIC_VRS=1
+    if [[ "$UGM_VRS_ROUTE" == nvidia || "$UGM_VRS_ROUTE" == amd ]]; then
+        export UGM_VRS_CONFIG_FILE="$file"
+        export VK_ADD_LAYER_PATH="$layer_dir${VK_ADD_LAYER_PATH:+:$VK_ADD_LAYER_PATH}"
+        case ":${VK_INSTANCE_LAYERS:-}:" in
+            *:"$layer_name":*) ;;
+            *) export VK_INSTANCE_LAYERS="$layer_name${VK_INSTANCE_LAYERS:+:$VK_INSTANCE_LAYERS}" ;;
+        esac
+    fi
+}
 
 export STEAM_MULTIPLE_XWAYLANDS=1
 
@@ -61,11 +114,20 @@ export STEAM_GAMESCOPE_NIS_SUPPORTED=1
 export STEAM_GAMESCOPE_FANCY_SCALING_SUPPORT=1
 
 # ------------------------------------------------------------
-# Capacidades HDR / VRR anunciadas a Steam
+# Capacidades generales del compositor anunciadas a Steam; no del monitor.
+# Gamescope 3.16.30 informa la compatibilidad de la salida activa por X atoms.
 # ------------------------------------------------------------
 
-export STEAM_GAMESCOPE_HDR_SUPPORTED=1
-export STEAM_GAMESCOPE_VRR_SUPPORTED=1
+export STEAM_GAMESCOPE_HDR_SUPPORTED="$HDR_ENABLED"
+export STEAM_GAMESCOPE_VRR_SUPPORTED="$VRR_ENABLED"
+# El modo anidado solo prueba arranque y ruta de código, no capacidades DRM.
+if [[ "${UGM_DEV_BACKEND:-}" == sdl ]]; then
+    ADAPTIVE_SYNC=
+    ENABLE_GAMESCOPE_HDR=0
+    export ENABLE_GAMESCOPE_WSI=0
+    export STEAM_GAMESCOPE_HDR_SUPPORTED=0
+    export STEAM_GAMESCOPE_VRR_SUPPORTED=0
+fi
 
 # ------------------------------------------------------------
 # MangoApp / monitor de rendimiento

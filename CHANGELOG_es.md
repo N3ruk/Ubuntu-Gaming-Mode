@@ -2,6 +2,23 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 2.5.0-5 — 2026-10-12 (versión preliminar)
+
+- Conservado el Gamescope 3.16.30 GBM de 2.0.0-1 y su serie de nueve patches;
+  no se ha cambiado ese binario para 2.5.
+- Añadidos inventario GPU/Vulkan, opciones HDR/VRR y diagnóstico de capacidades.
+- Añadida selección VRS en instalación: ruta nativa RADV para una lista
+  conservadora de APU, o capas experimentales AMD/NVIDIA con permiso explícito.
+  Ambas capas se generan desde fuentes C en 32 y 64 bits y se empaquetan inertes.
+- Añadida app opcional de despertar por mando Bluetooth, con icono, Polkit y
+  servicio, dentro del mismo paquete; BlueZ es recomendado y la opción comienza
+  desactivada.
+- Corregido el fallo de permisos de VRS: la sesión prepara la capa desde
+  `/usr/lib/ubuntu-gaming-mode/vrs-bundled`, legible por el usuario, y mantiene
+  privado `/var/lib/ubuntu-gaming-mode`. El hook anuncia VRS a Steam solo si la
+  preparación de la ruta seleccionada termina correctamente.
+- Pruebas automáticas: 61 superadas para el candidato empaquetado. Falta validación física final de GamepadUI/juegos y hardware AMD.
+
 ## 2.0.0-1 — 2026-09-30
 
 ### Cambiado

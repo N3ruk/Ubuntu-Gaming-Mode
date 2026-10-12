@@ -1,6 +1,26 @@
-# Install Ubuntu Gaming Mode 2.0.0-1 on Ubuntu 26.04
+# Install Ubuntu Gaming Mode on Ubuntu 26.04
 
 **English** | [Español](es/instalacion.md)
+
+## 2.5.0-5 pre-release
+
+Download the `.deb` and `SHA256SUMS` from the `v2.5.0-5` GitHub release.
+Install it from an interactive terminal:
+
+```bash
+sudo apt install ./ubuntu-gaming-mode_2.5.0-5_amd64.deb
+```
+
+Verify the downloaded package with `sha256sum -c SHA256SUMS` before installation.
+Debconf can opt into experimental VRS layers on an unambiguously eligible GPU;
+the recognized native RADV route is automatic. The Bluetooth app defaults off.
+See [VRS](vrs-y-capacidades-steamos.md) and
+[controller wake](es/despertar-mando-bluetooth.md). Run
+`sudo ubuntu-gaming-mode-doctor` after installation. Physical GamepadUI-toggle
+and in-game-effect validation remains pending. Upgrades retain the original
+snapshot; reinstall or reconfigure to reevaluate the install-time VRS route.
+
+## Historical reference: published 2.0.0-1 release
 
 ## Requirements
 
@@ -118,3 +138,24 @@ sudo apt install ./ubuntu-gaming-mode_2.0.0-1_amd64.deb
 The upgrade preserves the immutable baseline and renews only the state managed
 by the installed version. Review any installer warning and run Doctor when it
 finishes.
+
+## Bluetooth controller wake (optional in 2.5)
+
+Install the 2.5 candidate directly from its single `.deb` in an interactive
+terminal:
+
+```bash
+sudo apt install ./ubuntu-gaming-mode_2.5.0-5_amd64.deb
+```
+
+Debconf asks UGM's installation questions. If it detects a USB Bluetooth
+adapter, it also displays the BIOS USB/PCIe wake notice and asks whether to
+**enable Bluetooth and show the controller wake app in the applications menu**. The default is no.
+The app is part of the same package; no helper script or second `.deb`
+is required. By default, APT tries to install BlueZ and the app-only dependencies as recommended packages. With recommendations disabled or `dpkg -i`, APT does not install them. If the app was selected and BlueZ is still unavailable, UGM continues with a warning; the controller app needs BlueZ
+to work. Selecting yes enables and starts `bluetooth.service` when BlueZ is
+installed; failures are reported without blocking UGM. Selecting no leaves the
+service unchanged. Selecting yes does not enable any controllers:
+choose them in the app and test a real suspend/resume. Change the choice later
+with `sudo dpkg-reconfigure ubuntu-gaming-mode`. Noninteractive installations
+use the default answers.

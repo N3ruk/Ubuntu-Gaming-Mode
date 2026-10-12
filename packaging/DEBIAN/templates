@@ -33,3 +33,105 @@ Description-es.UTF-8: ¿Usar el Gamescope de UGM como comando gamescope global d
  El estado anterior se conserva y se restaura al desinstalar UGM. La opción
  está desactivada por defecto y puede modificarse después con
  «dpkg-reconfigure ubuntu-gaming-mode».
+
+Template: ubuntu-gaming-mode/amd-vrs-experimental
+Type: boolean
+Default: false
+Description: EXPERIMENTAL FEATURE: enable live QAM VRS for this AMD GPU?
+ UGM detected one matching AMD GPU using Mesa RADV and Vulkan pipeline VRS.
+ This option loads an experimental Vulkan layer in Steam games so the QAM
+ can switch 1x1/2x2 shading live. Some games or render passes may not benefit
+ or may show artifacts. It is disabled by default. You can change it later
+ with "dpkg-reconfigure ubuntu-gaming-mode". If you change the GPU or Vulkan
+ driver, reinstall UGM so the route is detected again.
+Description-es.UTF-8: EXPERIMENTAL FEATURE: ¿activar VRS en caliente desde el QAM para esta GPU AMD?
+ UGM ha detectado una GPU AMD coincidente con el controlador Mesa RADV y VRS
+ por pipeline en Vulkan. Esta opción carga una capa Vulkan experimental en
+ los juegos de Steam para cambiar el sombreado 1x1/2x2 desde el QAM. Algunos
+ juegos o pases pueden no beneficiarse o mostrar artefactos. Está desactivada
+ por defecto. Puede cambiarse más tarde con «dpkg-reconfigure
+ ubuntu-gaming-mode». Si cambia la GPU o el controlador Vulkan,
+ reinstale UGM para detectar de nuevo la ruta.
+
+Template: ubuntu-gaming-mode/nvidia-vrs-experimental
+Type: boolean
+Default: false
+Description: EXPERIMENTAL FEATURE: enable live QAM VRS for this NVIDIA GPU?
+ UGM detected one matching NVIDIA GPU with Vulkan pipeline VRS.
+ If enabled, UGM installs an experimental Vulkan layer and exposes the VRS
+ button in Steam's QAM. Some games or render passes may not benefit or may
+ show artifacts. Disabled by default. If the GPU or Vulkan driver changes,
+ reinstall UGM to detect the appropriate route again.
+Description-es.UTF-8: EXPERIMENTAL FEATURE: ¿activar VRS en caliente desde el QAM para esta GPU NVIDIA?
+ UGM ha detectado una GPU NVIDIA coincidente con VRS por pipeline en Vulkan.
+ Si se activa, UGM instala una capa Vulkan experimental y muestra el botón
+ VRS en el QAM de Steam. Algunos juegos o pases pueden no beneficiarse o
+ mostrar artefactos. Está desactivada por defecto. Si cambia la GPU o el
+ controlador Vulkan, reinstale UGM para volver a detectar la ruta.
+
+Template: ubuntu-gaming-mode/bluetooth-controller-wake-notice
+Type: note
+Description: Bluetooth gamepad wake requires USB/PCIe wake in BIOS/UEFI
+ This system has a USB Bluetooth adapter. To use the optional
+ Bluetooth wake app included in UGM, enable wake from USB and PCIe during
+ suspend in BIOS/UEFI (the option names vary by board). The installer cannot
+ verify this setting or guarantee wake support. Install the app only
+ if wanted, select controllers in it, and test a real suspend/resume.
+ This feature does not power on a fully shut-down PC.
+Description-es.UTF-8: El despertar por mando Bluetooth requiere wake USB/PCIe en BIOS/UEFI
+ Este equipo tiene un adaptador Bluetooth USB. Para usar la app opcional
+ incluida en UGM, habilite en BIOS/UEFI el despertar por
+ USB y PCIe durante la suspensión (el nombre varía según la placa). El
+ instalador no puede verificarlo ni garantizar compatibilidad. Instale la
+ app solo si lo desea, seleccione los mandos y pruebe una
+ suspensión y reanudación reales. Esta función no enciende un PC apagado.
+
+Template: ubuntu-gaming-mode/bluetooth-controller-wake-app
+Type: boolean
+Default: false
+Description: Enable Bluetooth and show the optional gamepad wake app?
+ A USB Bluetooth adapter was detected. APT normally attempts to install
+ BlueZ as a recommended package. If selected and BlueZ is available, UGM
+ enables and starts bluetooth.service and shows the included controller
+ selector in the applications menu. No controller is enabled by this choice;
+ select each controller in the app and test suspend/resume.
+ If BlueZ cannot be installed, UGM continues and reports the missing support.
+ This option is disabled by default and can be changed with
+ "dpkg-reconfigure ubuntu-gaming-mode".
+Description-es.UTF-8: ¿Activar Bluetooth y mostrar la app de despertar por mando?
+ Se ha detectado un adaptador Bluetooth USB. APT normalmente intenta instalar
+ BlueZ como paquete recomendado. Si acepta y BlueZ está disponible, UGM
+ habilita y arranca bluetooth.service y muestra en el menú la app para
+ seleccionar mandos. Esta elección no activa ningún mando: selecciónelos en
+ la app y pruebe la suspensión.
+ Si BlueZ no se puede instalar, UGM continúa y avisa de la falta de soporte.
+ La opción está desactivada por defecto y puede cambiarse con
+ «dpkg-reconfigure ubuntu-gaming-mode».
+
+Template: ubuntu-gaming-mode/bluez-missing
+Type: note
+Description: BlueZ is unavailable; Ubuntu Gaming Mode will continue
+ APT normally attempts to install BlueZ as a recommended package, but it
+ is still missing. Recommendations may have been disabled or installation
+ may have been performed directly with dpkg. Gaming Mode works without it.
+ To complete controller wake support, install BlueZ with "sudo apt install bluez"
+ and then run "sudo dpkg-reconfigure ubuntu-gaming-mode".
+Description-es.UTF-8: BlueZ no está disponible; Ubuntu Gaming Mode continuará
+ APT normalmente intenta instalar BlueZ como paquete recomendado, pero sigue
+ ausente. Es posible que se hayan desactivado las recomendaciones o que la
+ instalación se haya hecho directamente con dpkg. Gaming Mode funciona sin él.
+ Para completar el soporte de mandos, instale BlueZ con «sudo apt install bluez»
+ y después ejecute «sudo dpkg-reconfigure ubuntu-gaming-mode».
+
+Template: ubuntu-gaming-mode/bluez-service-unavailable
+Type: note
+Description: Bluetooth service is not enabled and active; UGM will continue
+ BlueZ is installed, but bluetooth.service is not both enabled and active.
+ Gaming Mode works without it. If you selected the optional app, UGM
+ attempted to enable and start the service; check why it failed. Otherwise
+ UGM did not change the service state.
+Description-es.UTF-8: El servicio Bluetooth no está habilitado y activo; UGM continuará
+ BlueZ está instalado, pero bluetooth.service no está habilitado y activo.
+ Gaming Mode funciona sin él. Si aceptó la app opcional, UGM intentó
+ habilitar y arrancar el servicio; compruebe por qué falló. En caso contrario,
+ UGM no cambió el estado del servicio.

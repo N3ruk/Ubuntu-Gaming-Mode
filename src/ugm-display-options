@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Preferencias de HDR/VRR de UGM; el inventario nunca escribe aquí."""
+import argparse
+import json
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+CHOICES = ("auto", "on", "off")
+FEATURES = ("hdr", "vrr")
+DEFAULTS = {key: "auto" for key in FEATURES}
+
+
+def config_path():
+    base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return base / "ubuntu-gaming-mode" / "display-options.json"
+
+
+def read_preferences(path):
+    if not path.exists():
+        return DEFAULTS.copy()
+    if path.stat().st_size > 4096:
+        raise ValueError("archivo de preferencias demasiado grande")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or data.get("schema_version") != 1:
+        raise ValueError("formato de preferencias no compatible")
+    result = DEFAULTS.copy()
+    for key in FEATURES:
+        value = data.get(key, "auto")
+        if value not in CHOICES:
+            raise ValueError(f"preferencia {key} inválida")
+        result[key] = value
+    return result
+
+
+def write_preferences(path, preferences):
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    previous_umask = os.umask(0o077)
+    temp = None
+    try:
+        fd, name = tempfile.mkstemp(prefix=".display-options-", dir=path.parent)
+        temp = Path(name)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump({"schema_version": 1, **preferences}, stream, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp, path)
+    finally:
+        os.umask(previous_umask)
+        if temp is not None:
+            temp.unlink(missing_ok=True)
+
+
+def effective(preferences):
+    # Compatibilidad 2.0: auto habilita las rutas del compositor. Gamescope
+    # decide por conector activo y actualiza sus X atoms al cambiar de monitor.
+    # El inventario no edita preferencias ni autoriza soporte de un monitor.
+    return {key: preferences[key] != "off" for key in FEATURES}
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Preferencias HDR/VRR de Ubuntu Gaming Mode")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--show", action="store_true", help="mostrar preferencias y valores efectivos")
+    group.add_argument("--session", action="store_true", help=argparse.SUPPRESS)
+    group.add_argument("--set", nargs=2, metavar=("FUNCIÓN", "VALOR"),
+                       help="FUNCIÓN: hdr|vrr; VALOR: auto|on|off")
+    args = parser.parse_args()
+    path = config_path()
+    try:
+        preferences = read_preferences(path)
+        if args.set:
+            feature, value = args.set
+            if feature not in FEATURES or value not in CHOICES:
+                parser.error("usa --set hdr|vrr auto|on|off")
+            preferences[feature] = value
+            write_preferences(path, preferences)
+        values = effective(preferences)
+        if args.session:
+            print("1" if values["hdr"] else "0")
+            print("1" if values["vrr"] else "0")
+        else:
+            print(json.dumps({"preferences": preferences, "effective": values,
+                              "auto_policy": "legacy_2.0"}, ensure_ascii=False))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: preferencias HDR/VRR: {exc}", file=sys.stderr)
+        if args.session:
+            # Un archivo dañado no debe activar capacidades por accidente.
+            print("0\n0")
+            return 0
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

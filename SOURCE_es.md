@@ -2,8 +2,8 @@
 
 [English](SOURCE.md) | **Español**
 
-Este repositorio contiene el código de **Ubuntu Gaming Mode 2.0.0-1** y el
-registro reproducible del Gamescope incluido.
+Este árbol contiene las fuentes de la versión preliminar **Ubuntu Gaming Mode
+2.5.0-5** y el registro reproducible del Gamescope 3.16.30 heredado de 2.0.0-1.
 
 ## Estructura
 
@@ -14,6 +14,9 @@ registro reproducible del Gamescope incluido.
 - `gamescope/versions/3.16.30-gbm/`: patches, procedencia y validación.
 - `tests/`: pruebas de las integraciones opcionales.
 - `docs/`: instalación, rollback, arquitectura y rendimiento.
+- `prototypes/nvidia-vrs/` y `prototypes/amd-vrs/`: fuentes, build y pruebas de
+  las capas VRS incluidas en el paquete. Los `.so` generados no se guardan en Git.
+- `system/icons/`: iconos PNG de UGM y de la app Bluetooth, ambos versionados.
 
 ## Entrada binaria e icono de la aplicación
 
@@ -28,6 +31,10 @@ bash packaging/build-deb.sh
 El script rechaza un Gamescope cuyo SHA256 no coincida con el autorizado para
 la versión. `UGM_ICON` permite sustituir el icono versionado si se necesita.
 Ambos recursos se incluyen en el `.deb`; el binario Gamescope sigue fuera de Git.
+El script compila las capas VRS NVIDIA y AMD de 32/64 bits a partir de sus
+fuentes C y crea los manifiestos en el payload `vrs-bundled`. Requiere
+compiladores y soporte multilib; consulta los README de cada capa. Los
+artefactos de prueba en `prototypes/` están ignorados por Git.
 
 ## Gamescope 3.16.30 GBM
 

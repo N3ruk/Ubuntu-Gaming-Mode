@@ -55,7 +55,19 @@ case "$ACTION" in
         ;;
 esac
 
+bt_launcher=/usr/share/applications/ugm-bt-wake.desktop
+bt_source=/usr/lib/ubuntu-gaming-mode/ugm-bt-wake.desktop
+if [ -L "$bt_launcher" ] &&
+   [ "$(readlink "$bt_launcher")" = "$bt_source" ]; then
+    rm -f "$bt_launcher"
+fi
+
 systemctl disable --now ugm-powerbuttond.service >/dev/null 2>&1 || true
+systemctl disable --now ugm-bt-wake-apply.service >/dev/null 2>&1 || true
+if [ -x /usr/lib/ubuntu-gaming-mode/ugm-bt-wake ]; then
+    /usr/lib/ubuntu-gaming-mode/ugm-bt-wake reset ||
+        echo "ubuntu-gaming-mode: WARN: Bluetooth wake no se restauró completamente; se conserva su estado." >&2
+fi
 
 [ -r "$CONFIG" ] ||
     exit 0

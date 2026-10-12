@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Decide la ruta VRS una vez durante la instalación de UGM."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+LAYER_DIR = Path("/usr/lib/ubuntu-gaming-mode/vrs-bundled")
+DETECTOR = Path("/usr/lib/ubuntu-gaming-mode/ugm-capabilities")
+# Mesa only watches RADV_FORCE_VRS_CONFIG_FILE on GFX10.3 APUs without
+# dedicated VRAM. These PCI IDs are known RDNA2 APUs, not a generic AMD range.
+NATIVE_RADV_APUS = frozenset({
+    "1002:1435",  # Sephiroth / Steam Deck OLED
+    "1002:1506",  # Mendocino
+    "1002:163f",  # Van Gogh / Steam Deck LCD
+    "1002:164d",  # Rembrandt
+    "1002:164e",  # Raphael
+    "1002:1681",  # Rembrandt / Radeon 680M
+})
+
+
+def select_route(data, layer_dir=LAYER_DIR):
+    if data.get("relation", {}).get("state") != "matched":
+        return "none"
+    vulkan = data.get("vulkan", {})
+    selected = vulkan.get("selected") or {}
+    hardware = [item for item in vulkan.get("devices", []) if not item.get("software")]
+    if len(hardware) != 1 or not selected.get("deviceUUID") or \
+            selected["deviceUUID"] != hardware[0].get("deviceUUID"):
+        return "none"
+    driver = selected.get("driverID")
+    pci = (selected.get("gpu_pci_id") or "").lower()
+    caps = data.get("capabilities", {})
+    if driver == "DRIVER_ID_MESA_RADV" and pci in NATIVE_RADV_APUS and \
+            selected.get("deviceType") == "PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU" and \
+            caps.get("radv_vrs", {}).get("state") == "present_unvalidated":
+        return "radv"
+    if driver == "DRIVER_ID_NVIDIA_PROPRIETARY" and pci.startswith("10de:") and \
+            caps.get("nvidia_layer_vrs", {}).get("state") == "present_unvalidated":
+        required = [layer_dir / f"{name}_{arch}.{ext}"
+                    for name, ext in (("libugm_nvidia_vrs", "so"),
+                                      ("VK_LAYER_UGM_nvidia_vrs", "json"))
+                    for arch in ("32", "64")]
+        if all(path.is_file() for path in required):
+            return "nvidia"
+    # La capa AMD opera sobre RADV con VRS por pipeline, sin depender de la
+    # restricción GFX10.3/APU del archivo dinámico de Mesa. La capacidad real
+    # 2x2 se comprueba también dentro de la capa al crear el dispositivo.
+    if driver == "DRIVER_ID_MESA_RADV" and pci.startswith("1002:") and \
+            caps.get("radv_vrs", {}).get("state") == "present_unvalidated":
+        required = [layer_dir / f"{name}_{arch}.{ext}"
+                    for name, ext in (("libugm_amd_vrs", "so"),
+                                      ("VK_LAYER_UGM_amd_vrs", "json"))
+                    for arch in ("32", "64")]
+        if all(path.is_file() for path in required):
+            return "amd"
+    return "none"
+
+
+def main():
+    try:
+        if len(sys.argv) == 3 and sys.argv[1] == "--inventory-json":
+            data = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+        elif len(sys.argv) == 1:
+            env = os.environ.copy()
+            env.pop("DISPLAY", None)
+            env.pop("WAYLAND_DISPLAY", None)
+            data = json.loads(subprocess.run([str(DETECTOR)], check=True, env=env,
+                                             capture_output=True, text=True,
+                                             timeout=30).stdout)
+        else:
+            print("uso: ugm-vrs-select [--inventory-json RUTA]", file=sys.stderr)
+            return 2
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"Inventario VRS no disponible: {error}", file=sys.stderr)
+        print("none")
+        return 0
+    print(select_route(data))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

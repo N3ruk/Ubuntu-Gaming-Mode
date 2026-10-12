@@ -11,7 +11,7 @@ MANAGED="$STATE_ROOT/managed-state"
 LEGACY="$STATE_ROOT/preinstall"
 LEGACY_MANAGED="$STATE_ROOT/managed.sha256"
 
-PKG_VERSION="2.0.0-1"
+PKG_VERSION="2.5.0-5"
 
 CONFIG="/etc/ubuntu-gaming-mode/session.conf"
 
@@ -348,6 +348,38 @@ log "Configurando Ubuntu Gaming Mode."
 
 /usr/lib/ubuntu-gaming-mode/ubuntu-gaming-mode-setup     --apply
 
+# Detectar primero. RADV nativo es automático; las capas siempre requieren
+# consentimiento experimental. La ruta none no presenta ninguna pregunta.
+vrs_route="$(/usr/lib/ubuntu-gaming-mode/ugm-vrs-select)" ||
+    die "falló la selección de ruta VRS"
+case "$vrs_route" in
+    radv|nvidia|amd|none) ;;
+    *) die "ruta VRS no válida: $vrs_route" ;;
+esac
+vrs_candidate="$vrs_route"
+case "$vrs_route" in
+    nvidia|amd)
+        db_fset "ubuntu-gaming-mode/${vrs_route}-vrs-experimental" seen false || true
+        db_input high "ubuntu-gaming-mode/${vrs_route}-vrs-experimental" || true
+        db_go || true
+        RET=false
+        db_get "ubuntu-gaming-mode/${vrs_route}-vrs-experimental" || true
+        if [ "${RET:-false}" != true ]; then
+            vrs_route=none
+            log "VRS ${vrs_candidate} experimental no instalado por elección o valor predeterminado."
+        fi
+        ;;
+esac
+/usr/lib/ubuntu-gaming-mode/ugm-vrs-activate "$vrs_route" ||
+    die "no se pudo activar la ruta VRS $vrs_route"
+vrs_config="/etc/ubuntu-gaming-mode/vrs.conf"
+vrs_tmp="$(mktemp /etc/ubuntu-gaming-mode/.vrs.conf.XXXXXX)" ||
+    die "no se pudo preparar vrs.conf"
+printf 'UGM_VRS_ROUTE=%s\n' "$vrs_route" > "$vrs_tmp"
+chmod 0644 "$vrs_tmp"
+mv -f "$vrs_tmp" "$vrs_config"
+log "Ruta VRS: $vrs_route"
+
 [ -r "$CONFIG" ] ||
     die "setup no generó $CONFIG"
 
@@ -397,7 +429,7 @@ capture_gdm_state     "/etc/gdm3/custom.conf"     "$tmp_managed/gdm.last"
 
 : > "$tmp_managed/generated.sha256"
 
-for p in     /etc/ubuntu-gaming-mode/session.conf     /etc/sudoers.d/gaming-autologin-rearm
+for p in     /etc/ubuntu-gaming-mode/session.conf     /etc/ubuntu-gaming-mode/vrs.conf     /etc/sudoers.d/gaming-autologin-rearm
 do
     if [ -f "$p" ]; then
         sha256sum "$p"             >> "$tmp_managed/generated.sha256"
@@ -438,6 +470,71 @@ else
         die "no se pudo restaurar el comando gamescope anterior"
 fi
 
+# El lanzador opcional no pertenece a otro paquete: se crea únicamente tras
+# aceptar Debconf y se elimina de forma conservadora al desactivar o purgar.
+bt_launcher=/usr/share/applications/ugm-bt-wake.desktop
+bt_source=/usr/lib/ubuntu-gaming-mode/ugm-bt-wake.desktop
+db_get ubuntu-gaming-mode/bluetooth-controller-wake-app || true
+if [ "${RET:-false}" = true ]; then
+    bt_wake_opt_in=true
+    if [ -e "$bt_launcher" ] || [ -L "$bt_launcher" ]; then
+        if [ "$(readlink "$bt_launcher" 2>/dev/null || true)" != "$bt_source" ]; then
+            die "existe $bt_launcher y no es el lanzador administrado por UGM"
+        fi
+    else
+        ln -s "$bt_source" "$bt_launcher"
+    fi
+    log "App de despertar por mando disponible en el menú; ningún mando activado automáticamente."
+else
+    bt_wake_opt_in=false
+    if [ -L "$bt_launcher" ] &&
+       [ "$(readlink "$bt_launcher")" = "$bt_source" ]; then
+        rm -f "$bt_launcher"
+    fi
+    log "App de despertar por mando oculta (opción predeterminada)."
+fi
+
+# APT intenta instalar BlueZ como Recommends antes de configurar UGM. No
+# invocar APT desde postinst: dpkg todavía mantiene el bloqueo de paquetes.
+# Si se eligió la app, dejar el servicio listo cuando BlueZ esté disponible.
+bluez_status="$(dpkg-query -W -f='${Status}' bluez 2>/dev/null || true)"
+case "$bluez_status" in
+    'install ok installed')
+        if [ "$bt_wake_opt_in" = true ]; then
+            if systemctl enable --now bluetooth.service &&
+               systemctl is-enabled --quiet bluetooth.service &&
+               systemctl is-active --quiet bluetooth.service; then
+                log "bluetooth.service habilitado y arrancado para la app de despertar por mando."
+            else
+                warn "No se pudo habilitar y arrancar bluetooth.service; UGM continúa. Revise el servicio antes de usar la app."
+                db_input high ubuntu-gaming-mode/bluez-service-unavailable || true
+                db_go || true
+            fi
+        fi
+        ;;
+    'install ok unpacked'|'install ok half-configured')
+        # APT aún puede estar configurando BlueZ. Dejar el servicio habilitado
+        # para cuando el postinst de BlueZ lo arranque, sin iniciar antes de
+        # que BlueZ termine su propia configuración.
+        if [ "$bt_wake_opt_in" = true ]; then
+            if systemctl enable bluetooth.service; then
+                log "BlueZ todavía se está configurando; bluetooth.service quedará habilitado para su arranque al finalizar APT."
+            else
+                warn "BlueZ todavía no está configurado y no se pudo habilitar bluetooth.service; tras finalizar APT, ejecute: sudo dpkg-reconfigure ubuntu-gaming-mode"
+                db_input high ubuntu-gaming-mode/bluez-service-unavailable || true
+                db_go || true
+            fi
+        fi
+        ;;
+    *)
+        if [ "$bt_wake_opt_in" = true ]; then
+            warn "BlueZ no está instalado después de la resolución de dependencias. APT lo intenta como paquete recomendado salvo que se omitan las recomendaciones; UGM continúa. Para completar el soporte: sudo apt install bluez && sudo dpkg-reconfigure ubuntu-gaming-mode"
+            db_input high ubuntu-gaming-mode/bluez-missing || true
+            db_go || true
+        fi
+        ;;
+esac
+
 log "Ejecutando diagnóstico final."
 
 if ! /usr/lib/ubuntu-gaming-mode/ubuntu-gaming-mode-doctor; then
@@ -447,6 +544,10 @@ fi
 rm -rf "$LEGACY"
 
 log "Instalación configurada correctamente."
+case "$vrs_candidate" in
+    nvidia|amd) warn "EXPERIMENTAL FEATURE: VRS $vrs_candidate; ruta instalada: $vrs_route." ;;
+esac
+warn "Si cambia la GPU o el controlador Vulkan, reinstale UGM para volver a detectar la ruta VRS."
 warn "Ubuntu Gaming Mode administra AutomaticLoginEnable, AutomaticLogin y la selección de sesión necesaria para Desktop/Gaming."
 warn "Modificar manualmente estas propiedades puede romper Ubuntu Gaming Mode."
 warn "Una actualización o reinstalación reparará estas propiedades y SOBRESCRIBIRÁ cualquier modificación manual realizada sobre ellas."

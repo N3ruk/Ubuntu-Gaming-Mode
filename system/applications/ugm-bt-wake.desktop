@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=WAKE UP BUTTON GAMEPAD UGM
+Name[es]=WAKE UP BUTTON GAMEPAD UGM
+Comment=Select paired controllers allowed to wake from suspend
+Comment[es]=Elegir mandos emparejados que pueden despertar desde suspensión
+Exec=/usr/bin/ugm-bt-wake-app
+StartupWMClass=ugm-bt-wake
+Icon=ugm-bt-wake
+Terminal=false
+Categories=Settings;HardwareSettings;

@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Espejo VRS por usuario visible desde Steam Runtime/Proton."""
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+
+# El estado activo es privado (0700) para proteger snapshots de instalación.
+# La ruta ya se eligió en vrs.conf; el payload empaquetado es legible por la
+# sesión y no está registrado globalmente con el cargador Vulkan.
+SOURCE = Path("/usr/lib/ubuntu-gaming-mode/vrs-bundled")
+
+
+def atomic_write(path, data):
+    fd, name = tempfile.mkstemp(prefix=".ugm-vrs-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+        os.chmod(name, 0o644)
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in ("nvidia", "amd"):
+        print("uso: ugm-vrs-stage nvidia|amd", file=sys.stderr)
+        return 2
+    route = sys.argv[1]
+    names = tuple(f"libugm_{route}_vrs_{arch}.so" for arch in ("32", "64"))
+    manifests = tuple(f"VK_LAYER_UGM_{route}_vrs_{arch}.json" for arch in ("32", "64"))
+    target = Path.home() / ".local/share/ubuntu-gaming-mode/vrs"
+    try:
+        blobs = {name: (SOURCE / name).read_bytes() for name in names}
+        for arch, name in zip(("32", "64"), manifests):
+            manifest = json.loads((SOURCE / name).read_text(encoding="utf-8"))
+            manifest["layer"]["library_path"] = str(target / f"libugm_{route}_vrs_{arch}.so")
+            blobs[name] = (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
+        target.mkdir(mode=0o700, parents=True, exist_ok=True)
+        for name, data in blobs.items():
+            path = target / name
+            if path.is_file() and path.read_bytes() == data:
+                continue
+            atomic_write(path, data)
+    except (OSError, ValueError, KeyError) as error:
+        print(f"No se pudo preparar la capa VRS: {error}", file=sys.stderr)
+        return 1
+    print(target)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
