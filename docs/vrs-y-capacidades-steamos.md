@@ -1,8 +1,7 @@
 # VRS y capacidades de pantalla en UGM 2.5.0-5
 
-**Estado:** versión preliminar. La integración y las pruebas
-automatizadas están hechas; faltan la comprobación final del botón en
-GamepadUI, la prueba A/B en juegos y una prueba física en hardware AMD.
+**Estado:** versión estable. La integración y las pruebas automatizadas están
+hechas. El resultado de VRS depende de la GPU, el controlador y el juego.
 
 ## HDR y VRR
 
@@ -13,8 +12,7 @@ las propiedades Xwayland `GAMESCOPE_DISPLAY_SUPPORTS_HDR` y
 `GAMESCOPE_VRR_CAPABLE`, y las actualiza al cambiar de salida. No se fija una
 decisión por EDID antes de iniciar Steam. El inventario es diagnóstico y no
 sustituye la comprobación del conector activo. El código de GamepadUI es
-cerrado: queda por verificar físicamente cómo muestra sus controles con
-monitores distintos.
+cerrado; la visualización de sus controles puede variar entre monitores.
 
 ## Selección de VRS durante la instalación
 

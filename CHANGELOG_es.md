@@ -2,7 +2,7 @@
 
 [English](CHANGELOG.md) | **Español**
 
-## 2.5.0-5 — 2026-10-12 (versión preliminar)
+## 2.5.0-5 — 2026-10-12
 
 - Conservado el Gamescope 3.16.30 GBM de 2.0.0-1 y su serie de nueve patches;
   no se ha cambiado ese binario para 2.5.
@@ -17,7 +17,7 @@
   `/usr/lib/ubuntu-gaming-mode/vrs-bundled`, legible por el usuario, y mantiene
   privado `/var/lib/ubuntu-gaming-mode`. El hook anuncia VRS a Steam solo si la
   preparación de la ruta seleccionada termina correctamente.
-- Pruebas automáticas: 61 superadas para el candidato empaquetado. Falta validación física final de GamepadUI/juegos y hardware AMD.
+- Pruebas automáticas: 61 superadas para el paquete; dos builds idénticas byte a byte. Publicada como estable tras la validación del mantenedor.
 
 ## 2.0.0-1 — 2026-09-30
 

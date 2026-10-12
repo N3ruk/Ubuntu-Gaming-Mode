@@ -2,7 +2,7 @@
 
 [English](SOURCE.md) | **Español**
 
-Este árbol contiene las fuentes de la versión preliminar **Ubuntu Gaming Mode
+Este árbol contiene las fuentes de la versión estable **Ubuntu Gaming Mode
 2.5.0-5** y el registro reproducible del Gamescope 3.16.30 heredado de 2.0.0-1.
 
 ## Estructura

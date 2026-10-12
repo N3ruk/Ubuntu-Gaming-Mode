@@ -2,7 +2,7 @@
 
 [English](../installation.md) | **Español**
 
-## Versión preliminar 2.5.0-5
+## Versión estable 2.5.0-5
 
 Descarga el `.deb` y `SHA256SUMS` de la release `v2.5.0-5` en GitHub. Para
 instalar desde una terminal interactiva:
@@ -16,8 +16,8 @@ Debconf permite activar opcionalmente las capas VRS experimentales si la GPU es
 inequívocamente compatible; la ruta nativa RADV reconocida es automática. La
 app Bluetooth es opcional y está desactivada por defecto. Consulta
 [VRS](../vrs-y-capacidades-steamos.md) y [despertar por mando](despertar-mando-bluetooth.md).
-Tras instalar, ejecutar `sudo ubuntu-gaming-mode-doctor`. La prueba del botón
-VRS en GamepadUI y del efecto en juegos sigue pendiente. Una actualización
+Tras instalar, ejecutar `sudo ubuntu-gaming-mode-doctor`. El comportamiento
+de VRS depende de la GPU, el controlador y el juego. Una actualización
 conserva el snapshot original; reinstalar o reconfigurar vuelve a evaluar la
 selección VRS según la ruta de instalación.
 
@@ -143,7 +143,7 @@ del instalador y ejecuta Doctor al finalizar.
 
 ## Despertar por mando Bluetooth (opcional en 2.5)
 
-El candidato 2.5 se instala directamente desde su único `.deb`:
+La versión 2.5 se instala directamente desde su único `.deb`:
 
 ```bash
 sudo apt install ./ubuntu-gaming-mode_2.5.0-5_amd64.deb

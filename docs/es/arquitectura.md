@@ -66,7 +66,7 @@ El wrapper/runtime de la sesión también se instala bajo `/usr/lib/ubuntu-gamin
 El wrapper/runtime cambió en 2.5 y se comprueba como parte del paquete;
 el SHA256 histórico del wrapper de 2.0 no es un valor de integridad válido
 para 2.5. El SHA256 del binario Gamescope anterior no cambió. Consulta el
-manifiesto del candidato 2.5 para los archivos empaquetados.
+manifiesto de la versión 2.5 para los archivos empaquetados.
 
 ## DRM scanout
 

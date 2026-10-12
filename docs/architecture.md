@@ -65,7 +65,7 @@ The session wrapper/runtime is also installed under `/usr/lib/ubuntu-gaming-mode
 
 The wrapper/runtime changed for 2.5 and is checked as part of the package;
 the historical 2.0 wrapper SHA256 is not a 2.5 integrity value. Gamescope's
-binary SHA256 above is unchanged. See the 2.5 candidate manifest for the
+binary SHA256 above is unchanged. See the 2.5 release manifest for the
 packaged files.
 
 ## DRM scanout

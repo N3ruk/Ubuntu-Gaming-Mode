@@ -2,7 +2,7 @@
 
 **English** | [Español](SOURCE_es.md)
 
-This tree contains the **Ubuntu Gaming Mode 2.5.0-5** pre-release source
+This tree contains the **Ubuntu Gaming Mode 2.5.0-5** release source
 and the reproducible record of the Gamescope 3.16.30 runtime retained from
 2.0.0-1.
 

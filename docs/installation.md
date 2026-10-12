@@ -2,7 +2,7 @@
 
 **English** | [Español](es/instalacion.md)
 
-## 2.5.0-5 pre-release
+## Stable release: 2.5.0-5
 
 Download the `.deb` and `SHA256SUMS` from the `v2.5.0-5` GitHub release.
 Install it from an interactive terminal:
@@ -16,8 +16,8 @@ Debconf can opt into experimental VRS layers on an unambiguously eligible GPU;
 the recognized native RADV route is automatic. The Bluetooth app defaults off.
 See [VRS](vrs-y-capacidades-steamos.md) and
 [controller wake](es/despertar-mando-bluetooth.md). Run
-`sudo ubuntu-gaming-mode-doctor` after installation. Physical GamepadUI-toggle
-and in-game-effect validation remains pending. Upgrades retain the original
+`sudo ubuntu-gaming-mode-doctor` after installation. VRS toggle and in-game
+behavior depend on the GPU, driver and game. Upgrades retain the original
 snapshot; reinstall or reconfigure to reevaluate the install-time VRS route.
 
 ## Historical reference: published 2.0.0-1 release
@@ -141,7 +141,7 @@ finishes.
 
 ## Bluetooth controller wake (optional in 2.5)
 
-Install the 2.5 candidate directly from its single `.deb` in an interactive
+Install the 2.5 release directly from its single `.deb` in an interactive
 terminal:
 
 ```bash

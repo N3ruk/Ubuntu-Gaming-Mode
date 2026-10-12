@@ -6,9 +6,10 @@
 consola basada en Gamescope DRM/KMS y Steam Gamepad UI. Permite cambiar entre
 el escritorio normal y Gaming Mode sin sustituir Ubuntu por otra distribución.
 
-## Versión preliminar 2.5.0-5
+## Versión estable 2.5.0-5
 
-Este árbol contiene la versión preliminar `2.5.0-5` para Ubuntu 26.04 amd64. Conserva
+Este árbol contiene la versión estable `2.5.0-5` para Ubuntu 26.04 amd64.
+Conserva
 el Gamescope 3.16.30 GBM de 2.0 e incorpora:
 
 - inventario de GPU/Vulkan y opciones HDR/VRR sin bloquear el arranque;
@@ -19,13 +20,13 @@ el Gamescope 3.16.30 GBM de 2.0 e incorpora:
 - la corrección que prepara las capas VRS desde el payload legible del
   paquete sin abrir el estado privado de instalación.
 
-El botón VRS de GamepadUI y el efecto en juegos **siguen pendientes de prueba
-física final**; las rutas AMD no se han probado en hardware AMD en este entorno.
+La versión ha sido probada por el mantenedor. El comportamiento de VRS depende
+del juego, la GPU y el controlador; no se afirma compatibilidad universal.
 Consulta [la guía de instalación](docs/es/instalacion.md),
 [las rutas VRS](docs/vrs-y-capacidades-steamos.md) y
 [el estado de publicación](docs/preparacion-publicacion-2.5.md).
 
-## Versión estable anterior: 2.0.0-1
+## Versión anterior: 2.0.0-1
 
 **Ubuntu Gaming Mode 2.0.0-1**
 

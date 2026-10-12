@@ -1,6 +1,6 @@
 # Manifiesto UGM 2.5.0-5
 
-Estado: versión preliminar para Ubuntu 26.04 amd64. Este
+Estado: versión estable para Ubuntu 26.04 amd64. Este
 manifiesto describe componentes, no una validación física universal.
 
 ## En el paquete
@@ -29,5 +29,5 @@ manifiesto describe componentes, no una validación física universal.
 
 El ejecutable Gamescope y los `.deb` permanecen fuera de Git (`.build/` y
 `dist/`). La receta `packaging/build-deb.sh` comprueba el SHA256 del ejecutable
-Gamescope y recompila ambas capas VRS. La prueba física del QAM y juegos aún
-no está cerrada; consultar `docs/preparacion-publicacion-2.5.md`.
+Gamescope y recompila ambas capas VRS. La compatibilidad de VRS depende de GPU, controlador y juego; consultar
+`docs/preparacion-publicacion-2.5.md`.

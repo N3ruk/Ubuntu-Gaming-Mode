@@ -6,9 +6,9 @@
 Gamepad UI session to Ubuntu Desktop. It switches between the normal desktop
 and Gaming Mode without replacing Ubuntu with another distribution.
 
-## 2.5.0-5 pre-release
+## Stable release: 2.5.0-5
 
-This tree contains pre-release `2.5.0-5` for Ubuntu 26.04 amd64. It retains
+This tree contains stable release `2.5.0-5` for Ubuntu 26.04 amd64. It retains
 the 2.0 Gamescope 3.16.30 GBM runtime and adds:
 
 - non-blocking GPU/Vulkan inventory and HDR/VRR preferences;
@@ -19,13 +19,13 @@ the 2.0 Gamescope 3.16.30 GBM runtime and adds:
 - a fix that stages VRS layers from the readable package payload
   while keeping private installation state closed.
 
-The GamepadUI VRS toggle and in-game effects **still need final physical
-validation**; AMD routes have not been tested on AMD hardware in this setup.
+The release has been tested by the maintainer. VRS behavior depends on the
+game, GPU and driver; universal hardware coverage is not claimed.
 See the [installation guide](docs/installation.md),
 [VRS route notes](docs/vrs-y-capacidades-steamos.md) and
 [release preparation status](docs/preparacion-publicacion-2.5.md).
 
-## Previous stable release: 2.0.0-1
+## Previous release: 2.0.0-1
 
 **Ubuntu Gaming Mode 2.0.0-1**
 

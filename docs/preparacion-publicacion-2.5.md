@@ -1,8 +1,7 @@
-# Estado de la versión preliminar UGM 2.5.0-5
+# Publicación de UGM 2.5.0-5
 
-Código fuente y paquete forman la release `v2.5.0-5` en GitHub, marcada como
-**pre-release**. La numeración Debian conserva el formato `X.Y.Z-n`; el estado
-preliminar se indica en GitHub y no en el nombre del paquete.
+Código fuente y paquete forman la release estable `v2.5.0-5` en GitHub.
+La numeración Debian conserva el formato `X.Y.Z-n`.
 
 ## Estructura versionada
 
@@ -35,16 +34,12 @@ entradas VRS en el payload. `dist/` y `.build/` están ignorados por Git. Si
 cambia un archivo que el `.deb` incluye (README, SOURCE, changelog, fuentes,
 iconos), **reconstruir y actualizar SHA256SUMS** antes de distribuirlo.
 
-## Validación pendiente antes de promover a estable
+## Estado de validación
 
-- Confirmar instalación/reinstalación limpia y rollback con el artefacto exacto.
-- Comprobar en sesión real el botón VRS de GamepadUI, valor OFF/ON y juego
-  Vulkan/Proton; NVIDIA y AMD requieren evidencias separadas. La ruta AMD no
-  dispone aún de prueba física en este entorno.
-- Comprobar app Bluetooth opcional, reinicio, suspensión, despertar y reversión.
-- Repetir la comprobación del `SHA256SUMS` del asset publicado. No versionar
-  los temporales de `.build/` ni `dist/` como fuentes.
+La versión se publica como estable tras la validación del mantenedor. Se
+superaron 61 pruebas automatizadas, se obtuvieron dos builds idénticas byte a
+byte y se comprobó el checksum del asset publicado. Esto no implica
+compatibilidad universal con cualquier GPU, controlador, juego o mando.
 
 Las notas personales de desarrollo y prototipos anteriores están conservadas
-localmente en `.build/source-archive/`, ignorado por Git. Los resultados
-automatizados no equivalen a la aceptación física final.
+localmente en `.build/source-archive/`, ignorado por Git.
