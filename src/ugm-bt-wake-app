@@ -60,8 +60,8 @@ def main():
 
     if not status["eligible"]:
         reason = Gtk.Label(label=(
-            "No hay una ruta USB/BlueZ candidata completa. "
-            "Revisa el inventario con «ugm-bt-wake probe» y las dependencias."
+            "La ruta de despertar no está completamente lista. "
+            "Puedes cambiar WakeAllowed, pero revisa «ugm-bt-wake probe» antes de probar."
         ))
         reason.set_xalign(0)
         reason.set_line_wrap(True)
@@ -72,17 +72,17 @@ def main():
         label = item["name"] + " · " + item["path"][-5:].replace("_", ":")
         check = Gtk.CheckButton(label=label)
         check.set_active(item["wake_allowed"])
-        check.set_sensitive(status["eligible"] and item["trusted"])
+        check.set_sensitive(item["trusted"])
         box.pack_start(check, False, False, 0)
-        controllers.append((item["path"], check))
+        controllers.append((item["path"], check, item["wake_allowed"]))
     if not controllers:
         note = Gtk.Label(label="No hay mandos HID emparejados. Empareja uno y vuelve a abrir la app.")
         note.set_xalign(0)
         box.pack_start(note, False, False, 0)
 
     detail = Gtk.Label(label=(
-        "«Aplicar» registra la selección para próximos arranques. "
-        "El estado actual no demuestra que la BIOS permita despertar: "
+        "La casilla muestra el estado actual de WakeAllowed. «Aplicar» cambia solo "
+        "los mandos modificados. El estado actual no demuestra que la BIOS permita despertar: "
         "compruébalo con una suspensión real."
     ))
     detail.set_xalign(0)
@@ -90,15 +90,16 @@ def main():
     box.pack_end(detail, False, False, 0)
 
     button = Gtk.Button(label="Aplicar selección")
-    button.set_sensitive(any(check.get_sensitive() for _, check in controllers))
+    button.set_sensitive(any(check.get_sensitive() for _, check, _ in controllers))
     box.pack_end(button, False, False, 0)
 
     def apply_selection(_button):
         button.set_sensitive(False)
         try:
-            for path, check in controllers:
-                if check.get_sensitive():
+            for index, (path, check, original) in enumerate(controllers):
+                if check.get_sensitive() and check.get_active() != original:
                     backend("set", path, "on" if check.get_active() else "off", privileged=True)
+                    controllers[index] = (path, check, check.get_active())
             info = Gtk.MessageDialog(
                 transient_for=window, modal=True, message_type=Gtk.MessageType.INFO,
                 buttons=Gtk.ButtonsType.OK, text="Selección aplicada")
@@ -112,7 +113,25 @@ def main():
         finally:
             button.set_sensitive(True)
 
+    def refresh_controllers():
+        try:
+            live = {item["path"]: item for item in json.loads(backend("probe").stdout)["controllers"]}
+        except (OSError, subprocess.CalledProcessError, ValueError, KeyError):
+            return True
+        for index, (path, check, original) in enumerate(controllers):
+            item = live.get(path)
+            if item is None:
+                continue
+            current = item["wake_allowed"]
+            # Preserve an unapplied edit while refreshing the live baseline.
+            if check.get_active() == original:
+                check.set_active(current)
+            check.set_sensitive(item["trusted"])
+            controllers[index] = (path, check, current)
+        return True
+
     button.connect("clicked", apply_selection)
+    GLib.timeout_add_seconds(3, refresh_controllers)
     window.show_all()
     Gtk.main()
     return 0

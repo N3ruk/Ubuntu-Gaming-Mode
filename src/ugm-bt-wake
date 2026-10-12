@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Manage opt-in BlueZ controller wake and the corresponding USB wake route."""
+"""Manage Bluetooth controller selection and the installed USB wake route."""
 import argparse
 import json
 import os
 from pathlib import Path
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 
@@ -148,9 +147,12 @@ def load_state():
     try:
         data = json.loads(STATE.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {"version": 1, "controllers": {}, "bus": {}}
+        return {"version": 1, "controllers": {}, "bus": {}, "known": []}
     if data.get("version") != 1 or not isinstance(data.get("controllers"), dict) or not isinstance(data.get("bus"), dict):
         raise ValueError("Estado de Bluetooth wake no válido")
+    data.setdefault("known", list(data["controllers"]))
+    if not isinstance(data["known"], list):
+        raise ValueError("Inventario de mandos no válido")
     return data
 
 
@@ -223,10 +225,6 @@ def restore_bus(state):
     return not conflict
 
 
-def selected(state):
-    return any(item.get("desired") is True for item in state["controllers"].values())
-
-
 def set_controller(path, desired):
     if os.geteuid() != 0:
         raise PermissionError("Se necesitan permisos de administrador")
@@ -234,70 +232,128 @@ def set_controller(path, desired):
     current = next((x for x in devices(objects) if x["path"] == path), None)
     if current is None or not current["trusted"]:
         raise ValueError("El mando debe estar emparejado, ser de confianza y exponer WakeAllowed")
-    route = wake_route(current["adapter"])
-    if desired and route is None:
-        raise ValueError("No se detecta una ruta USB btusb apta para wake")
     state = load_state()
     previous = state["controllers"].get(path)
     if previous is None:
         previous = {"original": current["wake_allowed"]}
-    had_selected = selected(state)
-    if desired:
-        subprocess.run(["systemctl", "enable", "ugm-bt-wake-apply.service"],
-                       check=True, stdout=subprocess.DEVNULL)
-    try:
-        if desired:
-            enable_bus(state, route)
+    if current["wake_allowed"] != desired:
         set_bluez(bus, path, desired)
-        previous["desired"] = desired
-        previous["last"] = desired
-        state["controllers"][path] = previous
-        save_state(state)
-    except Exception:
-        try:
-            if current["wake_allowed"] != desired:
-                set_bluez(bus, path, current["wake_allowed"])
-        except Exception:
-            pass
-        if desired and not had_selected:
-            restore_bus(state)
-        raise
-    if not desired and not selected(state):
-        if not restore_bus(state):
-            print("Aviso: wake USB cambió fuera de UGM; se conserva.", file=sys.stderr)
-        save_state(state)
+    previous["desired"] = desired
+    previous["last"] = desired
+    state["controllers"][path] = previous
+    if path not in state["known"]:
+        state["known"].append(path)
+    save_state(state)
 
 
-def apply():
+def usb_routes():
+    return [route for adapter in sorted(p.name for p in Path("/sys/class/bluetooth").glob("hci[0-9]*"))
+            if (route := wake_route(adapter))]
+
+
+def prepare(seed_existing=False):
+    """Run at installation and boot; independent of controller checkboxes."""
     if os.geteuid() != 0:
         raise PermissionError("Se necesitan permisos de administrador")
     state = load_state()
-    if not selected(state):
-        return
+    routes = usb_routes()
+    if not routes:
+        raise RuntimeError("No se detecta una ruta USB btusb apta para wake")
+    # Only the first install or migration may grandfather already-paired devices.
+    # Reconfiguration must not silently grandfather devices paired while the watcher was down.
+    if seed_existing and (not STATE.exists() or "known" not in json.loads(STATE.read_text(encoding="utf-8"))):
+        _bus, objects = bluez_objects()
+        state["known"] = sorted(set(state["known"]) | {item["path"] for item in devices(objects)})
+    for route in routes:
+        enable_bus(state, route)
+    save_state(state)
+
+
+def apply():
+    prepare(seed_existing=True)
+    state = load_state()
     bus, objects = bluez_objects()
     live = {x["path"]: x for x in devices(objects)}
     failures = []
     for path, saved in state["controllers"].items():
-        if saved.get("desired") is not True:
-            continue
         item = live.get(path)
         if item is None:
             failures.append(f"Mando no disponible: {path}")
             continue
-        route = wake_route(item["adapter"])
-        if route is None:
-            failures.append(f"Ruta USB no disponible: {item['adapter']}")
+        desired = saved.get("desired")
+        if not isinstance(desired, bool):
+            failures.append(f"Selección no válida: {path}")
             continue
-        if item["wake_allowed"] != saved.get("last"):
-            failures.append(f"WakeAllowed modificado fuera de UGM: {path}")
-            continue
-        enable_bus(state, route)
-        if not item["wake_allowed"]:
-            set_bluez(bus, path, True)
-        saved["last"] = True
+        if item["wake_allowed"] != desired:
+            set_bluez(bus, path, desired)
+        saved["last"] = desired
     save_state(state)
     if failures:
         raise RuntimeError("; ".join(failures))
+
+
+def disable_new_controllers(bus, objects):
+    state = load_state()
+    for item in devices(objects):
+        path = item["path"]
+        saved = state["controllers"].get(path)
+        if saved is not None:
+            desired = saved.get("desired")
+            if isinstance(desired, bool) and item["wake_allowed"] != desired:
+                set_bluez(bus, path, desired)
+            continue
+        if path in state["known"]:
+            continue
+        original = item["wake_allowed"]
+        if original:
+            set_bluez(bus, path, False)
+        state["controllers"][path] = {
+            "original": original, "desired": False, "last": False}
+        state["known"].append(path)
+        save_state(state)
+
+
+def watch_new_controllers():
+    """Opt new paired HID devices out without changing already known devices."""
+    if os.geteuid() != 0:
+        raise PermissionError("Se necesitan permisos de administrador")
+    from dbus.mainloop.glib import DBusGMainLoop
+    from gi.repository import GLib
+    DBusGMainLoop(set_as_default=True)
+    bus, _objects = bluez_objects()
+
+    def scan():
+        try:
+            _bus, objects = bluez_objects()
+            disable_new_controllers(bus, objects)
+        except Exception as exc:
+            print(f"ugm-bt-wake: aviso al revisar mandos nuevos: {exc}", file=sys.stderr)
+        return False
+
+    def periodic_scan():
+        scan()
+        return True
+
+    def on_added(_path, _interfaces):
+        GLib.idle_add(scan)
+
+    def on_changed(interface, changed, _invalidated):
+        if interface == DEVICE and any(k in changed for k in ("Paired", "UUIDs", "WakeAllowed")):
+            GLib.idle_add(scan)
+
+    def on_owner(name, _old, new):
+        if name == BLUEZ and new:
+            GLib.timeout_add_seconds(1, scan)
+
+    bus.add_signal_receiver(on_added, signal_name="InterfacesAdded",
+                            dbus_interface="org.freedesktop.DBus.ObjectManager", bus_name=BLUEZ)
+    bus.add_signal_receiver(on_changed, signal_name="PropertiesChanged",
+                            dbus_interface=PROPERTIES, bus_name=BLUEZ)
+    bus.add_signal_receiver(on_owner, signal_name="NameOwnerChanged",
+                            dbus_interface="org.freedesktop.DBus", bus_name="org.freedesktop.DBus")
+    scan()
+    GLib.timeout_add_seconds(5, periodic_scan)
+    GLib.MainLoop().run()
 
 
 def reset():
@@ -334,6 +390,8 @@ def main():
     sub.add_parser("probe")
     sub.add_parser("eligible")
     sub.add_parser("apply")
+    sub.add_parser("prepare")
+    sub.add_parser("watch")
     sub.add_parser("reset")
     setter = sub.add_parser("set")
     setter.add_argument("device_path")
@@ -346,6 +404,10 @@ def main():
             return 0 if probe()["eligible"] else 1
         elif args.command == "apply":
             apply()
+        elif args.command == "prepare":
+            prepare(seed_existing=True)
+        elif args.command == "watch":
+            watch_new_controllers()
         elif args.command == "reset":
             reset()
         else:

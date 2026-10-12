@@ -47,6 +47,7 @@ install -m 0755 "$ROOT/src/ugm-display-options"     "$WORK/usr/lib/ubuntu-gaming
 install -m 0755 "$ROOT/src/ugm-bt-wake"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-bt-wake"
 install -m 0755 "$ROOT/src/ugm-bt-wake-app" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-bt-wake-app"
 install -m 0644 "$ROOT/system/systemd/ugm-bt-wake-apply.service" "$WORK/usr/lib/systemd/system/ugm-bt-wake-apply.service"
+install -m 0644 "$ROOT/system/systemd/ugm-bt-wake-watch.service" "$WORK/usr/lib/systemd/system/ugm-bt-wake-watch.service"
 install -m 0644 "$ROOT/system/applications/ugm-bt-wake.desktop" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-bt-wake.desktop"
 install -m 0644 "$ROOT/system/icons/ugm-bt-wake.png" "$WORK/usr/share/icons/hicolor/256x256/apps/ugm-bt-wake.png"
 mkdir -p "$WORK/usr/share/polkit-1/actions"

@@ -14,7 +14,7 @@ manifiesto describe componentes, no una validación física universal.
   El instalador guarda solo la ruta elegida; la sesión prepara las capas desde
   ese payload legible. La ruta APU RADV nativa no usa capa personalizada.
 - App opcional de despertar por mando Bluetooth, icono, entrada de escritorio,
-  política Polkit y servicio de reaplicación; instalada en el mismo `.deb` y
+  política Polkit, servicio de reaplicación y vigilante de mandos nuevos; instalada en el mismo `.deb` y
   desactivada por defecto en el menú.
 - Icono principal de UGM, unidades systemd, autostart de inventario, scripts
   Debian de instalación/reconfiguración/rollback y documentación de usuario.

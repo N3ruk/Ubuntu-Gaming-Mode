@@ -1,0 +1,13 @@
+[Unit]
+Description=Default newly paired Bluetooth gamepads to no wake
+Wants=bluetooth.service ugm-bt-wake-apply.service
+After=bluetooth.service ugm-bt-wake-apply.service
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/ubuntu-gaming-mode/ugm-bt-wake watch
+Restart=on-failure
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target

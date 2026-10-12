@@ -1,11 +1,12 @@
 [Unit]
-Description=Restore opted-in Bluetooth gamepad wake route
+Description=Prepare Bluetooth USB wake route at boot
 Wants=bluetooth.service
 After=bluetooth.service
-ConditionPathExists=/var/lib/ubuntu-gaming-mode/bt-wake.json
 
 [Service]
 Type=oneshot
+Restart=on-failure
+RestartSec=3s
 ExecStart=/usr/lib/ubuntu-gaming-mode/ugm-bt-wake apply
 
 [Install]

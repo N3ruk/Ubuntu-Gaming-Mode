@@ -63,7 +63,7 @@ if [ -L "$bt_launcher" ] &&
 fi
 
 systemctl disable --now ugm-powerbuttond.service >/dev/null 2>&1 || true
-systemctl disable --now ugm-bt-wake-apply.service >/dev/null 2>&1 || true
+systemctl disable --now ugm-bt-wake-apply.service ugm-bt-wake-watch.service >/dev/null 2>&1 || true
 if [ -x /usr/lib/ubuntu-gaming-mode/ugm-bt-wake ]; then
     /usr/lib/ubuntu-gaming-mode/ugm-bt-wake reset ||
         echo "ubuntu-gaming-mode: WARN: Bluetooth wake no se restauró completamente; se conserva su estado." >&2

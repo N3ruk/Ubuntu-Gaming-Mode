@@ -92,18 +92,18 @@ Default: false
 Description: Enable Bluetooth and show the optional gamepad wake app?
  A USB Bluetooth adapter was detected. APT normally attempts to install
  BlueZ as a recommended package. If selected and BlueZ is available, UGM
- enables and starts bluetooth.service and shows the included controller
- selector in the applications menu. No controller is enabled by this choice;
- select each controller in the app and test suspend/resume.
+ enables and starts bluetooth.service, prepares the USB wake route and its
+ boot services, and shows the controller selector. The app changes only
+ WakeAllowed; newly paired controllers default to no wake. Test suspend/resume.
  If BlueZ cannot be installed, UGM continues and reports the missing support.
  This option is disabled by default and can be changed with
  "dpkg-reconfigure ubuntu-gaming-mode".
 Description-es.UTF-8: ¿Activar Bluetooth y mostrar la app de despertar por mando?
  Se ha detectado un adaptador Bluetooth USB. APT normalmente intenta instalar
  BlueZ como paquete recomendado. Si acepta y BlueZ está disponible, UGM
- habilita y arranca bluetooth.service y muestra en el menú la app para
- seleccionar mandos. Esta elección no activa ningún mando: selecciónelos en
- la app y pruebe la suspensión.
+ habilita y arranca bluetooth.service, prepara la ruta USB y sus servicios
+ de arranque y muestra la app de mandos. La app solo cambia WakeAllowed;
+ los mandos recién vinculados quedan sin permiso de despertar. Pruebe la suspensión.
  Si BlueZ no se puede instalar, UGM continúa y avisa de la falta de soporte.
  La opción está desactivada por defecto y puede cambiarse con
  «dpkg-reconfigure ubuntu-gaming-mode».

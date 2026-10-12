@@ -535,6 +535,30 @@ case "$bluez_status" in
         ;;
 esac
 
+# La opción de instalación prepara la infraestructura; la app solo cambia
+# WakeAllowed en los mandos. Sembrar el inventario antes de iniciar el watcher
+# evita alterar mandos ya emparejados durante una actualización.
+if [ "$bt_wake_opt_in" = true ]; then
+    if systemctl enable ugm-bt-wake-apply.service ugm-bt-wake-watch.service; then
+        log "Servicios de wake Bluetooth habilitados para próximos arranques."
+    else
+        warn "No se pudieron habilitar todos los servicios de wake Bluetooth."
+    fi
+    if [ "$bluez_status" = 'install ok installed' ] &&
+       systemctl is-active --quiet bluetooth.service; then
+        /usr/lib/ubuntu-gaming-mode/ugm-bt-wake prepare ||
+            warn "No se pudo preparar la ruta USB de wake; revise ugm-bt-wake probe."
+        systemctl restart ugm-bt-wake-watch.service ||
+            warn "No se pudo iniciar la política WakeAllowed=no para mandos nuevos."
+    fi
+else
+    systemctl disable --now ugm-bt-wake-apply.service ugm-bt-wake-watch.service >/dev/null 2>&1 || true
+    if [ -e "$STATE_ROOT/bt-wake.json" ]; then
+        /usr/lib/ubuntu-gaming-mode/ugm-bt-wake reset ||
+            warn "Bluetooth wake no se restauró completamente; se conserva su estado."
+    fi
+fi
+
 log "Ejecutando diagnóstico final."
 
 if ! /usr/lib/ubuntu-gaming-mode/ubuntu-gaming-mode-doctor; then
