@@ -1,3 +1,13 @@
+ubuntu-gaming-mode (2.8.2-1) unstable; urgency=medium
+
+  * Add an optional Debconf choice to install and select the UGM-ICONS theme
+    for the configured desktop user, preserving existing icon files and
+    restoring the prior selection only when UGM still owns the choice.
+  * Bundle the user-provided theme in the package and align runtime identity
+    with 2.8.2-1.
+
+ -- N3ruk <csz_11@hotmail.com>  Mon, 19 Oct 2026 20:00:00 +0200
+
 ubuntu-gaming-mode (2.8.0-2) unstable; urgency=medium
 
   * Run the official Decky installer with umask 022, isolated from private

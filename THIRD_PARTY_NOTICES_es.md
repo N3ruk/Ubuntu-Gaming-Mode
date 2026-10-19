@@ -64,3 +64,10 @@ ni respaldado por Valve, NVIDIA, Canonical, Bazzite o ChimeraOS.
 > Este documento en español es un resumen informativo. Los textos legales
 > originales de las licencias se conservan sin traducir en los archivos
 > enlazados.
+
+## Tema de iconos UGM-ICONS
+
+El tema opcional UGM-ICONS procede del paquete proporcionado por N3ruk para
+esta versión. Su archivo `COPYING` declara GPL-3.0; se conserva junto con
+`AUTHORS` en el paquete y dentro del archivo del tema. Los iconos derivados de
+terceros mantienen los derechos que les correspondan.

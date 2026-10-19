@@ -2,7 +2,7 @@
 
 **English** | [Español](SOURCE_es.md)
 
-This tree contains the **Ubuntu Gaming Mode 2.8.0-2** sources. It retains the historical
+This tree contains the **Ubuntu Gaming Mode 2.8.2-1** sources. This tree retains the historical
 2.5 Gamescope 3.16.30 record and adds patch 0010 for 2.8.
 
 ## Layout
@@ -13,6 +13,7 @@ This tree contains the **Ubuntu Gaming Mode 2.8.0-2** sources. It retains the hi
 - `packaging/build-deb.sh`: reproducible package assembly.
 - `gamescope/versions/3.16.30-gbm/`: patches, provenance and validation.
 - `tests/`: tests for optional integrations.
+- `integrations/icon-theme/`: bundled UGM-ICONS source archive and provenance.
 - `docs/`: installation, rollback, architecture and performance.
 - `prototypes/vrs-common/`, `prototypes/nvidia-vrs/` and
   `prototypes/amd-vrs/`: source, builds and tests for bundled VRS layers.

@@ -15,6 +15,7 @@ db_subst ubuntu-gaming-mode/system-gamescope-command \
 
 db_input high ubuntu-gaming-mode/console-suspend-button || true
 db_input high ubuntu-gaming-mode/system-gamescope-command || true
+db_input high ubuntu-gaming-mode/desktop-icon-theme || true
 # Opciones independientes: Decky puede estar instalado previamente.
 db_input high ubuntu-gaming-mode/decky-loader || true
 db_input high ubuntu-gaming-mode/decky-sharp-filter-selector || true

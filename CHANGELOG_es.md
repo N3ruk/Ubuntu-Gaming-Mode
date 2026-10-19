@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 2.8.2-1 — 2026-10-19
+
+- Pregunta opcional durante la instalación para instalar y activar UGM-ICONS en el escritorio del usuario de UGM. Conserva un tema local preexistente y respeta cambios posteriores de selección; al desactivar o desinstalar, restaura la selección previa cuando corresponde. Los archivos se conservan para proteger cambios del usuario.
+- El tema de iconos se incluye en el `.deb`; no requiere descarga adicional.
+
 ## 2.8.0-2
 
 - Corrige el `umask` del instalador de Decky, permisos de `PluginLoader` y payload de ambos plugins; recarga el servicio si está activo.

@@ -4,7 +4,7 @@
 
 Ubuntu Gaming Mode (UGM) adds a dedicated Gamescope DRM/KMS + Steam Gamepad UI
 session to Ubuntu Desktop. You can switch between the normal desktop and Gaming
-Mode without replacing Ubuntu. The current stable package is **2.8.0-2** for
+Mode without replacing Ubuntu. The current stable package is **2.8.2-1** for
 **Ubuntu 26.04 amd64**.
 
 ## Start here
@@ -17,7 +17,7 @@ Mode without replacing Ubuntu. The current stable package is **2.8.0-2** for
 ```bash
 # From the directory containing both downloaded files:
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.0-2_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.2-1_amd64.deb
 sudo ubuntu-gaming-mode-doctor
 ```
 
@@ -37,6 +37,8 @@ wake and experimental VRS layers are not all enabled automatically.
 - AMD/NVIDIA 32/64-bit VRS layers with conservative eligibility and fallback;
   the native RADV APU route remains separate. VRS benefit and compatibility
   depend on the GPU, driver and game.
+- Optional, default-off UGM-ICONS desktop theme, installed and activated for
+  the configured user after an installer prompt.
 - Desktop ↔ Gaming session switching, rollback, HDR/VRR preferences and Doctor.
 
 Read the [2.8 feature overview](docs/ugm-2.8/README.md) for evidence and limits.
@@ -50,7 +52,7 @@ The [changelog](CHANGELOG.md) records previous versions.
 | [`src/`](src/) and [`system/`](system/) | Session/runtime tools and system integration |
 | [`packaging/`](packaging/) | Debian metadata and build recipe |
 | [`gamescope/`](gamescope/README.md) | Versioned Gamescope patch series and provenance |
-| [`integrations/`](integrations/) | Optional packaged Decky plugin payloads |
+| [`integrations/`](integrations/) | Optional Decky plugin and UGM-ICONS payloads |
 | [`prototypes/`](prototypes/README.md) | Source, tests and historical research for experimental components |
 | [`tests/`](tests/) | Automated project tests |
 

@@ -5,7 +5,7 @@
 Ubuntu Gaming Mode (UGM) añade a Ubuntu Desktop una sesión dedicada con
 Gamescope DRM/KMS y Steam Gamepad UI. Permite alternar entre el escritorio
 habitual y Gaming Mode sin sustituir Ubuntu. El paquete estable actual es
-**2.8.0-2** para **Ubuntu 26.04 amd64**.
+**2.8.2-1** para **Ubuntu 26.04 amd64**.
 
 ## Por dónde empezar
 
@@ -17,7 +17,7 @@ habitual y Gaming Mode sin sustituir Ubuntu. El paquete estable actual es
 ```bash
 # Desde el directorio donde hayas descargado ambos archivos:
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.0-2_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.2-1_amd64.deb
 sudo ubuntu-gaming-mode-doctor
 ```
 
@@ -38,6 +38,8 @@ todas automáticamente.
 - Capas VRS AMD/NVIDIA de 32/64 bits con selección y fallback conservadores;
   la ruta APU RADV nativa es independiente. El beneficio y la compatibilidad
   dependen de la GPU, el controlador y el juego.
+- Tema de iconos UGM-ICONS opcional y desactivado por defecto, instalable y
+  activable para el usuario configurado desde la pregunta del instalador.
 - Cambio Desktop ↔ Gaming Mode, rollback, preferencias HDR/VRR y Doctor.
 
 Consulta el [resumen de funciones 2.8](docs/es/ugm-2.8/README.md) para conocer
@@ -51,7 +53,7 @@ las pruebas y los límites. El [historial](CHANGELOG_es.md) recoge versiones ant
 | [`src/`](src/) y [`system/`](system/) | Herramientas de sesión/runtime e integración del sistema |
 | [`packaging/`](packaging/) | Metadatos y receta de construcción Debian |
 | [`gamescope/`](gamescope/README_es.md) | Serie versionada de parches y procedencia de Gamescope |
-| [`integrations/`](integrations/) | Payloads de los plugins Decky opcionales |
+| [`integrations/`](integrations/) | Payloads opcionales de Decky y UGM-ICONS |
 | [`prototypes/`](prototypes/README_es.md) | Fuentes, pruebas e investigación histórica de componentes experimentales |
 | [`tests/`](tests/) | Pruebas automatizadas del proyecto |
 

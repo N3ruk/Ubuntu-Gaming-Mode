@@ -1,0 +1,24 @@
+#!/bin/bash
+# Run the per-user icon helper with a working settings bus during maintainer scripts.
+set -eu
+user="${1:?missing user}"
+action="${2:?missing action}"
+case "$action" in enable|disable) ;; *) exit 2 ;; esac
+home="$(getent passwd "$user" | cut -d: -f6)"
+uid="$(id -u "$user")"
+[ -n "$home" ] && [ -d "$home" ] || { echo 'UGM: no se encuentra el HOME del usuario' >&2; exit 1; }
+helper=/usr/lib/ubuntu-gaming-mode/ugm-icon-theme
+archive=/usr/share/ubuntu-gaming-mode/icon-theme/UGM-ICONS.tar.xz
+runtime="/run/user/$uid"
+args=("$action")
+[ "$action" = enable ] && args+=("$archive")
+if [ -S "$runtime/bus" ]; then
+    runuser -u "$user" -- env -u XDG_DATA_HOME -u XDG_STATE_HOME -u XDG_CONFIG_HOME \
+        HOME="$home" XDG_RUNTIME_DIR="$runtime" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus" \
+        "$helper" "${args[@]}"
+else
+    runuser -u "$user" -- env -u XDG_DATA_HOME -u XDG_STATE_HOME -u XDG_CONFIG_HOME \
+        -u XDG_RUNTIME_DIR -u DBUS_SESSION_BUS_ADDRESS HOME="$home" \
+        dbus-run-session -- "$helper" "${args[@]}"
+fi

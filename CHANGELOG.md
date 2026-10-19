@@ -2,6 +2,11 @@
 
 **English** | [Español](CHANGELOG_es.md)
 
+## 2.8.2-1 — 2026-10-19
+
+- Add a default-off installation prompt to install and activate UGM-ICONS for the UGM desktop user. Preserve an existing local theme and later user selections; restore the prior choice on opt-out/removal where appropriate. Icon files remain to protect user changes.
+- Bundle the icon theme in the `.deb`; no additional download is required.
+
 ## 2.8.0-2
 
 - Fix the Decky installer umask, `PluginLoader` and both plugin payload permissions; reload an active service.

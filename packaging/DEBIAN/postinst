@@ -11,7 +11,7 @@ MANAGED="$STATE_ROOT/managed-state"
 LEGACY="$STATE_ROOT/preinstall"
 LEGACY_MANAGED="$STATE_ROOT/managed.sha256"
 
-PKG_VERSION="2.8.0-2"
+PKG_VERSION="2.8.2-1"
 
 CONFIG="/etc/ubuntu-gaming-mode/session.conf"
 
@@ -475,6 +475,17 @@ else
     log "Comando gamescope global de UGM desactivado (valor predeterminado)."
     /usr/lib/ubuntu-gaming-mode/ugm-system-gamescope-link --disable ||
         die "no se pudo restaurar el comando gamescope anterior"
+fi
+
+# Tema de iconos opcional para el usuario Desktop. Los fallos no bloquean UGM.
+RET=false
+db_get ubuntu-gaming-mode/desktop-icon-theme || true
+if [ "${RET:-false}" = true ]; then
+    /usr/lib/ubuntu-gaming-mode/ugm-icon-theme-run "$UGM_USER" enable ||
+        warn "No se pudo activar el tema de iconos; reintente con dpkg-reconfigure ubuntu-gaming-mode."
+else
+    /usr/lib/ubuntu-gaming-mode/ugm-icon-theme-run "$UGM_USER" disable ||
+        warn "No se pudo restaurar la selección anterior de iconos; revise el tema en GNOME."
 fi
 
 # El lanzador opcional no pertenece a otro paquete: se crea únicamente tras

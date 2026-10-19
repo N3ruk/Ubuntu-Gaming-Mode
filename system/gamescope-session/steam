@@ -25,7 +25,7 @@ if [ -x "$CAPABILITY_READER" ]; then
     if [ -n "${VULKAN_ADAPTER:-}" ]; then
         CAPABILITY_ARGS=(--prefer-vk-device "$VULKAN_ADAPTER")
     fi
-    mapfile -t CAPABILITY_FIELDS < <("$CAPABILITY_READER" --session --context gaming --runtime-version 2.8.0-2 "${CAPABILITY_ARGS[@]}")
+    mapfile -t CAPABILITY_FIELDS < <("$CAPABILITY_READER" --session --context gaming --runtime-version 2.8.2-1 "${CAPABILITY_ARGS[@]}")
 fi
 OUTPUT_CONNECTOR="${CAPABILITY_FIELDS[0]:-*}"
 

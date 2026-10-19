@@ -4,7 +4,7 @@
 
 ## Requisitos
 
-El paquete publicado `2.8.0-2` está destinado a **Ubuntu 26.04 amd64**.
+El paquete publicado `2.8.2-1` está destinado a **Ubuntu 26.04 amd64**.
 Instálalo desde una terminal interactiva del escritorio con APT, que resuelve
 las dependencias. Las funciones de hardware (HDR, VRR, VRS y despertar
 Bluetooth) dependen de la GPU, el controlador, el monitor y el firmware;
@@ -12,13 +12,13 @@ consulta [problemas conocidos](problemas-conocidos.md).
 
 ## Descargar y verificar
 
-Descarga `ubuntu-gaming-mode_2.8.0-2_amd64.deb` y `SHA256SUMS` de la
-[misma release de GitHub](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.0-2).
+Descarga `ubuntu-gaming-mode_2.8.2-1_amd64.deb` y `SHA256SUMS` de la
+[misma release de GitHub](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.2-1).
 Desde el directorio de descarga:
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.0-2_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.2-1_amd64.deb
 ```
 
 El comando de checksum debe mostrar `OK`. Deja abierta la terminal para las
@@ -27,6 +27,14 @@ configura la sesión y ejecuta Doctor; no reinicia GDM ni cierra el escritorio
 actual. Una actualización conserva la línea base original.
 
 ## Opciones de instalación
+
+Una pregunta opcional del instalador permite instalar y activar UGM-ICONS
+en el escritorio del usuario configurado. Está desactivada por defecto. El tema viene en el paquete,
+se instala en `~/.local/share/icons/UGM-ICONS` y se selecciona en GNOME. Una
+carpeta local previa no se sobrescribe. Con «No» o al quitar UGM se restaura la
+selección anterior si UGM-ICONS sigue activo; los archivos se conservan para
+proteger posibles modificaciones. Se puede repetir con
+`sudo dpkg-reconfigure ubuntu-gaming-mode`.
 
 Debconf ofrece opciones independientes, desactivadas por defecto, para Decky
 Loader y sus dos plugins; respeta una instalación previa de Decky. Instalar

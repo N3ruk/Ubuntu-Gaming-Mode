@@ -58,3 +58,10 @@ with Canonical Ltd.
 
 Ubuntu Gaming Mode is an independent community project and is not affiliated
 with or endorsed by Valve, NVIDIA, Canonical, Bazzite or ChimeraOS.
+
+## UGM-ICONS theme
+
+The optional UGM-ICONS theme comes from the archive supplied by N3ruk for
+this version. Its `COPYING` file states GPL-3.0; `COPYING` and `AUTHORS` are
+kept in the package and inside the bundled theme archive. Third-party-derived
+icons retain their respective rights.

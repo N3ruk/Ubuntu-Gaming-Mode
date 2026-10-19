@@ -55,6 +55,17 @@ case "$ACTION" in
         ;;
 esac
 
+# Antes de retirar los helpers, restaurar la elección de iconos solo si
+# permanece activa la selección realizada por UGM.
+if [ -r "$CONFIG" ]; then
+    # shellcheck disable=SC1090
+    . "$CONFIG"
+    if [ -n "${UGM_USER:-}" ] && [ -x /usr/lib/ubuntu-gaming-mode/ugm-icon-theme-run ]; then
+        /usr/lib/ubuntu-gaming-mode/ugm-icon-theme-run "$UGM_USER" disable ||
+            echo "ubuntu-gaming-mode: WARN: no se pudo restaurar el tema anterior de iconos" >&2
+    fi
+fi
+
 bt_launcher=/usr/share/applications/ugm-bt-wake.desktop
 bt_source=/usr/lib/ubuntu-gaming-mode/ugm-bt-wake.desktop
 if [ -L "$bt_launcher" ] &&

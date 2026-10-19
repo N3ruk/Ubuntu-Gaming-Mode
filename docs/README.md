@@ -2,12 +2,12 @@
 
 **English** | [Español](es/README.md) · [Project home](../README.md)
 
-This index separates **current 2.8.0-2 guidance** from **version-specific
+This index separates **current 2.8.2-1 guidance** from **version-specific
 historical records**. Start with installation; use the feature pages for
 implementation details and evidence. Hardware results are bounded to the
 systems and tests stated in each page.
 
-## Install and use 2.8.0-2
+## Install and use 2.8.2-1
 
 - [Install, verify and configure](installation.md)
 - [Uninstall and restore the original state](uninstall-and-rollback.md)

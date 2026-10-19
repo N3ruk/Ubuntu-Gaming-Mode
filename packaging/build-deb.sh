@@ -89,6 +89,12 @@ install -m 0755 "$ROOT/src/ugm-gaming-session-marker"     "$WORK/usr/lib/ubuntu-
 install -m 0755 "$ROOT/src/ugm-powerbuttond"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-powerbuttond"
 install -m 0755 "$ROOT/src/ugm-steam-shortpowerpress"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-steam-shortpowerpress"
 install -m 0755 "$ROOT/src/ugm-system-gamescope-link"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-system-gamescope-link"
+install -m 0755 "$ROOT/src/ugm-icon-theme" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-icon-theme"
+install -m 0755 "$ROOT/src/ugm-icon-theme-run" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-icon-theme-run"
+install -d -m 0755 "$WORK/usr/share/ubuntu-gaming-mode/icon-theme"
+install -m 0644 "$ROOT/integrations/icon-theme/UGM-ICONS.tar.xz" \
+    "$WORK/usr/share/ubuntu-gaming-mode/icon-theme/UGM-ICONS.tar.xz"
+
 
 install -m 0755 "$GAMESCOPE_BIN"     "$WORK/usr/lib/ubuntu-gaming-mode/gamescope"
 
@@ -121,6 +127,11 @@ install -m 0644 "$ROOT/THIRD_PARTY_NOTICES_es.md"     "$WORK/usr/share/doc/ubunt
 install -m 0644 "$ROOT/docs/package-manifest-2.0.0-1.md"     "$WORK/usr/share/doc/ubuntu-gaming-mode/package-manifest-2.0.0-1.md"
 install -m 0644 "$ROOT/docs/es/manifiesto-2.0.0-1.md"     "$WORK/usr/share/doc/ubuntu-gaming-mode/manifiesto-2.0.0-1.md"
 install -m 0644 "$ROOT/packaging/copyright"     "$WORK/usr/share/doc/ubuntu-gaming-mode/copyright"
+tar -xOf "$ROOT/integrations/icon-theme/UGM-ICONS.tar.xz" UGM-ICONS/COPYING \
+    > "$WORK/usr/share/doc/ubuntu-gaming-mode/licenses/UGM-ICONS-COPYING"
+tar -xOf "$ROOT/integrations/icon-theme/UGM-ICONS.tar.xz" UGM-ICONS/AUTHORS \
+    > "$WORK/usr/share/doc/ubuntu-gaming-mode/licenses/UGM-ICONS-AUTHORS"
+chmod 0644 "$WORK/usr/share/doc/ubuntu-gaming-mode/licenses/UGM-ICONS-"*
 install -m 0644 "$ROOT/licenses/CHIMERAOS-GAMESCOPE-SESSION-LICENSE"     "$WORK/usr/share/doc/ubuntu-gaming-mode/licenses/CHIMERAOS-GAMESCOPE-SESSION-LICENSE"
 install -m 0644 "$ROOT/licenses/GAMESCOPE-LICENSE"     "$WORK/usr/share/doc/ubuntu-gaming-mode/licenses/GAMESCOPE-LICENSE"
 install -m 0644 "$ROOT/packaging/changelog.Debian"     "$WORK/usr/share/doc/ubuntu-gaming-mode/changelog.Debian"
@@ -147,7 +158,7 @@ done
 
 for f in "$WORK/usr/lib/ubuntu-gaming-mode/"*; do
     [[ -f "$f" ]] || continue
-    [[ "$f" == */ugm-vrs-activate || "$f" == */gamescope || "$f" == */ugm-powerbuttond || "$f" == */ugm-steam-shortpowerpress || "$f" == */ugm-bt-wake || "$f" == */ugm-bt-wake-app || "$f" == */ugm-capabilities || "$f" == */ugm-display-options || "$f" == */ugm-vrs-select || "$f" == */ugm-vrs-stage || "$f" == */ugm-decky-integration ]] && continue
+    [[ "$f" == */ugm-vrs-activate || "$f" == */gamescope || "$f" == */ugm-powerbuttond || "$f" == */ugm-steam-shortpowerpress || "$f" == */ugm-bt-wake || "$f" == */ugm-bt-wake-app || "$f" == */ugm-capabilities || "$f" == */ugm-display-options || "$f" == */ugm-vrs-select || "$f" == */ugm-vrs-stage || "$f" == */ugm-decky-integration || "$f" == */ugm-icon-theme ]] && continue
     bash -n "$f"
 done
 
@@ -221,6 +232,12 @@ for plugin in Path(sys.argv[2]).iterdir():
     compile((plugin / "main.py").read_text(encoding="utf-8"), str(plugin / "main.py"), "exec")
 PY
 
+python3 - "$WORK/usr/lib/ubuntu-gaming-mode/ugm-icon-theme" <<'PYICONS'
+from pathlib import Path
+import sys
+compile(Path(sys.argv[1]).read_text(encoding='utf-8'), sys.argv[1], 'exec')
+PYICONS
+
 EXPECTED_GAMESCOPE_SHA_1_0_0_3="e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c"
 EXPECTED_GAMESCOPE_SHA_2_0_0_1="5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256"
 EXPECTED_GAMESCOPE_SHA_2_8_0_4="4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03"
@@ -234,7 +251,7 @@ case "$VERSION" in
         EXPECTED_GAMESCOPE_SHA="$EXPECTED_GAMESCOPE_SHA_2_0_0_1"
         ;;
     2.8.*)
-        # Candidato downsampling 0.4, ya validado en el equipo de referencia.
+        # Binario Gamescope 0.4 validado para la serie 2.8.
         # Si la futura build VRS modifica Gamescope, actualizar este hash.
         EXPECTED_GAMESCOPE_SHA="$EXPECTED_GAMESCOPE_SHA_2_8_0_4"
         ;;

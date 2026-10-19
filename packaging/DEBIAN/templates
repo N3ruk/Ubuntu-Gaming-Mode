@@ -34,6 +34,27 @@ Description-es.UTF-8: ¿Usar el Gamescope de UGM como comando gamescope global d
  está desactivada por defecto y puede modificarse después con
  «dpkg-reconfigure ubuntu-gaming-mode».
 
+Template: ubuntu-gaming-mode/desktop-icon-theme
+Type: boolean
+Default: false
+Description: Install and activate the UGM desktop icon theme for the UGM user?
+ The optional UGM-ICONS theme gives applications, folders and desktop items
+ a matching UGM style, including normal and HiDPI icons. If accepted, UGM
+ installs it for the configured desktop user and selects it in GNOME. It does
+ not change Steam Gaming Mode. An existing local UGM-ICONS folder is kept.
+ Choosing No, or removing UGM, restores the previous icon selection only if
+ it is still UGM-ICONS. Icon files are retained to protect user changes.
+ Disabled by default; change later with "dpkg-reconfigure ubuntu-gaming-mode".
+Description-es.UTF-8: ¿Instalar y activar el tema de iconos UGM para el usuario de escritorio?
+ El tema opcional UGM-ICONS da un estilo coherente a aplicaciones, carpetas y
+ elementos del escritorio, con iconos normales y HiDPI. Si acepta, UGM lo
+ instala para el usuario configurado y lo selecciona en GNOME. No cambia el
+ Gaming Mode de Steam. Una carpeta UGM-ICONS local existente se conserva.
+ Al elegir No o desinstalar UGM se restaura la selección anterior solo si
+ UGM-ICONS sigue activo. Los archivos se conservan para proteger cambios del
+ usuario. Desactivado por defecto; puede cambiarse con
+ «dpkg-reconfigure ubuntu-gaming-mode».
+
 Template: ubuntu-gaming-mode/amd-vrs-experimental
 Type: boolean
 Default: false
