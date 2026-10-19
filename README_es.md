@@ -6,10 +6,20 @@
 consola basada en Gamescope DRM/KMS y Steam Gamepad UI. Permite cambiar entre
 el escritorio normal y Gaming Mode sin sustituir Ubuntu por otra distribución.
 
-## Versión estable 2.5.0-5
+## UGM 2.8.0-2
 
-Este árbol contiene la versión estable `2.5.0-5` para Ubuntu 26.04 amd64.
-Conserva
+El paquete incorpora nitidez selectiva al reducir resolución, integración
+opcional de Decky y dos plugins, política USB para despertar Bluetooth y una
+capa VRS AMD/NVIDIA actualizada. Corrige además los permisos de Decky detectados
+en el candidato 2.8.0-1. Carlos ha instalado y usado 2.8.0-2 durante varios
+días sin observar problemas; esto no sustituye pruebas en todos los equipos.
+Consulta el [resumen 2.8](docs/es/ugm-2.8/README.md), el
+[historial](CHANGELOG_es.md) y el [detalle VRS](docs/es/ugm-2.8/vrs.md).
+
+
+## Versión anterior: 2.5.0-5
+
+La versión estable `2.5.0-5` para Ubuntu 26.04 amd64 conservaba
 el Gamescope 3.16.30 GBM de 2.0 e incorpora:
 
 - inventario de GPU/Vulkan y opciones HDR/VRR sin bloquear el arranque;
@@ -198,3 +208,12 @@ o Canonical.
 
 El código original de UGM usa [MIT](LICENSE). Los componentes de terceros
 mantienen sus licencias; consulta [THIRD_PARTY_NOTICES_es.md](THIRD_PARTY_NOTICES_es.md).
+
+### Documentación de 2.8
+
+El [resumen de cambios](docs/es/ugm-2.8/README.md) enlaza las notas de
+[downsampling](docs/es/ugm-2.8/downsampling.md),
+[Decky](docs/es/ugm-2.8/decky.md),
+[despertar USB](docs/es/ugm-2.8/despertar-usb.md) y
+[VRS](docs/es/ugm-2.8/vrs.md). Las descripciones históricas de 2.0 y 2.5
+anteriores no describen el contenido nuevo del paquete 2.8.

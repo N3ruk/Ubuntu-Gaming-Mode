@@ -1,53 +1,72 @@
 #!/usr/bin/env python3
-"""Espejo VRS por usuario visible desde Steam Runtime/Proton."""
+"""Immutable per-user VRS generations visible inside Steam Runtime/Proton."""
+import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 
-# El estado activo es privado (0700) para proteger snapshots de instalación.
-# La ruta ya se eligió en vrs.conf; el payload empaquetado es legible por la
-# sesión y no está registrado globalmente con el cargador Vulkan.
 SOURCE = Path("/usr/lib/ubuntu-gaming-mode/vrs-bundled")
 
 
-def atomic_write(path, data):
-    fd, name = tempfile.mkstemp(prefix=".ugm-vrs-", dir=path.parent)
+def stage(route, source=SOURCE, base=None):
+    if route not in ("nvidia", "amd"):
+        raise ValueError("ruta VRS desconocida")
+    base = base or Path.home() / ".local/share/ubuntu-gaming-mode/vrs"
+    names = tuple(f"libugm_{route}_vrs_{arch}.so" for arch in ("32", "64"))
+    manifests = tuple(f"VK_LAYER_UGM_{route}_vrs_{arch}.json" for arch in ("32", "64"))
+    # Load the complete payload before publishing anything.
+    blobs = {name: (source / name).read_bytes() for name in (*names, *manifests)}
+    digest = hashlib.sha256()
+    for name, data in sorted(blobs.items()):
+        digest.update(name.encode() + b"\0" + data)
+    target = base / f"{route}-{digest.hexdigest()}"
+    for arch, name in zip(("32", "64"), manifests):
+        manifest = json.loads(blobs[name])
+        if manifest["layer"]["name"] != f"VK_LAYER_UGM_{route}_vrs":
+            raise ValueError("nombre de capa inesperado")
+        manifest["layer"]["library_path"] = str(target / f"libugm_{route}_vrs_{arch}.so")
+        blobs[name] = (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
+    base.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if base.is_symlink() or base.stat().st_uid != os.getuid():
+        raise OSError("directorio VRS no pertenece al usuario o es un enlace")
+    if target.exists():
+        if target.is_symlink() or any((target / name).is_symlink() or
+                                     (target / name).read_bytes() != data
+                                     for name, data in blobs.items()):
+            raise OSError("generación VRS existente no coincide con el payload")
+        return target
+    temporary = Path(tempfile.mkdtemp(prefix=".ugm-vrs-", dir=base))
     try:
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(data)
-        os.chmod(name, 0o644)
-        os.replace(name, path)
+        for name, data in blobs.items():
+            (temporary / name).write_bytes(data)
+            (temporary / name).chmod(0o644)
+        try:
+            os.rename(temporary, target)
+        except OSError:
+            # Another concurrent session may have published the same generation.
+            if not target.is_dir() or target.is_symlink() or any(
+                    (target / name).is_symlink() or (target / name).read_bytes() != data
+                    for name, data in blobs.items()):
+                raise
     finally:
-        if os.path.exists(name):
-            os.unlink(name)
+        if temporary.exists():
+            shutil.rmtree(temporary)
+    # Never prune old generations here: live processes may still load from them.
+    return target
 
 
 def main():
     if len(sys.argv) != 2 or sys.argv[1] not in ("nvidia", "amd"):
         print("uso: ugm-vrs-stage nvidia|amd", file=sys.stderr)
         return 2
-    route = sys.argv[1]
-    names = tuple(f"libugm_{route}_vrs_{arch}.so" for arch in ("32", "64"))
-    manifests = tuple(f"VK_LAYER_UGM_{route}_vrs_{arch}.json" for arch in ("32", "64"))
-    target = Path.home() / ".local/share/ubuntu-gaming-mode/vrs"
     try:
-        blobs = {name: (SOURCE / name).read_bytes() for name in names}
-        for arch, name in zip(("32", "64"), manifests):
-            manifest = json.loads((SOURCE / name).read_text(encoding="utf-8"))
-            manifest["layer"]["library_path"] = str(target / f"libugm_{route}_vrs_{arch}.so")
-            blobs[name] = (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
-        target.mkdir(mode=0o700, parents=True, exist_ok=True)
-        for name, data in blobs.items():
-            path = target / name
-            if path.is_file() and path.read_bytes() == data:
-                continue
-            atomic_write(path, data)
-    except (OSError, ValueError, KeyError) as error:
+        print(stage(sys.argv[1], SOURCE))
+    except (OSError, ValueError, KeyError, TypeError) as error:
         print(f"No se pudo preparar la capa VRS: {error}", file=sys.stderr)
         return 1
-    print(target)
     return 0
 
 

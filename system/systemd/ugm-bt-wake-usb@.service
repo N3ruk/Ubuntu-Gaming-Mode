@@ -1,0 +1,7 @@
+[Unit]
+Description=Default-deny wake for USB device %I
+ConditionPathExists=/var/lib/ubuntu-gaming-mode/usb-wake-default-deny
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ubuntu-gaming-mode/ugm-bt-wake usb-event %I

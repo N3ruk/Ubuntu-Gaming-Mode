@@ -7,7 +7,7 @@ git clone https://github.com/ValveSoftware/gamescope.git
 cd gamescope
 git checkout ad2763da1c48860f649abfe842a087188dcb6e20
 git submodule update --init --recursive
-git am /path/to/patches/*.patch
+for patch in $(sed -n '1,9p' /path/to/patches/series); do git am "/path/to/patches/$patch"; done
 ```
 
 After applying the series, verify:
@@ -67,3 +67,11 @@ string remains `-8-gb211c9d` because the source diff was committed only after
 the validated binary had been built.
 
 Exact binary identity depends on the recorded toolchain and dependencies. Source reproducibility is anchored by the final Git tree; release binary integrity is anchored by SHA256.
+
+## UGM 2.8 development patch
+
+The `series` file now appends `0010-gamescope-downsample-sharpener.patch` after
+0009. The historical tree and binary SHA256 above are for **0001–0009 only**.
+For the 2.8 candidate, 0010 was applied to that base and the resulting
+binary SHA256 is pinned in `packaging/build-deb.sh`. See [downsampling 2.8](../../../docs/es/ugm-2.8/downsampling.md).
+Do not reuse the 2.5 binary hash for a 2.8 build.

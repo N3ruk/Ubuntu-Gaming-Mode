@@ -38,3 +38,7 @@ hidden connector in this patch series.
 The historical Gamescope 3.16.28 used in UGM 1.0.0-3 cannot be reproduced
 because its modified tree was lost. That limitation is confined to the old
 release; the 3.16.30 runtime in 2.0.0-1 is fully documented.
+
+**2.8 development:** patch 0010 follows the nine stable patches in the series.
+See the [downsampling notes](../docs/es/ugm-2.8/downsampling.md). The SHA256
+above identifies only the historical 2.5 runtime.

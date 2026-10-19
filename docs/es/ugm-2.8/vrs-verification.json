@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-17",
+  "result": "PASS",
+  "imported_files_verified": 66,
+  "source_tree_preserved_files": 225,
+  "preexisting_out_of_scope_files_preserved": 168,
+  "changed_preexisting_files": [
+    "CHANGELOG.md",
+    "CHANGELOG_es.md",
+    "README.md",
+    "README_es.md",
+    "prototypes/amd-vrs/README.md",
+    "prototypes/amd-vrs/build.sh",
+    "prototypes/amd-vrs/layer.c",
+    "prototypes/amd-vrs/spirv_policy.h",
+    "prototypes/amd-vrs/tests/render.c",
+    "prototypes/amd-vrs/tests/run-gpu.sh",
+    "prototypes/nvidia-vrs/README.md",
+    "prototypes/nvidia-vrs/build.sh",
+    "prototypes/nvidia-vrs/layer.c",
+    "prototypes/nvidia-vrs/spirv_policy.h",
+    "prototypes/nvidia-vrs/test_layer.c",
+    "prototypes/nvidia-vrs/tests/render.c",
+    "prototypes/nvidia-vrs/tests/run-gpu.sh",
+    "prototypes/nvidia-vrs/tests/run.sh",
+    "src/ugm-capabilities",
+    "src/ugm-vrs-select",
+    "src/ugm-vrs-stage",
+    "system/gamescope-session/steam",
+    "tests/test_amd_vrs_integration.py",
+    "tests/test_capabilities.py"
+  ],
+  "python_tests": 77,
+  "cpu_matrix": "PASS: AMD/NVIDIA 32/64-bit, SPIR-V fixtures, ASan/UBSan",
+  "gpu": "NVIDIA RTX 2060; 12 basic + 48 GPL/audit cases passed; no new Khronos Validation run in this import",
+  "libraries": {
+    "libugm_nvidia_vrs_32.so": {
+      "sha256": "5ef0a045b904af59105eed256a433ea67a7f9bce0370d16b2adc76be47e5a0cf",
+      "elf_bits": 32,
+      "matches_source_worktree": true,
+      "package_manifest_and_staging": "PASS"
+    },
+    "libugm_nvidia_vrs_64.so": {
+      "sha256": "df3526a80718f31b255510d84820ddefd206afa8eddbe8a68f23d37c6487f77e",
+      "elf_bits": 64,
+      "matches_source_worktree": true,
+      "package_manifest_and_staging": "PASS"
+    },
+    "libugm_amd_vrs_32.so": {
+      "sha256": "9d39d4613be47eb28ffd59335ed3a2c30d7e858331cc5f63dfd5786f159b7120",
+      "elf_bits": 32,
+      "matches_source_worktree": true,
+      "package_manifest_and_staging": "PASS"
+    },
+    "libugm_amd_vrs_64.so": {
+      "sha256": "41ae7fb2566d43834b01773e88f7ac2cf06a1a9e675e6020e9510e678638bb7a",
+      "elf_bits": 64,
+      "matches_source_worktree": true,
+      "package_manifest_and_staging": "PASS"
+    }
+  },
+  "logs_directory": ".build/vrs-import-20261017",
+  "logs": {
+    "cpu-tests.log": {
+      "sha256": "74c76a98bc15ee9811d5f82a710c3baf656f6486870634f4916bfb005c2dbc64",
+      "errors_found": 0,
+      "gpu_cases_passed": 0
+    },
+    "python-tests.log": {
+      "sha256": "1159369175962c7291e729222d437e516cf78afbab9e4016c35ca8bd82bb81f3",
+      "errors_found": 0,
+      "gpu_cases_passed": 0
+    },
+    "gpu-basic.log": {
+      "sha256": "db2808a7ab843f524a0b396226608e0596127b6afc24b464ed3bae4b158cefe2",
+      "errors_found": 0,
+      "gpu_cases_passed": 12
+    },
+    "gpu-gpl.log": {
+      "sha256": "12c30e62943143c1cbe87d0cd553bd9d45c78530340e975f8e5d2164054d9040",
+      "errors_found": 0,
+      "gpu_cases_passed": 48
+    },
+    "package-build.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "errors_found": 0,
+      "gpu_cases_passed": 0
+    }
+  },
+  "full_deb_built": false,
+  "package_version": "2.5.0-5 (unchanged; must be 2.8.x before build)",
+  "github_updated": false
+}

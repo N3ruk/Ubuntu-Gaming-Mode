@@ -539,6 +539,7 @@ fi
 cleanup_package_backups
 
 systemctl daemon-reload     >/dev/null 2>&1 || true
+udevadm control --reload    >/dev/null 2>&1 || true
 
 reload_user_systemd
 

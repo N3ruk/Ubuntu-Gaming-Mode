@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Manage Bluetooth controller selection and the installed USB wake route."""
 import argparse
+from contextlib import contextmanager
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -10,6 +12,10 @@ import sys
 import tempfile
 
 STATE = Path("/var/lib/ubuntu-gaming-mode/bt-wake.json")
+USB_POLICY_MARKER = Path("/var/lib/ubuntu-gaming-mode/usb-wake-default-deny")
+USB_DEVICES = Path("/sys/bus/usb/devices")
+LOCK = Path("/var/lib/ubuntu-gaming-mode/bt-wake.lock")
+BT_ENABLED_MARKER = Path("/var/lib/ubuntu-gaming-mode/bt-wake-enabled")
 HID_UUIDS = {"00001124-0000-1000-8000-00805f9b34fb",
              "00001812-0000-1000-8000-00805f9b34fb"}
 BLUEZ = "org.bluez"
@@ -91,6 +97,7 @@ def probe():
         "board": {"vendor": read(Path("/sys/class/dmi/id/board_vendor")),
                   "name": read(Path("/sys/class/dmi/id/board_name"))},
         "routes": [], "controllers": [], "hid_without_wake_allowed": 0,
+        "usb_policy": "off", "other_usb_wake_enabled": [],
         "missing": [],
         "candidate": False, "eligible": False, "ready_to_test": False,
         "validated": False,
@@ -112,6 +119,23 @@ def probe():
         result["missing"].append("bluez")
     adapters = sorted(p.name for p in Path("/sys/class/bluetooth").glob("hci[0-9]*"))
     result["routes"] = [route for adapter in adapters if (route := wake_route(adapter))]
+    try:
+        state = load_state()
+        if (state.get("usb_policy") == "default-deny"
+                and USB_POLICY_MARKER.exists()):
+            result["usb_policy"] = "default-deny"
+        elif BT_ENABLED_MARKER.exists():
+            result["usb_policy"] = "legacy"
+    except (OSError, ValueError):
+        result["usb_policy"] = "unknown"
+    bluetooth_nodes = {route["nodes"][0] for route in result["routes"]}
+    if USB_DEVICES.exists():
+        result["other_usb_wake_enabled"] = [
+            name for node in USB_DEVICES.iterdir()
+            if (name := node.name) and (wake := usb_device(name))
+            and str(wake.resolve()) not in bluetooth_nodes
+            and read(wake) == "enabled"
+        ]
     try:
         _bus, objects = bluez_objects()
         result["controllers"] = devices(objects)
@@ -147,13 +171,27 @@ def load_state():
     try:
         data = json.loads(STATE.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {"version": 1, "controllers": {}, "bus": {}, "known": []}
+        return {"version": 1, "controllers": {}, "bus": {}, "known": [], "usb": {}}
     if data.get("version") != 1 or not isinstance(data.get("controllers"), dict) or not isinstance(data.get("bus"), dict):
         raise ValueError("Estado de Bluetooth wake no válido")
     data.setdefault("known", list(data["controllers"]))
     if not isinstance(data["known"], list):
         raise ValueError("Inventario de mandos no válido")
+    data.setdefault("usb", {})
+    if not isinstance(data["usb"], dict):
+        raise ValueError("Inventario USB no válido")
     return data
+
+
+@contextmanager
+def state_lock():
+    LOCK.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with LOCK.open("a+", encoding="ascii") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
 
 
 def save_state(data):
@@ -225,6 +263,101 @@ def restore_bus(state):
     return not conflict
 
 
+
+def init_fresh_install():
+    """Enable strict policy only for a genuinely new installation."""
+    if os.geteuid() != 0:
+        raise PermissionError("Se necesitan permisos de administrador")
+    if STATE.exists():
+        state = load_state()
+        if state.get("usb_policy") == "default-deny":
+            USB_POLICY_MARKER.touch(mode=0o600)
+        return
+    state = load_state()
+    state["usb_policy"] = "default-deny"
+    state["strict_controllers"] = True
+    save_state(state)
+    USB_POLICY_MARKER.touch(mode=0o600)
+
+
+def usb_device(name):
+    # A port name is a selector, never a caller-supplied sysfs path.
+    if not re.fullmatch(r"[0-9]+-[0-9]+(?:\.[0-9]+)*", name):
+        return None
+    node = USB_DEVICES / name
+    if not (node / "idVendor").is_file() or not (node / "idProduct").is_file():
+        return None
+    wake = node / "power/wakeup"
+    if read(wake) not in ("enabled", "disabled"):
+        return None
+    return wake
+
+
+def bluetooth_usb_nodes():
+    return {route["nodes"][0] for route in usb_routes()}
+
+
+def deny_usb_device(state, name, bluetooth_nodes):
+    wake = usb_device(name)
+    if wake is None or str(wake.resolve()) in bluetooth_nodes:
+        return
+    current = read(wake)
+    identity = [read(wake.parent.parent / key) for key in ("idVendor", "idProduct", "devnum")]
+    if any(value is None for value in identity):
+        return
+    key = str(wake.resolve())
+    saved = state["usb"].get(key)
+    current_boot = boot_id()
+    if (not isinstance(saved, dict) or saved.get("boot_id") != current_boot
+            or saved.get("identity") != identity):
+        saved = {"boot_id": current_boot, "identity": identity,
+                 "original": current, "last": current}
+    if current == "enabled":
+        wake.write_text("disabled\n", encoding="ascii")
+        if read(wake) != "disabled":
+            raise RuntimeError(f"No se desactivó wake USB: {name}")
+        saved["last"] = "disabled"
+        state["usb"][key] = saved
+        save_state(state)
+
+
+def deny_usb(name=None):
+    if os.geteuid() != 0:
+        raise PermissionError("Se necesitan permisos de administrador")
+    state = load_state()
+    if state.get("usb_policy") != "default-deny" or not USB_POLICY_MARKER.exists():
+        return
+    bluetooth_nodes = bluetooth_usb_nodes()
+    names = [name] if name is not None else sorted(p.name for p in USB_DEVICES.iterdir())
+    for item in names:
+        deny_usb_device(state, item, bluetooth_nodes)
+
+
+def restore_usb(state):
+    conflict = False
+    current_boot = boot_id()
+    for name, saved in list(state["usb"].items()):
+        wake = Path(name)
+        if saved.get("boot_id") != current_boot or read(wake) is None:
+            del state["usb"][name]
+            continue
+        identity = [read(wake.parent.parent / key) for key in ("idVendor", "idProduct", "devnum")]
+        if identity != saved.get("identity"):
+            del state["usb"][name]
+            continue
+        current = read(wake)
+        if current != saved.get("last") or saved.get("original") not in ("enabled", "disabled"):
+            conflict = True
+            continue
+        original = saved["original"]
+        if current != original:
+            wake.write_text(original + "\n", encoding="ascii")
+            if read(wake) != original:
+                conflict = True
+                continue
+        del state["usb"][name]
+    return not conflict
+
 def set_controller(path, desired):
     if os.geteuid() != 0:
         raise PermissionError("Se necesitan permisos de administrador")
@@ -261,7 +394,8 @@ def prepare(seed_existing=False):
         raise RuntimeError("No se detecta una ruta USB btusb apta para wake")
     # Only the first install or migration may grandfather already-paired devices.
     # Reconfiguration must not silently grandfather devices paired while the watcher was down.
-    if seed_existing and (not STATE.exists() or "known" not in json.loads(STATE.read_text(encoding="utf-8"))):
+    if seed_existing and not state.get("strict_controllers") and (
+            not STATE.exists() or "known" not in json.loads(STATE.read_text(encoding="utf-8"))):
         _bus, objects = bluez_objects()
         state["known"] = sorted(set(state["known"]) | {item["path"] for item in devices(objects)})
     for route in routes:
@@ -270,9 +404,14 @@ def prepare(seed_existing=False):
 
 
 def apply():
+    deny_usb()
     prepare(seed_existing=True)
     state = load_state()
     bus, objects = bluez_objects()
+    if state.get("strict_controllers"):
+        disable_new_controllers(bus, objects)
+        state = load_state()
+        bus, objects = bluez_objects()
     live = {x["path"]: x for x in devices(objects)}
     failures = []
     for path, saved in state["controllers"].items():
@@ -325,7 +464,8 @@ def watch_new_controllers():
     def scan():
         try:
             _bus, objects = bluez_objects()
-            disable_new_controllers(bus, objects)
+            with state_lock():
+                disable_new_controllers(bus, objects)
         except Exception as exc:
             print(f"ugm-bt-wake: aviso al revisar mandos nuevos: {exc}", file=sys.stderr)
         return False
@@ -360,6 +500,8 @@ def reset():
     if os.geteuid() != 0:
         raise PermissionError("Se necesitan permisos de administrador")
     state = load_state()
+    USB_POLICY_MARKER.unlink(missing_ok=True)
+    BT_ENABLED_MARKER.unlink(missing_ok=True)
     try:
         bus, objects = bluez_objects()
         live = {x["path"]: x for x in devices(objects)}
@@ -378,6 +520,8 @@ def reset():
         del state["controllers"][path]
     if not restore_bus(state):
         failures.append("Wake USB modificado fuera de UGM")
+    if not restore_usb(state):
+        failures.append("Wake de periféricos USB modificado fuera de UGM")
     if failures:
         save_state(state)
         raise RuntimeError("; ".join(failures))
@@ -391,12 +535,27 @@ def main():
     sub.add_parser("eligible")
     sub.add_parser("apply")
     sub.add_parser("prepare")
+    sub.add_parser("init-fresh")
+    sub.add_parser("usb-scan")
+    usb_event = sub.add_parser("usb-event")
+    usb_event.add_argument("device")
     sub.add_parser("watch")
     sub.add_parser("reset")
     setter = sub.add_parser("set")
     setter.add_argument("device_path")
     setter.add_argument("value", choices=("on", "off"))
     args = parser.parse_args()
+    try:
+        if args.command not in ("probe", "eligible", "watch"):
+            with state_lock():
+                return run_command(args)
+        return run_command(args)
+    except Exception as exc:
+        print(f"ugm-bt-wake: {exc}", file=sys.stderr)
+        return 1
+
+
+def run_command(args):
     try:
         if args.command == "probe":
             print(json.dumps(probe(), ensure_ascii=False, sort_keys=True, indent=2))
@@ -405,7 +564,14 @@ def main():
         elif args.command == "apply":
             apply()
         elif args.command == "prepare":
+            deny_usb()
             prepare(seed_existing=True)
+        elif args.command == "init-fresh":
+            init_fresh_install()
+        elif args.command == "usb-scan":
+            deny_usb()
+        elif args.command == "usb-event":
+            deny_usb(args.device)
         elif args.command == "watch":
             watch_new_controllers()
         elif args.command == "reset":

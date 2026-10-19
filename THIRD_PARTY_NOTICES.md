@@ -21,7 +21,7 @@ The complete upstream license text is preserved in:
 
 ## Valve Gamescope
 
-UGM 2.0.0-1 and 2.5.0-5 distribute a modified Gamescope binary based on
+UGM 2.0.0-1, 2.5.0-5 and 2.8.0-2 distribute a modified Gamescope binary based on
 [ValveSoftware/gamescope](https://github.com/ValveSoftware/gamescope).
 
 The main Gamescope project is distributed under the BSD 2-Clause License and
@@ -36,17 +36,19 @@ The complete upstream license and bundled third-party notices are preserved in:
 
 - [licenses/GAMESCOPE-LICENSE](licenses/GAMESCOPE-LICENSE)
 
-The Gamescope binary bundled with UGM 2.0.0-1 and 2.5.0-5 is a custom reproducible build.
+The Gamescope binary bundled with UGM is a custom build documented by version.
 Its upstream base, complete patch series, final tree and build record are
 published under `gamescope/versions/3.16.30-gbm/`; see
 [gamescope/README.md](gamescope/README.md).
 
 ## Sharp Filter Selector
 
-UGM documents integration with the independently published
-[Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) Decky
-Loader plugin. The plugin is not embedded in this repository or in the UGM
-package and retains the license published in its own repository.
+UGM 2.8.0-2 optionally bundles
+[Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector)
+under the BSD-3-Clause license retained in
+[integrations/decky/sharp-filter-selector/LICENSE](integrations/decky/sharp-filter-selector/LICENSE),
+and UGM Downsampling Sharpener. The plugins are installed only when selected;
+Decky Loader is fetched separately by its official installer.
 
 ## Trademarks and project names
 

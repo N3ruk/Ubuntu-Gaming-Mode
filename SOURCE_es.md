@@ -2,8 +2,8 @@
 
 [English](SOURCE.md) | **Español**
 
-Este árbol contiene las fuentes de la versión estable **Ubuntu Gaming Mode
-2.5.0-5** y el registro reproducible del Gamescope 3.16.30 heredado de 2.0.0-1.
+Este árbol contiene las fuentes de **Ubuntu Gaming Mode 2.8.0-2**. Conserva el registro
+histórico de Gamescope 3.16.30 de 2.5 y añade el parche 0010 para 2.8.
 
 ## Estructura
 
@@ -14,8 +14,10 @@ Este árbol contiene las fuentes de la versión estable **Ubuntu Gaming Mode
 - `gamescope/versions/3.16.30-gbm/`: patches, procedencia y validación.
 - `tests/`: pruebas de las integraciones opcionales.
 - `docs/`: instalación, rollback, arquitectura y rendimiento.
-- `prototypes/nvidia-vrs/` y `prototypes/amd-vrs/`: fuentes, build y pruebas de
-  las capas VRS incluidas en el paquete. Los `.so` generados no se guardan en Git.
+- `prototypes/vrs-common/`, `prototypes/nvidia-vrs/` y `prototypes/amd-vrs/`:
+  fuentes, build y pruebas de las capas VRS. Los `.so` generados no se guardan en Git.
+- `integrations/decky/`: payload mínimo de los dos plugins opcionales.
+- `docs/es/ugm-2.8/`: documentación y límites de las novedades.
 - `system/icons/`: iconos PNG de UGM y de la app Bluetooth, ambos versionados.
 
 ## Entrada binaria e icono de la aplicación
@@ -45,14 +47,19 @@ artefactos de prueba en `prototypes/` están ignorados por Git.
 - SHA256 del binario:
   `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
 
-La preparación exacta es:
+El árbol y el hash anteriores corresponden **solo a 2.5 (patches 0001–0009)**.
+Para 2.8 se aplica además el patch 0010 y se utiliza el hash Gamescope
+`4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03`.
+[Receta y límites de 2.8](docs/es/ugm-2.8/downsampling.md).
+
+La preparación histórica de 2.5 es:
 
 ```bash
 git clone https://github.com/ValveSoftware/gamescope.git
 cd gamescope
 git checkout ad2763da1c48860f649abfe842a087188dcb6e20
 git submodule update --init --recursive
-git am /ruta/a/gamescope/versions/3.16.30-gbm/patches/*.patch
+for patch in $(sed -n '1,9p' /ruta/a/gamescope/versions/3.16.30-gbm/patches/series); do git am "/ruta/a/gamescope/versions/3.16.30-gbm/patches/$patch"; done
 ```
 
 Consulta [`BUILD.md`](gamescope/versions/3.16.30-gbm/BUILD.md) para el toolchain

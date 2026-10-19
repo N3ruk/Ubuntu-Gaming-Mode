@@ -6,3 +6,7 @@
 .DS_Store
 __pycache__/
 *.py[cod]
+
+# Local downsampling experiments and machine-specific historical helpers.
+/prototypes/downsampling-sharpener/validation/
+/prototypes/downsampling-sharpener/tools/historical/

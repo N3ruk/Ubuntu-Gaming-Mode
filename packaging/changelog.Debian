@@ -1,3 +1,27 @@
+ubuntu-gaming-mode (2.8.0-2) unstable; urgency=medium
+
+  * Run the official Decky installer with umask 022, isolated from private
+    UGM state permissions; ensure PluginLoader is readable/executable by
+    unprivileged plugin workers, including existing 2.8.0-1 installs.
+  * Set explicit bundled plugin payload permissions and reload active Decky
+    after plugin installation, preserving existing plugins and stopped services.
+  * Align package, managed-state and Doctor/inventory versions with 2.8.0-2.
+
+ -- N3ruk <csz_11@hotmail.com>  Sat, 17 Oct 2026 17:00:00 +0200
+
+ubuntu-gaming-mode (2.8.0-1) unstable; urgency=medium
+
+  * First local 2.8 package, not published.
+  * Include Gamescope downsampling sharpener 0.4 (patch 0010).
+  * Add independent opt-in Decky Loader and bundled filter plugins.
+  * Add per-controller USB wake policy for Bluetooth wake installations.
+  * Integrate audited shared AMD/NVIDIA VRS layers for 32/64 bits,
+    conservative shader policy, GPL support and lower CPU allocation cost.
+  * Align Doctor runtime identity and inventory cache with 2.8.0-1;
+    require root for private state checks instead of false missing-file errors.
+
+ -- N3ruk <csz_11@hotmail.com>  Sat, 17 Oct 2026 12:00:00 +0200
+
 ubuntu-gaming-mode (2.5.0-5) unstable; urgency=low
 
   * Retain the validated Gamescope 3.16.30 GBM runtime and nine-patch source.

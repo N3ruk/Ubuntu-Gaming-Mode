@@ -21,7 +21,7 @@ NATIVE_RADV_APUS = frozenset({
 
 
 def select_route(data, layer_dir=LAYER_DIR):
-    if data.get("relation", {}).get("state") != "matched":
+    if data.get("vrs_relation", data.get("relation", {})).get("state") != "matched":
         return "none"
     vulkan = data.get("vulkan", {})
     selected = vulkan.get("selected") or {}

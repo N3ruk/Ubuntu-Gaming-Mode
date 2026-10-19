@@ -41,7 +41,7 @@ Este port no contiene el conector histórico Sharp Filter Selector/Decky/NIS de 
 
 Consulta [UPSTREAM.md](UPSTREAM.md) para la procedencia, [BUILD.md](BUILD.md) para la receta exacta y [VALIDATION.md](VALIDATION.md) para el alcance de aceptación.
 
-Aplica los patches en el orden de `patches/series` sobre la base upstream exacta. Los nueve patches producen el árbol final `5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
+Para reproducir el binario estable 2.5, aplica **solo 0001–0009** en el orden de `patches/series` sobre la base upstream exacta. Esos nueve patches producen el árbol final `5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
 
 El binario validado sigue mostrando `3.16.30-8-gb211c9d` porque el patch 0009
 se compiló antes de convertir su diff fuente en un commit y patch numerado. El
@@ -49,3 +49,9 @@ SHA256 anterior es la identidad canónica del runtime instalado con los nueve
 patches.
 
 El binario compilado no se guarda en Git. Debe distribuirse dentro de una release versionada de UGM e identificarse mediante su SHA256.
+
+## Rama de desarrollo 2.8
+
+El parche 0010 se ha añadido al final de `patches/series`. Implementa el filtro
+selectivo de downsampling 0.4 y **no forma parte del binario 2.5 descrito arriba**.
+[Documentación y validación de 0010](../../../docs/es/ugm-2.8/downsampling.md).

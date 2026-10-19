@@ -44,6 +44,18 @@ class BusRollbackTests(unittest.TestCase):
 
 
 class DeviceGuardTests(unittest.TestCase):
+    def setUp(self):
+        self.marker_dir = tempfile.TemporaryDirectory()
+        root = Path(self.marker_dir.name)
+        self.marker_patches = (
+            patch.object(backend, "USB_POLICY_MARKER", root / "usb-policy"),
+            patch.object(backend, "BT_ENABLED_MARKER", root / "bt-enabled"),
+        )
+        for item in self.marker_patches:
+            item.start()
+            self.addCleanup(item.stop)
+        self.addCleanup(self.marker_dir.cleanup)
+
     def test_enable_then_reset_restores_bluez_and_usb(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -191,6 +203,90 @@ class DeviceGuardTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 backend.set_controller("/org/bluez/hci0/dev_00_00_00_00_00_00", True)
             setter.assert_not_called()
+
+
+class UsbPolicyTests(unittest.TestCase):
+    def test_fresh_install_denies_existing_and_hotplug_usb_but_not_bluetooth(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            usb_root = root / "usb"
+            usb_root.mkdir()
+
+            def device(name):
+                node = usb_root / name
+                (node / "power").mkdir(parents=True)
+                (node / "idVendor").write_text("1234")
+                (node / "idProduct").write_text("5678")
+                (node / "devnum").write_text("3")
+                wake = node / "power/wakeup"
+                wake.write_text("enabled\n")
+                return wake
+
+            bt = device("1-14")
+            dell = device("1-8")
+            with (patch.object(backend, "STATE", root / "bt-wake.json"),
+                  patch.object(backend, "USB_POLICY_MARKER", root / "policy"),
+                  patch.object(backend, "BT_ENABLED_MARKER", root / "bt-enabled"),
+                  patch.object(backend, "USB_DEVICES", usb_root),
+                  patch.object(backend, "bluetooth_usb_nodes", return_value={str(bt.resolve())}),
+                  patch.object(backend, "boot_id", return_value="boot-a"),
+                  patch.object(backend.os, "geteuid", return_value=0),
+                  patch.object(backend, "bluez_objects", return_value=(object(), {})),
+                  patch.object(backend, "devices", return_value=[])):
+                backend.init_fresh_install()
+                self.assertTrue(backend.load_state()["strict_controllers"])
+                backend.deny_usb()
+                self.assertEqual(bt.read_text().strip(), "enabled")
+                self.assertEqual(dell.read_text().strip(), "disabled")
+                pad = device("1-9")
+                backend.deny_usb("1-9")
+                self.assertEqual(pad.read_text().strip(), "disabled")
+                backend.deny_usb("../1-14")
+                self.assertEqual(bt.read_text().strip(), "enabled")
+                backend.reset()
+                self.assertEqual(dell.read_text().strip(), "enabled")
+                self.assertEqual(pad.read_text().strip(), "enabled")
+                self.assertFalse(backend.STATE.exists())
+                self.assertFalse(backend.USB_POLICY_MARKER.exists())
+
+    def test_existing_25_state_is_not_migrated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with (patch.object(backend, "STATE", root / "bt-wake.json"),
+                  patch.object(backend, "USB_POLICY_MARKER", root / "policy"),
+                  patch.object(backend.os, "geteuid", return_value=0)):
+                backend.save_state({"version": 1, "controllers": {}, "bus": {}, "known": []})
+                backend.init_fresh_install()
+                state = backend.load_state()
+                self.assertNotIn("usb_policy", state)
+                self.assertFalse(backend.USB_POLICY_MARKER.exists())
+
+    def test_fresh_install_disables_already_paired_controller(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            usb_root = root / "usb"
+            usb_root.mkdir()
+            nodes = [root / f"route-{n}" for n in range(3)]
+            for node in nodes:
+                node.write_text("disabled\n")
+            item = {"path": "/org/bluez/hci0/dev_01_02_03_04_05_06",
+                    "wake_allowed": True, "trusted": True}
+            def set_bluez(_bus, _path, value):
+                item["wake_allowed"] = value
+            with (patch.object(backend, "STATE", root / "bt-wake.json"),
+                  patch.object(backend, "USB_POLICY_MARKER", root / "policy"),
+                  patch.object(backend, "USB_DEVICES", usb_root),
+                  patch.object(backend, "boot_id", return_value="boot-a"),
+                  patch.object(backend.os, "geteuid", return_value=0),
+                  patch.object(backend, "usb_routes", return_value=[{"nodes": [str(n) for n in nodes]}]),
+                  patch.object(backend, "bluez_objects", return_value=(object(), {})),
+                  patch.object(backend, "devices", return_value=[item]),
+                  patch.object(backend, "set_bluez", side_effect=set_bluez)):
+                backend.init_fresh_install()
+                backend.apply()
+                self.assertFalse(item["wake_allowed"])
+                self.assertFalse(backend.load_state()["controllers"][item["path"]]["desired"])
+                self.assertTrue(all(n.read_text().strip() == "enabled" for n in nodes))
 
 
 if __name__ == "__main__":

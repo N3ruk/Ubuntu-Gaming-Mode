@@ -38,3 +38,7 @@ no un conector oculto dentro de esta serie.
 El Gamescope 3.16.28 histórico de UGM 1.0.0-3 no era reproducible porque su árbol
 modificado se perdió. Esta limitación queda restringida a aquella release; el
 runtime 3.16.30 de 2.0.0-1 está documentado por completo.
+
+**Desarrollo 2.8:** la serie añade el parche 0010 después de los nueve del
+runtime estable. [Estado y validación del filtro](../docs/es/ugm-2.8/downsampling.md).
+El SHA256 mostrado arriba identifica exclusivamente el binario 2.5.

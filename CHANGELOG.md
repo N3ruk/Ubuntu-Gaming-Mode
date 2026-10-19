@@ -2,6 +2,70 @@
 
 **English** | [Español](CHANGELOG_es.md)
 
+## 2.8.0-2
+
+- Fix the Decky installer umask, `PluginLoader` and both plugin payload permissions; reload an active service.
+- Carlos reports a successful installation and several days of use without observed issues. Compatibility on other systems depends on their hardware and configuration.
+
+## 2.8.0-1 — local package (unreleased)
+
+### Preparation summary
+
+- [Feature index and build prerequisites](docs/es/ugm-2.8/README.md) (Spanish).
+- Previously prepared: Gamescope patch 0010 for selective downsampling sharpening
+  (filter 0.4), plus optional Decky Loader and two-plugin integration with separate,
+  default-off prompts. See [downsampling](docs/es/ugm-2.8/downsampling.md) and
+  [Decky](docs/es/ugm-2.8/decky.md). This VRS import does not change those components.
+- First local **2.8.0-1** `.deb` built on 2026-10-17; not published.
+- Doctor matches Gamescope 0.4 identity, managed-state version and 2.8.0-1
+  inventory cache; root is required to inspect private rollback state.
+- 80 automated tests passed; package integrity and dependencies verified.
+  A clean install exposed a Decky permissions issue, fixed in 2.8.0-2.
+
+### Updated VRS layer — imported 2026-10-17
+
+- Shared 32/64-bit AMD/NVIDIA core: per-instance/device dispatch, hash tables,
+  partial-failure handling and conservative out-of-memory fallback.
+- Lower CPU overhead for binds and synchronous QAM metadata checks; atomic library
+  replacement and complete immutable staging generations.
+- More protective SPIR-V policy with support for proven modern shader forms,
+  previously observed shader identifiers and Graphics Pipeline Library (GPL)/flags2;
+  original libraries remain intact, with coherent private variants for safe links.
+- VRS selection independent of display ambiguity on a single verified GPU with
+  multiple monitors; HDR/VRR behavior and other Vulkan loader layers are preserved.
+- Final optimization removes four temporary allocations per exclusively GPL batch.
+  This is a bounded CPU saving with a small non-GPL control overhead, not evidence
+  of higher FPS or additional VRS coverage by itself.
+- Public 1×1/2×2 QAM unchanged; 1×2/2×1 rates, extended MSAA, diagnostics and capture
+  remain explicit opt-ins. No game probes or rejected experimental caches imported.
+  AMD still lacks physical-GPU validation.
+- Only VRS sources, integration and tests are imported. No local installation,
+  Gamescope, Decky or Bluetooth changes and no GitHub publication.
+- Verified in the destination project: 77 Python tests, 32/64-bit CPU matrix
+  and sanitizers, 60 NVIDIA GPU cases and four libraries identical to the source.
+- [Details, validation and limits](docs/es/ugm-2.8/vrs.md);
+  [source manifest](docs/es/ugm-2.8/vrs-import-manifest.json).
+
+### Bluetooth controller wake and USB policy
+
+- On fresh installations that enable Bluetooth wake, `power/wakeup` is denied
+  by default for physical USB devices that expose it, except the `btusb`
+  adapter. Its shared hub/controller wake path remains enabled for Bluetooth.
+- The policy covers USB devices already present and those connected later; it
+  is reapplied at boot and when the Bluetooth adapter reconnects. USB mice,
+  keyboards, receivers and controllers cannot be authorized in the app.
+- On such fresh installations, paired Bluetooth controllers, including those
+  paired before installing UGM, start with `WakeAllowed=no`. Controllers paired
+  later also require individual authorization in the app. They must be trusted
+  and expose `WakeAllowed`.
+- Upgrading from 2.5 preserves the existing policy and permissions; USB
+  default-deny is not enabled retroactively. When the option is disabled or
+  UGM is removed, it attempts to restore the USB values it recorded, provided
+  neither the device nor its state was changed elsewhere.
+- Implementation and isolated tests are prepared. Building 2.8 and validating
+  wake with a real suspend remain pending; final behavior also depends on
+  firmware and hardware.
+
 ## 2.5.0-5 — 2026-10-12
 
 - Retained the 2.0.0-1 Gamescope 3.16.30 GBM runtime and its nine-patch series;

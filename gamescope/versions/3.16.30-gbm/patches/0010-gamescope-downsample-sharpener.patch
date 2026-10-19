@@ -1,0 +1,294 @@
+diff --git a/src/Backends/DRMBackend.cpp b/src/Backends/DRMBackend.cpp
+index a23b44eb..9c6594f2 100644
+--- a/src/Backends/DRMBackend.cpp
++++ b/src/Backends/DRMBackend.cpp
+@@ -4019,6 +4019,7 @@ namespace gamescope
+ 			bNeedsFullComposite |= pFrameInfo->useFSRLayer0;
+ 			bNeedsFullComposite |= pFrameInfo->useNISLayer0;
+ 			bNeedsFullComposite |= pFrameInfo->useSGSRLayer0;
++			bNeedsFullComposite |= pFrameInfo->nDownsampleSharpness > 0;
+ 			bNeedsFullComposite |= pFrameInfo->blurLayer0;
+ 			bNeedsFullComposite |= bNeedsCompositeFromFilter;
+ 			bNeedsFullComposite |= !cv_drm_cursor_plane && bDrewCursor;
+diff --git a/src/Backends/OpenVRBackend.cpp b/src/Backends/OpenVRBackend.cpp
+index 9172bf5e..5ccb8563 100644
+--- a/src/Backends/OpenVRBackend.cpp
++++ b/src/Backends/OpenVRBackend.cpp
+@@ -1852,6 +1852,7 @@ namespace gamescope
+         bNeedsFullComposite |= pFrameInfo->useFSRLayer0;
+         bNeedsFullComposite |= pFrameInfo->useNISLayer0;
+         bNeedsFullComposite |= pFrameInfo->useSGSRLayer0;
++			bNeedsFullComposite |= pFrameInfo->nDownsampleSharpness > 0;
+         bNeedsFullComposite |= pFrameInfo->blurLayer0;
+         bNeedsFullComposite |= bNeedsCompositeFromFilter;
+         bNeedsFullComposite |= g_bColorSliderInUse;
+diff --git a/src/Backends/WaylandBackend.cpp b/src/Backends/WaylandBackend.cpp
+index ee5cac0d..e9974513 100644
+--- a/src/Backends/WaylandBackend.cpp
++++ b/src/Backends/WaylandBackend.cpp
+@@ -1076,6 +1076,7 @@ namespace gamescope
+             bNeedsFullComposite |= pFrameInfo->useFSRLayer0;
+             bNeedsFullComposite |= pFrameInfo->useNISLayer0;
+             bNeedsFullComposite |= pFrameInfo->useSGSRLayer0;
++			bNeedsFullComposite |= pFrameInfo->nDownsampleSharpness > 0;
+             bNeedsFullComposite |= pFrameInfo->blurLayer0;
+             bNeedsFullComposite |= bNeedsCompositeFromFilter;
+             bNeedsFullComposite |= g_bColorSliderInUse;
+diff --git a/src/rendervulkan.cpp b/src/rendervulkan.cpp
+index 12810f32..994ef68f 100644
+--- a/src/rendervulkan.cpp
++++ b/src/rendervulkan.cpp
+@@ -4127,12 +4127,14 @@ struct BlitPushData_t
+     float u_itmTargetNits; // unset
+ 
+ 	uint32_t u_rotation;
++	float u_downsampleSharpness;
+ 
+ 	explicit BlitPushData_t(const struct FrameInfo_t *frameInfo, uint32_t rotation = 0)
+ 	{
+ 		u_shaderFilter = 0;
+ 		u_alphaMode = 0;
+ 		u_rotation = rotation;
++		u_downsampleSharpness = frameInfo->nDownsampleSharpness / 100.0f;
+ 
+ 		for (int i = 0; i < frameInfo->layers.count(); i++) {
+ 			const FrameInfo_t::Layer_t *layer = &frameInfo->layers.get( i );
+@@ -4180,6 +4182,7 @@ struct BlitPushData_t
+         u_shaderFilter = (uint32_t)GamescopeUpscaleFilter::LINEAR;
+ 		u_alphaMode = 0;
+ 		u_rotation = 0;
++		u_downsampleSharpness = 0.0f;
+ 		ctm[0] = glm::mat3x4
+ 		{
+ 			1, 0, 0, 0,
+diff --git a/src/rendervulkan.hpp b/src/rendervulkan.hpp
+index 4f0bff04..df44e05c 100644
+--- a/src/rendervulkan.hpp
++++ b/src/rendervulkan.hpp
+@@ -304,6 +304,8 @@ struct FrameInfo_t
+ 	GamescopeUpscaleFilter eUpscaleFilter = GamescopeUpscaleFilter::LINEAR;
+ 	GamescopeUpscaleScaler eUpscaleScaler = GamescopeUpscaleScaler::AUTO;
+ 	int nUpscaleSharpness = 0;
++	// 0 disables the UGM downsampling filter; 1..100 are manual strengths.
++	int nDownsampleSharpness = 0;
+ 	bool bFadingOut;
+ 	BlurMode blurLayer0;
+ 	int blurRadius;
+diff --git a/src/shaders/blit_push_data.h b/src/shaders/blit_push_data.h
+index f81096b9..7cca17da 100644
+--- a/src/shaders/blit_push_data.h
++++ b/src/shaders/blit_push_data.h
+@@ -18,5 +18,6 @@ uniform layers_t {
+     float u_itmTargetNits;
+ 
+     uint u_rotation;
++    float u_downsampleSharpness;
+ };
+ 
+diff --git a/src/shaders/cs_composite_blit.comp b/src/shaders/cs_composite_blit.comp
+index 4d974dcb..906d2087 100644
+--- a/src/shaders/cs_composite_blit.comp
++++ b/src/shaders/cs_composite_blit.comp
+@@ -19,10 +19,33 @@ vec4 sampleLayer(uint layerIdx, vec2 uv) {
+     return sampleLayer(s_samplers[layerIdx], layerIdx, uv, true);
+ }
+ 
++// Cooperative color-managed tile loading, including four 8-pixel halo strips.
++// 96 samples / 64 outputs instead of 320. Corners are never consumed.
++shared vec4 ugmTile[100];
++
+ void main() {
+     uvec2 coord = uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+     uvec2 outSize = outputLogicalSize(u_rotation);
+ 
++    // All invocations, including padded edge lanes, must reach the barrier.
++    // The branch is workgroup-uniform (UBO and specialization constants).
++    bool sharpen = c_layerCount > 0 && u_downsampleSharpness > 0.0;
++    // With passthrough color there is no expensive transform to reuse;
++    // direct texture cache hits are cheaper than a workgroup barrier.
++    bool cacheSamples = sharpen && get_layer_colorspace(0) != colorspace_passthru;
++    uint tileIndex = (gl_LocalInvocationID.y + 1u) * 10u + gl_LocalInvocationID.x + 1u;
++    if (cacheSamples) {
++        // Cooperative loading: all lanes execute the same sampling call.
++        for (uint i = gl_LocalInvocationIndex; i < 96u; i += 64u) {
++            // Map 96 samples to the 10x10 tile, skipping corners 0, 9, 90, 99.
++            uint index = i + 1u + uint(i >= 8u) + uint(i >= 88u);
++            ivec2 local = ivec2(index % 10u, index / 10u) - 1;
++            ivec2 pixel = ivec2(gl_WorkGroupID.xy * uvec2(8u)) + local;
++            pixel = clamp(pixel, ivec2(0), ivec2(outSize) - 1);
++            ugmTile[index] = sampleLayer(0, vec2(pixel));
++        }
++        barrier();
++    }
+     if (coord.x >= outSize.x || coord.y >= outSize.y)
+         return;
+ 
+@@ -33,7 +56,43 @@ void main() {
+         outputValue = vec4(1.0f, 0.0f, 0.0f, 0.0f);
+ 
+     if (c_layerCount > 0) {
+-        outputValue = sampleLayer(0, uv) * u_opacity[0];
++        outputValue = cacheSamples ? ugmTile[tileIndex] : sampleLayer(0, uv);
++        // Sharpen the downsampled, color-managed game plane only.
++        if (u_downsampleSharpness > 0.0 &&
++            coord.x > 0u && coord.y > 0u &&
++            coord.x + 1u < outSize.x && coord.y + 1u < outSize.y) {
++            vec3 left = cacheSamples ? ugmTile[tileIndex - 1u].rgb : sampleLayer(0, uv + vec2(-1.0, 0.0)).rgb;
++            vec3 right = cacheSamples ? ugmTile[tileIndex + 1u].rgb : sampleLayer(0, uv + vec2(1.0, 0.0)).rgb;
++            vec3 up = cacheSamples ? ugmTile[tileIndex - 10u].rgb : sampleLayer(0, uv + vec2(0.0, -1.0)).rgb;
++            vec3 down = cacheSamples ? ugmTile[tileIndex + 10u].rgb : sampleLayer(0, uv + vec2(0.0, 1.0)).rgb;
++            vec3 localMin = min(outputValue.rgb, min(min(left, right), min(up, down)));
++            vec3 localMax = max(outputValue.rgb, max(max(left, right), max(up, down)));
++            vec3 average = (left + right + up + down) * 0.25;
++            // Relative RGB range is exposure-scale invariant (SDR/HDR). Suppress
++            // nearly flat noise and taper strong edges, without extra fetches.
++            vec3 extent = localMax - localMin;
++            float range = max(extent.r, max(extent.g, extent.b));
++            vec3 magnitude = max(abs(localMin), abs(localMax));
++            float peak = max(max(magnitude.r, magnitude.g), max(magnitude.b, 1e-4));
++            float contrast = range / peak;
++            // Retune only ALU: preserve the same samples, tile and barrier.
++            float gain = u_downsampleSharpness * 2.4 *
++                smoothstep(0.002, 0.02, contrast) *
++                (1.0 - 0.35 * smoothstep(0.1, 0.5, contrast));
++            // A strict min/max clamp erases sharpening at local extrema.
++            // Allow bounded, per-channel overshoot: 3.125% of the local
++            // range at strength 25, 12.5% at 100; flat regions stay flat.
++            vec3 headroom = extent * (0.125 * u_downsampleSharpness);
++            // Do not filter across the game viewport / letterbox boundary.
++            vec2 source = (uv + u_offset[0]) * u_scale[0];
++            vec2 sourceSize = vec2((c_ycbcrMask & 1u) != 0u ?
++                textureSize(s_ycbcr_samplers[0], 0) : textureSize(s_samplers[0], 0));
++            if (all(greaterThanEqual(source - u_scale[0], vec2(0.0))) &&
++                all(lessThan(source + u_scale[0], sourceSize)))
++                outputValue.rgb = clamp(outputValue.rgb + gain * (outputValue.rgb - average),
++                    max(localMin - headroom, vec3(0.0)), localMax + headroom);
++        }
++        outputValue *= u_opacity[0];
+     }
+ 
+     for (int i = 1; i < c_layerCount; i++) {
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index fba97f8a..ef577073 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -1140,6 +1140,12 @@ static gamescope::ConCommand cc_focus_info( "focus_info", "Dump debug info about
+ });
+ 
+ // The upscale globals belong to the steamcompmgr thread, the main loop applies these.
++// UGM controls are intentionally independent of Steam's FSR/NIS scaling state.
++static bool g_bUgmDownsampleEnabled = false;
++static int g_nUgmDownsampleStrength = 25;
++static bool g_bUgmDownsampleDetected = false;
++static bool g_bUgmDownsampleActive = false;
++
+ static std::atomic<int32_t> g_nPendingUpscaleFilter = { -1 };
+ static std::atomic<int32_t> g_nPendingUpscaleSharpness = { -1 };
+ 
+@@ -3412,6 +3418,17 @@ paint_all( global_focus_t *pFocus, bool async )
+ 		frameInfo.useSGSRLayer0 = false;
+ 	}
+ 
++	// Layer scale is source/output: >1 on both axes means real compositor downsampling.
++	// Only the focused game base plane qualifies; Steam/QAM overlays remain untouched.
++	g_bUgmDownsampleDetected = w && w->appID != 0 && !window_is_steam( w ) &&
++		frameInfo.layers.count() > 0 && frameInfo.layers.get( 0 ).tex &&
++		frameInfo.layers.get( 0 ).scale.x > 1.001f &&
++		frameInfo.layers.get( 0 ).scale.y > 1.001f &&
++		!frameInfo.blurLayer0 && !frameInfo.bFadingOut;
++	g_bUgmDownsampleActive = g_bUgmDownsampleDetected && g_bUgmDownsampleEnabled &&
++		g_nUgmDownsampleStrength > 0;
++	frameInfo.nDownsampleSharpness = g_bUgmDownsampleActive ? g_nUgmDownsampleStrength : 0;
++
+ 	pFocus->eActiveUpscaler = GamescopeUpscaleFilter::LINEAR;
+ 	if ( frameInfo.useFSRLayer0 )
+ 		pFocus->eActiveUpscaler = GamescopeUpscaleFilter::FSR;
+@@ -7223,6 +7240,16 @@ handle_property_notify(xwayland_ctx_t *ctx, XPropertyEvent *ev)
+ 		if ( UpscaleFilterUsesSharpness( g_wantedUpscaleFilter ) )
+ 			hasRepaint = true;
+ 	}
++	if ( ev->atom == ctx->atoms.ugmDownsampleEnabled )
++	{
++		g_bUgmDownsampleEnabled = !!get_prop( ctx, ctx->root, ev->atom, 0 );
++		hasRepaint = true;
++	}
++	if ( ev->atom == ctx->atoms.ugmDownsampleStrength )
++	{
++		g_nUgmDownsampleStrength = clamp( (int)get_prop( ctx, ctx->root, ev->atom, 25 ), 0, 100 );
++		hasRepaint = true;
++	}
+ 	if ( ev->atom == ctx->atoms.gamescopeXWaylandModeControl )
+ 	{
+ 		std::vector< uint32_t > xwayland_mode_ctl;
+@@ -8970,6 +8997,11 @@ void init_xwayland_ctx(uint32_t serverId, gamescope_xwayland_server_t *xwayland_
+ 	ctx->atoms.gamescopeScalingFilter = XInternAtom( ctx->dpy, "GAMESCOPE_SCALING_FILTER", false );
+ 	ctx->atoms.gamescopeFSRSharpness = XInternAtom( ctx->dpy, "GAMESCOPE_FSR_SHARPNESS", false );
+ 	ctx->atoms.gamescopeSharpness = XInternAtom( ctx->dpy, "GAMESCOPE_SHARPNESS", false );
++	ctx->atoms.ugmDownsampleEnabled = XInternAtom( ctx->dpy, "UGM_DOWNSAMPLE_ENABLED", false );
++	ctx->atoms.ugmDownsampleStrength = XInternAtom( ctx->dpy, "UGM_DOWNSAMPLE_STRENGTH", false );
++	ctx->atoms.ugmDownsampleSupported = XInternAtom( ctx->dpy, "UGM_DOWNSAMPLE_SUPPORTED", false );
++	ctx->atoms.ugmDownsampleDetected = XInternAtom( ctx->dpy, "UGM_DOWNSAMPLE_DETECTED", false );
++	ctx->atoms.ugmDownsampleActive = XInternAtom( ctx->dpy, "UGM_DOWNSAMPLE_ACTIVE", false );
+ 
+ 	ctx->atoms.gamescopeXWaylandModeControl = XInternAtom( ctx->dpy, "GAMESCOPE_XWAYLAND_MODE_CONTROL", false );
+ 	ctx->atoms.gamescopeFPSLimit = XInternAtom( ctx->dpy, "GAMESCOPE_FPS_LIMIT", false );
+@@ -9081,6 +9113,13 @@ void init_xwayland_ctx(uint32_t serverId, gamescope_xwayland_server_t *xwayland_
+ 	uint32_t unPid = getpid();
+ 	XChangeProperty(ctx->dpy, ctx->root, ctx->atoms.gamescopePid, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&unPid, 1 );
+ 
++	uint32_t ugmSupported = 1;
++	uint32_t ugmDetected = g_bUgmDownsampleDetected ? 1 : 0;
++	uint32_t ugmActive = g_bUgmDownsampleActive ? 1 : 0;
++	XChangeProperty(ctx->dpy, ctx->root, ctx->atoms.ugmDownsampleSupported, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&ugmSupported, 1 );
++	XChangeProperty(ctx->dpy, ctx->root, ctx->atoms.ugmDownsampleDetected, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&ugmDetected, 1 );
++	XChangeProperty(ctx->dpy, ctx->root, ctx->atoms.ugmDownsampleActive, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&ugmActive, 1 );
++
+ 	uint32_t unVROverlayForwardingSupported = GetBackend()->SupportsVROverlayForwarding() ? 3 : 0;
+ 	XChangeProperty(ctx->dpy, ctx->root, ctx->atoms.gamescopeVROverlayForwarding, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&unVROverlayForwardingSupported, 1 );
+ 
+@@ -10080,6 +10119,29 @@ steamcompmgr_main(int argc, char **argv)
+ 			flush_root = true;
+ 		}
+ 
++		static int s_nLastUgmDetected = -1;
++		static int s_nLastUgmActive = -1;
++		const int nUgmDetected = g_bUgmDownsampleDetected ? 1 : 0;
++		const int nUgmActive = g_bUgmDownsampleActive ? 1 : 0;
++		if ( nUgmDetected != s_nLastUgmDetected || nUgmActive != s_nLastUgmActive )
++		{
++			for ( size_t i = 0; ; i++ )
++			{
++				gamescope_xwayland_server_t *server = wlserver_get_xwayland_server( i );
++				if ( !server ) break;
++				uint32_t supported = 1;
++				uint32_t detected = nUgmDetected;
++				uint32_t active = nUgmActive;
++				XChangeProperty( server->ctx->dpy, server->ctx->root, server->ctx->atoms.ugmDownsampleSupported, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&supported, 1 );
++				XChangeProperty( server->ctx->dpy, server->ctx->root, server->ctx->atoms.ugmDownsampleDetected, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&detected, 1 );
++				XChangeProperty( server->ctx->dpy, server->ctx->root, server->ctx->atoms.ugmDownsampleActive, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&active, 1 );
++				XFlush( server->ctx->dpy );
++			}
++			s_nLastUgmDetected = nUgmDetected;
++			s_nLastUgmActive = nUgmActive;
++			flush_root = true;
++		}
++
+ 		bool bBackendJustInitted = GetBackend()->NewlyInitted();
+ 
+ 		static gamescope::VirtualConnectorStrategy s_eLastVirtualConnectorStrategy = gamescope::cv_backend_virtual_connector_strategy;
+diff --git a/src/xwayland_ctx.hpp b/src/xwayland_ctx.hpp
+index 7b39ecb3..6f372c73 100644
+--- a/src/xwayland_ctx.hpp
++++ b/src/xwayland_ctx.hpp
+@@ -167,6 +167,11 @@ struct xwayland_ctx_t final : public gamescope::IWaitable
+ 		Atom gamescopeScalingFilter;
+ 		Atom gamescopeFSRSharpness;
+ 		Atom gamescopeSharpness;
++		Atom ugmDownsampleEnabled;
++		Atom ugmDownsampleStrength;
++		Atom ugmDownsampleSupported;
++		Atom ugmDownsampleDetected;
++		Atom ugmDownsampleActive;
+ 
+ 		Atom gamescopeXWaylandModeControl;
+ 

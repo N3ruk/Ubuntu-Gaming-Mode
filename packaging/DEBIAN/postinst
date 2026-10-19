@@ -11,7 +11,7 @@ MANAGED="$STATE_ROOT/managed-state"
 LEGACY="$STATE_ROOT/preinstall"
 LEGACY_MANAGED="$STATE_ROOT/managed.sha256"
 
-PKG_VERSION="2.5.0-5"
+PKG_VERSION="2.8.0-2"
 
 CONFIG="/etc/ubuntu-gaming-mode/session.conf"
 
@@ -249,6 +249,13 @@ snapshot_valid ||
     die "falta un snapshot original válido"
 
 chmod 0700 "$STATE_ROOT"
+
+# Only a fresh 2.8 package installation may select the new default-deny
+# policy. Upgrading from 2.5 leaves existing USB and controller permissions.
+if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+    touch "$STATE_ROOT/bt-wake-fresh-2.8"
+    chmod 0600 "$STATE_ROOT/bt-wake-fresh-2.8"
+fi
 
 rm -rf "$STATE_ROOT/overrides"
 
@@ -535,10 +542,18 @@ case "$bluez_status" in
         ;;
 esac
 
-# La opción de instalación prepara la infraestructura; la app solo cambia
-# WakeAllowed en los mandos. Sembrar el inventario antes de iniciar el watcher
-# evita alterar mandos ya emparejados durante una actualización.
+# En una instalación nueva 2.8, USB y mandos comienzan sin wake. En una
+# actualización desde 2.5 se conservan los permisos existentes.
 if [ "$bt_wake_opt_in" = true ]; then
+    if [ -e "$STATE_ROOT/bt-wake-fresh-2.8" ]; then
+        /usr/lib/ubuntu-gaming-mode/ugm-bt-wake init-fresh ||
+            warn "No se pudo inicializar la política de wake de instalación nueva."
+    fi
+    touch "$STATE_ROOT/bt-wake-enabled"
+    chmod 0600 "$STATE_ROOT/bt-wake-enabled"
+    /usr/lib/ubuntu-gaming-mode/ugm-bt-wake usb-scan ||
+        warn "No se pudo aplicar la política USB; revise ugm-bt-wake probe."
+    udevadm control --reload >/dev/null 2>&1 || true
     if systemctl enable ugm-bt-wake-apply.service ugm-bt-wake-watch.service; then
         log "Servicios de wake Bluetooth habilitados para próximos arranques."
     else
@@ -546,17 +561,38 @@ if [ "$bt_wake_opt_in" = true ]; then
     fi
     if [ "$bluez_status" = 'install ok installed' ] &&
        systemctl is-active --quiet bluetooth.service; then
-        /usr/lib/ubuntu-gaming-mode/ugm-bt-wake prepare ||
-            warn "No se pudo preparar la ruta USB de wake; revise ugm-bt-wake probe."
+        /usr/lib/ubuntu-gaming-mode/ugm-bt-wake apply ||
+            warn "No se pudo aplicar por completo la política de wake; revise ugm-bt-wake probe."
         systemctl restart ugm-bt-wake-watch.service ||
             warn "No se pudo iniciar la política WakeAllowed=no para mandos nuevos."
     fi
 else
+    rm -f "$STATE_ROOT/bt-wake-enabled" "$STATE_ROOT/usb-wake-default-deny"
     systemctl disable --now ugm-bt-wake-apply.service ugm-bt-wake-watch.service >/dev/null 2>&1 || true
     if [ -e "$STATE_ROOT/bt-wake.json" ]; then
         /usr/lib/ubuntu-gaming-mode/ugm-bt-wake reset ||
             warn "Bluetooth wake no se restauró completamente; se conserva su estado."
     fi
+fi
+
+# Integración opcional: un fallo externo no bloquea la configuración de UGM.
+RET=false
+db_get ubuntu-gaming-mode/decky-loader || true
+decky_loader_arg=0
+[ "${RET:-false}" = true ] && decky_loader_arg=1
+RET=false
+db_get ubuntu-gaming-mode/decky-sharp-filter-selector || true
+decky_sharp_arg=0
+[ "${RET:-false}" = true ] && decky_sharp_arg=1
+RET=false
+db_get ubuntu-gaming-mode/decky-downsampling-sharpener || true
+decky_downsampling_arg=0
+[ "${RET:-false}" = true ] && decky_downsampling_arg=1
+if [ "$decky_loader_arg" = 1 ] || [ "$decky_sharp_arg" = 1 ] ||
+   [ "$decky_downsampling_arg" = 1 ]; then
+    /usr/lib/ubuntu-gaming-mode/ugm-decky-integration \
+        "$UGM_USER" "$decky_loader_arg" "$decky_sharp_arg" "$decky_downsampling_arg" ||
+        warn "La integración opcional Decky no se completó; reintentar con dpkg-reconfigure ubuntu-gaming-mode si se desea."
 fi
 
 log "Ejecutando diagnóstico final."

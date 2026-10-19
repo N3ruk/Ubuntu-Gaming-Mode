@@ -132,6 +132,22 @@ class CapabilityTests(unittest.TestCase):
         self.assertEqual(data["output_candidates"], ["DP-1", "HDMI-A-1"])
         self.assertEqual(self.run_detector(session=True)[0], "DP-1,HDMI-A-1,*")
 
+    def test_vrs_multi_monitor_single_gpu_without_hdr_vrr_change(self):
+        (self.drm / "card1-DP-1" / "status").write_text("connected")
+        data = self.run_detector()
+        self.assertEqual(data["relation"]["state"], "unknown")
+        self.assertEqual(data["capabilities"]["hdr"]["state"], "unknown")
+        self.assertEqual(data["capabilities"]["vrr"]["state"], "unknown")
+        self.assertEqual(data["vrs_relation"]["state"], "matched")
+        self.assertEqual(data["capabilities"]["nvidia_layer_vrs"]["state"], "present_unvalidated")
+
+    def test_vrs_multi_gpu_connectors_remain_unknown(self):
+        self.card("card2", "1002", "73bf", "0000:02:00.0")
+        self.connector("card2-DP-1", "connected")
+        data = self.run_detector()
+        self.assertEqual(data["vrs_relation"]["state"], "unknown")
+        self.assertEqual(data["capabilities"]["nvidia_layer_vrs"]["state"], "unknown")
+
     def test_moving_display_from_hdmi_to_dp_promotes_dp(self):
         (self.drm / "card1-HDMI-A-1" / "status").write_text("disconnected")
         (self.drm / "card1-DP-1" / "status").write_text("connected")

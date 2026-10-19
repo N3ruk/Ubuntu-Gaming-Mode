@@ -19,7 +19,7 @@ STATE_ROOT="/var/lib/ubuntu-gaming-mode"
 ORIGINAL="$STATE_ROOT/original-state"
 MANAGED="$STATE_ROOT/managed-state"
 
-EXPECTED_GAMESCOPE_SHA="5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256"
+EXPECTED_GAMESCOPE_SHA="4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03"
 EXPECTED_RUNTIME_SHA="a6bab2e74ff2db65121f8864247f84fec8062b55348925f84294c1cd2b724d9f"
 
 ok()   { printf '[ OK ] %s
@@ -50,6 +50,11 @@ Ubuntu Gaming Mode Doctor
 '
 printf 'Modo de diagnóstico: solo lectura
 '
+
+if [ "$(id -u)" -ne 0 ]; then
+    printf 'Diagnóstico completo requiere root para leer el estado privado; ejecuta sudo ubuntu-gaming-mode-doctor.\n' >&2
+    exit 2
+fi
 
 # ============================================================
 # CONFIGURACIÓN
@@ -130,7 +135,7 @@ fi
 
 section "RUNTIME"
 
-for p in     "$RUNTIME/gamescope"     "$RUNTIME/gamescope-session-plus"     "$RUNTIME/gamescope-session-plus-runtime"     "$RUNTIME/ubuntu-gaming-mode-setup"     "$RUNTIME/ubuntu-gaming-mode-doctor"     "$RUNTIME/os-session-select"     "$RUNTIME/steamos-session-select"     "$RUNTIME/return-to-gaming-mode"     "$RUNTIME/gaming-autologin-rearm"     "$RUNTIME/ugm-gaming-session-marker"     "$RUNTIME/ugm-powerbuttond"     "$RUNTIME/ugm-steam-shortpowerpress"     "$RUNTIME/ugm-system-gamescope-link"     "$RUNTIME/ugm-capabilities"     "$RUNTIME/ugm-vrs-select"     "$RUNTIME/ugm-vrs-stage"     "$RUNTIME/ugm-vrs-activate"
+for p in     "$RUNTIME/gamescope"     "$RUNTIME/gamescope-session-plus"     "$RUNTIME/gamescope-session-plus-runtime"     "$RUNTIME/ubuntu-gaming-mode-setup"     "$RUNTIME/ubuntu-gaming-mode-doctor"     "$RUNTIME/os-session-select"     "$RUNTIME/steamos-session-select"     "$RUNTIME/return-to-gaming-mode"     "$RUNTIME/gaming-autologin-rearm"     "$RUNTIME/ugm-gaming-session-marker"     "$RUNTIME/ugm-powerbuttond"     "$RUNTIME/ugm-steam-shortpowerpress"     "$RUNTIME/ugm-system-gamescope-link"     "$RUNTIME/ugm-capabilities"     "$RUNTIME/ugm-vrs-select"     "$RUNTIME/ugm-vrs-stage"     "$RUNTIME/ugm-vrs-activate" "$RUNTIME/ugm-decky-integration" "$RUNTIME/ugm-bt-wake" "$RUNTIME/ugm-bt-wake-app"
 do
     if [ -e "$p" ] || [ -L "$p" ]; then
         ok "$p"
@@ -173,7 +178,7 @@ if [ -x "$RUNTIME/gamescope" ]; then
 
     case "$VERSION" in
 
-        *"3.16.30-8-gb211c9d"*)
+        *"3.16.30-9-g2dd5d3b0+"*)
             ok "versión Gamescope esperada"
             ;;
 
@@ -690,9 +695,9 @@ if [ -x "$CAPABILITY_READER" ]; then
     # La caché del inventario pertenece al usuario de la sesión de escritorio.
     # Doctor suele ejecutarse con sudo: leer como root consultaría otra caché.
     if [ "$(id -u)" -eq 0 ] && id "${UGM_USER:-__missing__}" >/dev/null 2>&1; then
-        CAPABILITY_JSON="$(runuser -u "$UGM_USER" -- env -u XDG_CACHE_HOME "$CAPABILITY_READER" --cached --context desktop --runtime-version 2.5-dev 2>/dev/null)" || CAPABILITY_JSON=""
+        CAPABILITY_JSON="$(runuser -u "$UGM_USER" -- env -u XDG_CACHE_HOME "$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.0-2 2>/dev/null)" || CAPABILITY_JSON=""
     else
-        CAPABILITY_JSON="$("$CAPABILITY_READER" --cached --context desktop --runtime-version 2.5-dev 2>/dev/null)" || CAPABILITY_JSON=""
+        CAPABILITY_JSON="$("$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.0-2 2>/dev/null)" || CAPABILITY_JSON=""
     fi
     if [ -n "$CAPABILITY_JSON" ]; then
         CAPABILITY_REPORT="$(printf '%s' "$CAPABILITY_JSON" | python3 -c '

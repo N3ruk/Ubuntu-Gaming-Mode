@@ -137,6 +137,67 @@ def vk_vrs_features(details):
     return devices
 
 
+def vrs_capabilities(selected, details):
+    driver_id = selected.get("driverID")
+    radv = driver_id == "DRIVER_ID_MESA_RADV"
+    vrs = vk_vrs_features(details).get(selected["vulkaninfo_index"])
+    if (vrs is None or not selected.get("deviceUUID")
+            or vrs["deviceUUID"] != selected["deviceUUID"]):
+        vrs_hardware = cap("unknown", "features o identidad Vulkan VRS no verificables")
+    elif not vrs["extension"]:
+        vrs_hardware = cap("absent", "falta VK_KHR_fragment_shading_rate",
+                           ("vulkaninfo --text",))
+    elif any(vrs[k] is True for k in ("pipeline", "primitive", "attachment")):
+        vrs_hardware = cap("present_unvalidated", "Vulkan anuncia VRS; no demuestra una ruta UGM aplicable",
+                           ("VK_KHR_fragment_shading_rate", "VkPhysicalDeviceFragmentShadingRateFeaturesKHR"))
+    elif all(vrs[k] is False for k in ("pipeline", "primitive", "attachment")):
+        vrs_hardware = cap("absent", "todas las features Vulkan VRS son falsas",
+                           ("vulkaninfo --text",))
+    else:
+        vrs_hardware = cap("unknown", "features Vulkan VRS incompletas")
+    if not driver_id:
+        radv_vrs = cap("unknown", "driverID Vulkan no disponible")
+    elif not radv:
+        radv_vrs = cap("absent", "ruta RADV_FORCE_VRS no aplicable a este driver",
+                       ("vulkaninfo driverID",))
+    elif vrs_hardware["state"] == "absent" or (vrs is not None and vrs["pipeline"] is False):
+        radv_vrs = cap("absent", "pipelineFragmentShadingRate no disponible para RADV",
+                       ("vulkaninfo --text",))
+    elif vrs_hardware["state"] == "unknown" or (vrs is not None and vrs["pipeline"] is None):
+        radv_vrs = cap("unknown", "RADV detectado, pero falta pipelineFragmentShadingRate")
+    else:
+        radv_vrs = cap("present_unvalidated", "RADV con VRS por pipeline; capa AMD 2x2 experimental sin validar",
+                       ("VK_KHR_fragment_shading_rate", "pipelineFragmentShadingRate"))
+    if not driver_id:
+        nvidia_native_vrs = cap("unknown", "driverID Vulkan no disponible")
+    elif driver_id != "DRIVER_ID_NVIDIA_PROPRIETARY":
+        nvidia_native_vrs = cap("absent", "ruta nativa NVIDIA no aplicable a este driver",
+                                ("vulkaninfo driverID",))
+    elif vrs_hardware["state"] == "absent":
+        nvidia_native_vrs = cap("absent", "faltan features Vulkan VRS en esta GPU NVIDIA",
+                                ("vulkaninfo --text",))
+    elif vrs_hardware["state"] == "unknown":
+        nvidia_native_vrs = cap("unknown", "NVIDIA detectada, pero faltan features Vulkan VRS")
+    else:
+        nvidia_native_vrs = cap("present_unvalidated",
+                                "VRS nativo posible si el juego lo implementa; distinto de la capa UGM",
+                                ("VK_KHR_fragment_shading_rate", "vulkaninfo driverID"))
+    if not driver_id:
+        nvidia_layer_vrs = cap("unknown", "driverID Vulkan no disponible")
+    elif driver_id != "DRIVER_ID_NVIDIA_PROPRIETARY":
+        nvidia_layer_vrs = cap("absent", "capa VRS NVIDIA no aplicable a este driver")
+    elif vrs_hardware["state"] == "absent" or (vrs is not None and vrs["pipeline"] is False):
+        nvidia_layer_vrs = cap("absent", "VRS por pipeline no disponible para la capa NVIDIA")
+    elif vrs_hardware["state"] == "unknown" or (vrs is not None and vrs["pipeline"] is None):
+        nvidia_layer_vrs = cap("unknown", "faltan datos de VRS por pipeline NVIDIA")
+    else:
+        nvidia_layer_vrs = cap("present_unvalidated",
+                               "capa NVIDIA candidata; tasa 2x2 y efecto real se verifican al ejecutar",
+                               ("VK_KHR_fragment_shading_rate", "pipelineFragmentShadingRate"))
+    return {"vrs_hardware": vrs_hardware, "radv_vrs": radv_vrs,
+            "nvidia_native_vrs": nvidia_native_vrs, "nvidia_layer_vrs": nvidia_layer_vrs}
+
+
 def inspect(root, summary, version, context, preferred=None, details=None):
     cards, connectors = drm(root)
     outputs = [c for c in connectors if c["status"] == "connected"]
@@ -184,62 +245,6 @@ def inspect(root, summary, version, context, preferred=None, details=None):
         pending = "sin prueba funcional vigente para esta GPU, pantalla y runtime"
         hdr = output["edid_hdr"]
         vrr = output["vrr_capable"]
-        driver_id = selected.get("driverID")
-        radv = driver_id == "DRIVER_ID_MESA_RADV"
-        vrs = vk_vrs_features(details).get(selected["vulkaninfo_index"])
-        if (vrs is None or not selected.get("deviceUUID")
-                or vrs["deviceUUID"] != selected["deviceUUID"]):
-            vrs_hardware = cap("unknown", "features o identidad Vulkan VRS no verificables")
-        elif not vrs["extension"]:
-            vrs_hardware = cap("absent", "falta VK_KHR_fragment_shading_rate",
-                               ("vulkaninfo --text",))
-        elif any(vrs[k] is True for k in ("pipeline", "primitive", "attachment")):
-            vrs_hardware = cap("present_unvalidated", "Vulkan anuncia VRS; no demuestra una ruta UGM aplicable",
-                               ("VK_KHR_fragment_shading_rate", "VkPhysicalDeviceFragmentShadingRateFeaturesKHR"))
-        elif all(vrs[k] is False for k in ("pipeline", "primitive", "attachment")):
-            vrs_hardware = cap("absent", "todas las features Vulkan VRS son falsas",
-                               ("vulkaninfo --text",))
-        else:
-            vrs_hardware = cap("unknown", "features Vulkan VRS incompletas")
-        if not driver_id:
-            radv_vrs = cap("unknown", "driverID Vulkan no disponible")
-        elif not radv:
-            radv_vrs = cap("absent", "ruta RADV_FORCE_VRS no aplicable a este driver",
-                           ("vulkaninfo driverID",))
-        elif vrs_hardware["state"] == "absent" or (vrs is not None and vrs["pipeline"] is False):
-            radv_vrs = cap("absent", "pipelineFragmentShadingRate no disponible para RADV",
-                           ("vulkaninfo --text",))
-        elif vrs_hardware["state"] == "unknown" or (vrs is not None and vrs["pipeline"] is None):
-            radv_vrs = cap("unknown", "RADV detectado, pero falta pipelineFragmentShadingRate")
-        else:
-            radv_vrs = cap("present_unvalidated", "RADV con VRS por pipeline; capa AMD 2x2 experimental sin validar",
-                           ("VK_KHR_fragment_shading_rate", "pipelineFragmentShadingRate"))
-        if not driver_id:
-            nvidia_native_vrs = cap("unknown", "driverID Vulkan no disponible")
-        elif driver_id != "DRIVER_ID_NVIDIA_PROPRIETARY":
-            nvidia_native_vrs = cap("absent", "ruta nativa NVIDIA no aplicable a este driver",
-                                    ("vulkaninfo driverID",))
-        elif vrs_hardware["state"] == "absent":
-            nvidia_native_vrs = cap("absent", "faltan features Vulkan VRS en esta GPU NVIDIA",
-                                    ("vulkaninfo --text",))
-        elif vrs_hardware["state"] == "unknown":
-            nvidia_native_vrs = cap("unknown", "NVIDIA detectada, pero faltan features Vulkan VRS")
-        else:
-            nvidia_native_vrs = cap("present_unvalidated",
-                                    "VRS nativo posible si el juego lo implementa; distinto de la capa UGM",
-                                    ("VK_KHR_fragment_shading_rate", "vulkaninfo driverID"))
-        if not driver_id:
-            nvidia_layer_vrs = cap("unknown", "driverID Vulkan no disponible")
-        elif driver_id != "DRIVER_ID_NVIDIA_PROPRIETARY":
-            nvidia_layer_vrs = cap("absent", "capa VRS NVIDIA no aplicable a este driver")
-        elif vrs_hardware["state"] == "absent" or (vrs is not None and vrs["pipeline"] is False):
-            nvidia_layer_vrs = cap("absent", "VRS por pipeline no disponible para la capa NVIDIA")
-        elif vrs_hardware["state"] == "unknown" or (vrs is not None and vrs["pipeline"] is None):
-            nvidia_layer_vrs = cap("unknown", "faltan datos de VRS por pipeline NVIDIA")
-        else:
-            nvidia_layer_vrs = cap("present_unvalidated",
-                                   "capa NVIDIA candidata; tasa 2x2 y efecto real se verifican al ejecutar",
-                                   ("VK_KHR_fragment_shading_rate", "pipelineFragmentShadingRate"))
         capabilities = {
             "hdr": cap("present_unvalidated" if hdr else "absent" if hdr is False else "unknown",
                        pending if hdr else "EDID sin bloque HDR" if hdr is False else "EDID no disponible",
@@ -247,11 +252,18 @@ def inspect(root, summary, version, context, preferred=None, details=None):
             "vrr": cap("present_unvalidated" if vrr == "1" else "absent" if vrr == "0" else "unknown",
                        pending if vrr == "1" else "DRM vrr_capable=0" if vrr == "0" else "propiedad VRR no disponible",
                        ("DRM vrr_capable",) if vrr in ("0", "1") else ()),
-            "vrs_hardware": vrs_hardware,
-            "radv_vrs": radv_vrs,
-            "nvidia_native_vrs": nvidia_native_vrs,
-            "nvidia_layer_vrs": nvidia_layer_vrs,
+            **vrs_capabilities(selected, details),
         }
+    # VRS is GPU-local, unlike HDR/VRR. Multiple connectors on the same
+    # uniquely identified GPU must not make the VRS route ambiguous.
+    vrs_relation = {"state": "unknown", "reason": "GPU VRS efectiva no identificada"}
+    output_cards = {c["drm_card"] for c in outputs}
+    if len(hardware) == 1 and selected and selected.get("deviceUUID") and len(output_cards) == 1:
+        card = cards.get(next(iter(output_cards)), {})
+        if card.get("gpu_pci_address") and card.get("gpu_pci_id") == selected.get("gpu_pci_id"):
+            vrs_relation = {"state": "matched", "reason": "GPU Vulkan única coincide con la GPU de todos los conectores activos"}
+            capabilities.update(vrs_capabilities(selected, details))
+    # Display relation and HDR/VRR semantics deliberately unchanged.
     return {
         "schema_version": 1, "observed_at": datetime.now(timezone.utc).isoformat(),
         "context": {"uid": os.getuid(), "session": context, "runtime_version": version},
@@ -259,7 +271,7 @@ def inspect(root, summary, version, context, preferred=None, details=None):
         "drm_cards": list(cards.values()), "connectors": connectors,
         "connected_connectors": outputs, "output_candidates": candidates,
         "vulkan": {"selected": selected, "devices": devices},
-        "relation": relation, "capabilities": capabilities,
+        "relation": relation, "vrs_relation": vrs_relation, "capabilities": capabilities,
         "observations": [{"source": "sysfs DRM", "state": "observed"},
                          {"source": "vulkaninfo --summary", "state": "observed" if summary is not None else "unavailable"}],
     }

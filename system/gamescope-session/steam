@@ -25,7 +25,7 @@ if [ -x "$CAPABILITY_READER" ]; then
     if [ -n "${VULKAN_ADAPTER:-}" ]; then
         CAPABILITY_ARGS=(--prefer-vk-device "$VULKAN_ADAPTER")
     fi
-    mapfile -t CAPABILITY_FIELDS < <("$CAPABILITY_READER" --session --context gaming --runtime-version 2.5-dev "${CAPABILITY_ARGS[@]}")
+    mapfile -t CAPABILITY_FIELDS < <("$CAPABILITY_READER" --session --context gaming --runtime-version 2.8.0-2 "${CAPABILITY_ARGS[@]}")
 fi
 OUTPUT_CONNECTOR="${CAPABILITY_FIELDS[0]:-*}"
 
@@ -96,7 +96,13 @@ post_gamescope_start() {
     export STEAM_USE_DYNAMIC_VRS=1
     if [[ "$UGM_VRS_ROUTE" == nvidia || "$UGM_VRS_ROUTE" == amd ]]; then
         export UGM_VRS_CONFIG_FILE="$file"
-        export VK_ADD_LAYER_PATH="$layer_dir${VK_ADD_LAYER_PATH:+:$VK_ADD_LAYER_PATH}"
+        # The loader ignores VK_ADD_LAYER_PATH when VK_LAYER_PATH is set.
+        # Keep the caller's overrides and all other explicit layers.
+        if [[ -n "${VK_LAYER_PATH:-}" ]]; then
+            export VK_LAYER_PATH="$layer_dir:$VK_LAYER_PATH"
+        else
+            export VK_ADD_LAYER_PATH="$layer_dir${VK_ADD_LAYER_PATH:+:$VK_ADD_LAYER_PATH}"
+        fi
         case ":${VK_INSTANCE_LAYERS:-}:" in
             *:"$layer_name":*) ;;
             *) export VK_INSTANCE_LAYERS="$layer_name${VK_INSTANCE_LAYERS:+:$VK_INSTANCE_LAYERS}" ;;

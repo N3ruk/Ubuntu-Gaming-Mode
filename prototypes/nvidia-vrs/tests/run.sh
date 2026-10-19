@@ -9,11 +9,12 @@ for mode in optimized unoptimized; do
         glslangValidator -V "${opts[@]}" "$file" -o "$build/$mode/$(basename "$file").spv" > "$build/compile.log" 2>&1 || { cat "$build/compile.log"; exit 1; }
         spirv-val --target-env vulkan1.0 "$build/$mode/$(basename "$file").spv"
     done
+    python3 "$root/../vrs-common/tests/make-modern-fixtures.py" "$build/$mode"
     for arch in 64 32; do
-        cc -m"$arch" -std=c11 -O2 -g -Wall -Wextra -Werror "$root/test_layer.c" -lpthread -o "$build/policy-$arch"
+        cc -m"$arch" -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64 -std=c11 -O2 -g -Wall -Wextra -Werror "$root/test_layer.c" -lpthread -o "$build/policy-$arch"
         "$build/policy-$arch" "$build/$mode"
     done
 done
-cc -std=c11 -g -O1 -Wall -Wextra -Werror -fsanitize=address,undefined "$root/test_layer.c" -lpthread -o "$build/policy-sanitized"
+cc -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64 -std=c11 -g -O1 -Wall -Wextra -Werror -fsanitize=address,undefined "$root/test_layer.c" -lpthread -o "$build/policy-sanitized"
 "$build/policy-sanitized" "$build/optimized"
 "$build/policy-sanitized" "$build/unoptimized"

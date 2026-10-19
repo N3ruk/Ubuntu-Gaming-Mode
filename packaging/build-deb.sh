@@ -10,6 +10,13 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 VERSION="$(sed -n 's/^Version:[[:space:]]*//p' "$ROOT/packaging/DEBIAN/control" | head -n1)"
 ARCH="$(sed -n 's/^Architecture:[[:space:]]*//p' "$ROOT/packaging/DEBIAN/control" | head -n1)"
 
+# Las nuevas preguntas y payloads pertenecen a 2.8. Impedir republicar
+# accidentalmente una 2.5 con el mismo número pero contenido diferente.
+case "$VERSION" in
+    2.8.*) ;;
+    *) echo "ERROR: la integración 2.8 requiere nueva versión de paquete 2.8.x (actual: $VERSION)." >&2; exit 1 ;;
+esac
+
 GAMESCOPE_BIN="${GAMESCOPE_BIN:-}"
 UGM_ICON="${UGM_ICON:-$ROOT/system/icons/ubuntu-gaming-mode.png}"
 
@@ -28,7 +35,7 @@ WORK="${WORKDIR:-$ROOT/.build/ubuntu-gaming-mode_${VERSION}_${ARCH}}"
 OUT="$OUTDIR/ubuntu-gaming-mode_${VERSION}_${ARCH}.deb"
 
 rm -rf "$WORK"
-mkdir -p     "$WORK/DEBIAN"     "$WORK/etc/gamescope-session-plus/sessions.d"     "$WORK/usr/bin"     "$WORK/usr/lib/ubuntu-gaming-mode"     "$WORK/usr/lib/systemd/system"     "$WORK/usr/lib/systemd/user"     "$WORK/usr/share/applications"     "$WORK/etc/xdg/autostart"     "$WORK/usr/share/wayland-sessions"     "$WORK/usr/share/icons/hicolor/256x256/apps"     "$WORK/usr/share/doc/ubuntu-gaming-mode/licenses"     "$OUTDIR"
+mkdir -p     "$WORK/DEBIAN"     "$WORK/etc/gamescope-session-plus/sessions.d"     "$WORK/usr/bin"     "$WORK/usr/lib/ubuntu-gaming-mode"     "$WORK/usr/lib/systemd/system"     "$WORK/usr/lib/systemd/user"     "$WORK/usr/lib/udev/rules.d"     "$WORK/usr/share/applications"     "$WORK/etc/xdg/autostart"     "$WORK/usr/share/wayland-sessions"     "$WORK/usr/share/icons/hicolor/256x256/apps"     "$WORK/usr/share/doc/ubuntu-gaming-mode/licenses"     "$OUTDIR"
 
 cp -a "$ROOT/packaging/DEBIAN/." "$WORK/DEBIAN/"
 
@@ -44,15 +51,34 @@ install -m 0755 "$ROOT/src/steamos-session-select"     "$WORK/usr/lib/ubuntu-gam
 install -m 0755 "$ROOT/src/ubuntu-gaming-mode-doctor"     "$WORK/usr/lib/ubuntu-gaming-mode/ubuntu-gaming-mode-doctor"
 install -m 0755 "$ROOT/src/ugm-capabilities"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-capabilities"
 install -m 0755 "$ROOT/src/ugm-display-options"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-display-options"
+install -m 0755 "$ROOT/src/ugm-decky-integration" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-decky-integration"
+for plugin in sharp-filter-selector ugm-downsampling-sharpener; do
+    source_dir="$ROOT/integrations/decky/$plugin"
+    target_dir="$WORK/usr/share/ubuntu-gaming-mode/decky-plugins/$plugin"
+    install -d -m 0755 "$target_dir/dist"
+    for file in plugin.json package.json main.py dist/index.js; do
+        install -m 0644 "$source_dir/$file" "$target_dir/$file"
+    done
+    if [[ -f "$source_dir/LICENSE" ]]; then
+        install -m 0644 "$source_dir/LICENSE" "$target_dir/LICENSE"
+    fi
+done
 install -m 0755 "$ROOT/src/ugm-bt-wake"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-bt-wake"
 install -m 0755 "$ROOT/src/ugm-bt-wake-app" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-bt-wake-app"
 install -m 0644 "$ROOT/system/systemd/ugm-bt-wake-apply.service" "$WORK/usr/lib/systemd/system/ugm-bt-wake-apply.service"
 install -m 0644 "$ROOT/system/systemd/ugm-bt-wake-watch.service" "$WORK/usr/lib/systemd/system/ugm-bt-wake-watch.service"
+install -m 0644 "$ROOT/system/systemd/ugm-bt-wake-usb@.service" "$WORK/usr/lib/systemd/system/ugm-bt-wake-usb@.service"
+install -m 0644 "$ROOT/system/udev/70-ugm-bt-wake.rules" "$WORK/usr/lib/udev/rules.d/70-ugm-bt-wake.rules"
 install -m 0644 "$ROOT/system/applications/ugm-bt-wake.desktop" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-bt-wake.desktop"
 install -m 0644 "$ROOT/system/icons/ugm-bt-wake.png" "$WORK/usr/share/icons/hicolor/256x256/apps/ugm-bt-wake.png"
 mkdir -p "$WORK/usr/share/polkit-1/actions"
 install -m 0644 "$ROOT/system/polkit/org.ubuntu-gaming-mode.bt-wake.policy" "$WORK/usr/share/polkit-1/actions/org.ubuntu-gaming-mode.bt-wake.policy"
 install -m 0644 "$ROOT/docs/es/despertar-mando-bluetooth.md" "$WORK/usr/share/doc/ubuntu-gaming-mode/despertar-mando-bluetooth.md"
+install -m 0644 "$ROOT/docs/es/ugm-2.8/README.md" "$WORK/usr/share/doc/ubuntu-gaming-mode/novedades-2.8.md"
+install -m 0644 "$ROOT/docs/es/ugm-2.8/vrs.md" "$WORK/usr/share/doc/ubuntu-gaming-mode/vrs-2.8.md"
+install -m 0644 "$ROOT/docs/es/ugm-2.8/downsampling.md" "$WORK/usr/share/doc/ubuntu-gaming-mode/downsampling-2.8.md"
+install -m 0644 "$ROOT/docs/es/ugm-2.8/decky.md" "$WORK/usr/share/doc/ubuntu-gaming-mode/decky-2.8.md"
+install -m 0644 "$ROOT/docs/es/ugm-2.8/despertar-usb.md" "$WORK/usr/share/doc/ubuntu-gaming-mode/despertar-usb-2.8.md"
 install -m 0644 "$ROOT/docs/manifiesto-2.5.0-5.md" "$WORK/usr/share/doc/ubuntu-gaming-mode/manifiesto-2.5.0-5.md"
 ln -s ../lib/ubuntu-gaming-mode/ugm-bt-wake-app "$WORK/usr/bin/ugm-bt-wake-app"
 install -m 0755 "$ROOT/src/ugm-vrs-select"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-vrs-select"
@@ -121,7 +147,7 @@ done
 
 for f in "$WORK/usr/lib/ubuntu-gaming-mode/"*; do
     [[ -f "$f" ]] || continue
-    [[ "$f" == */ugm-vrs-activate || "$f" == */gamescope || "$f" == */ugm-powerbuttond || "$f" == */ugm-steam-shortpowerpress || "$f" == */ugm-bt-wake || "$f" == */ugm-bt-wake-app || "$f" == */ugm-capabilities || "$f" == */ugm-display-options || "$f" == */ugm-vrs-select || "$f" == */ugm-vrs-stage ]] && continue
+    [[ "$f" == */ugm-vrs-activate || "$f" == */gamescope || "$f" == */ugm-powerbuttond || "$f" == */ugm-steam-shortpowerpress || "$f" == */ugm-bt-wake || "$f" == */ugm-bt-wake-app || "$f" == */ugm-capabilities || "$f" == */ugm-display-options || "$f" == */ugm-vrs-select || "$f" == */ugm-vrs-stage || "$f" == */ugm-decky-integration ]] && continue
     bash -n "$f"
 done
 
@@ -184,8 +210,20 @@ source = Path(sys.argv[1]).read_text(encoding="utf-8")
 compile(source, sys.argv[1], "exec")
 PY
 
+python3 - "$WORK/usr/lib/ubuntu-gaming-mode/ugm-decky-integration" "$WORK/usr/share/ubuntu-gaming-mode/decky-plugins" <<'PY'
+from pathlib import Path
+import json
+import sys
+compile(Path(sys.argv[1]).read_text(encoding="utf-8"), sys.argv[1], "exec")
+for plugin in Path(sys.argv[2]).iterdir():
+    for name in ("plugin.json", "package.json"):
+        json.loads((plugin / name).read_text(encoding="utf-8"))
+    compile((plugin / "main.py").read_text(encoding="utf-8"), str(plugin / "main.py"), "exec")
+PY
+
 EXPECTED_GAMESCOPE_SHA_1_0_0_3="e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c"
 EXPECTED_GAMESCOPE_SHA_2_0_0_1="5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256"
+EXPECTED_GAMESCOPE_SHA_2_8_0_4="4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03"
 ACTUAL_GAMESCOPE_SHA="$(sha256sum "$WORK/usr/lib/ubuntu-gaming-mode/gamescope" | awk '{print $1}')"
 
 case "$VERSION" in
@@ -194,6 +232,11 @@ case "$VERSION" in
         ;;
     2.0.0-1|2.5.0-5)
         EXPECTED_GAMESCOPE_SHA="$EXPECTED_GAMESCOPE_SHA_2_0_0_1"
+        ;;
+    2.8.*)
+        # Candidato downsampling 0.4, ya validado en el equipo de referencia.
+        # Si la futura build VRS modifica Gamescope, actualizar este hash.
+        EXPECTED_GAMESCOPE_SHA="$EXPECTED_GAMESCOPE_SHA_2_8_0_4"
         ;;
     *)
         echo "ERROR: no hay un SHA256 Gamescope autorizado para la versión $VERSION" >&2

@@ -41,7 +41,7 @@ This source port does not contain the historical Sharp Filter Selector/Decky/NIS
 
 See [UPSTREAM.md](UPSTREAM.md) for provenance, [BUILD.md](BUILD.md) for the exact build recipe and [VALIDATION.md](VALIDATION.md) for the acceptance scope.
 
-Apply the patches in the order listed by `patches/series` to the exact upstream base. Applying all nine patches produces final tree `5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
+To reproduce the stable 2.5 binary, apply **only patches 0001–0009** in `patches/series` order to the exact upstream base. Those nine patches produce final tree `5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
 
 The validated binary still reports `3.16.30-8-gb211c9d` because patch 0009
 was compiled before its source diff was committed and exported as a numbered
@@ -49,3 +49,9 @@ patch. Its SHA256 above is the canonical identity of the installed nine-patch
 runtime.
 
 The compiled binary is intentionally not committed to Git. It belongs in a versioned UGM release artifact and is identified by its SHA256.
+
+## 2.8 development extension
+
+`patches/series` now appends patch 0010 for downsampling sharpening. The
+historical tree and binary SHA256 above represent **patches 0001–0009 only**.
+See the [2.8 downsampling notes](../../../docs/es/ugm-2.8/downsampling.md).

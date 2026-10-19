@@ -1,0 +1,193 @@
+#!/usr/bin/python3
+"""Optional Decky + bundled UGM plugin setup; never replaces existing plugins."""
+from __future__ import annotations
+
+import hashlib
+import os
+from pathlib import Path
+import pwd
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.request
+
+SCRIPT_COMMIT = "9b4e29d2a33b969da11114cce18422a87425f60e"
+SCRIPT_SHA256 = "2403ddbfec8ab320c33729bcb1c8176d74952de71f731ba0c71ded711058be2d"
+SCRIPT_URL = (
+    "https://raw.githubusercontent.com/SteamDeckHomebrew/decky-installer/"
+    + SCRIPT_COMMIT + "/cli/install_release.sh"
+)
+PAYLOAD = Path("/usr/share/ubuntu-gaming-mode/decky-plugins")
+NAMES = ("sharp-filter-selector", "ugm-downsampling-sharpener")
+FILES = ("plugin.json", "package.json", "main.py", "dist/index.js")
+
+
+def say(message: str) -> None:
+    print("ubuntu-gaming-mode: Decky: " + message, flush=True)
+
+
+def safe_dir(path: Path) -> bool:
+    return path.is_dir() and not path.is_symlink()
+
+
+def loader_present(home: Path) -> bool:
+    return (home / "homebrew/services/PluginLoader").is_file()
+
+
+def install_loader(home: Path, username: str) -> bool:
+    if loader_present(home):
+        say("Loader ya presente; no se actualiza ni sustituye.")
+        return True
+    if (home / "homebrew/services").exists():
+        say("Existe un directorio de servicios sin Loader; no se sustituye automáticamente.")
+        return False
+    if shutil.which("curl") is None or shutil.which("jq") is None:
+        say("Faltan curl o jq; no se puede ejecutar el instalador oficial.")
+        return False
+    try:
+        request = urllib.request.Request(SCRIPT_URL, headers={"User-Agent": "Ubuntu-Gaming-Mode"})
+        with urllib.request.urlopen(request, timeout=20) as response:
+            script = response.read(100_000)
+        if hashlib.sha256(script).hexdigest() != SCRIPT_SHA256:
+            say("El instalador oficial descargado no coincide con el hash fijado.")
+            return False
+        with tempfile.TemporaryDirectory(prefix="ugm-decky-") as tmp:
+            path = Path(tmp) / "install_release.sh"
+            path.write_bytes(script)
+            result = subprocess.run(
+                ["/bin/bash", str(path)],
+                env={**os.environ, "SUDO_USER": username},
+                # postinst protects private UGM state with umask 077. Decky
+                # embeds Python modules in PluginLoader; unprivileged plugin
+                # workers must reopen that executable for imports.
+                umask=0o022,
+                timeout=180,
+                check=False,
+            )
+        if result.returncode != 0:
+            say(f"Instalador oficial terminó con código {result.returncode}.")
+            return False
+    except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+        say(f"No se pudo instalar Loader: {error}")
+        return False
+    if not loader_present(home):
+        say("El instalador no dejó un Loader verificable.")
+        return False
+    say("Loader instalado mediante instalador oficial fijado por SHA256.")
+    return True
+
+
+
+def prepare_loader_permissions(home: Path) -> bool:
+    """Also repair the root-owned 0700 executable left by UGM 2.8.0-1."""
+    loader = home / "homebrew/services/PluginLoader"
+    if (any(not safe_dir(parent) for parent in (home / "homebrew", loader.parent))
+            or loader.is_symlink() or not loader.is_file()):
+        say("Ruta de Loader no segura; no se cambian permisos.")
+        return False
+    try:
+        loader.chmod(0o755)
+    except OSError as error:
+        say(f"No se pudieron preparar los permisos de Loader: {error}")
+        return False
+    return True
+
+
+def reload_loader() -> bool:
+    """Load the new plugins; preserve an intentionally stopped service."""
+    try:
+        result = subprocess.run(
+            ["systemctl", "try-restart", "plugin_loader.service"],
+            timeout=60, check=False,
+        )
+        if result.returncode == 0:
+            return True
+        say(f"No se pudo reiniciar Decky: código {result.returncode}.")
+    except (OSError, subprocess.TimeoutExpired) as error:
+        say(f"No se pudo reiniciar Decky: {error}")
+    return False
+
+
+def install_plugin(home: Path, name: str, uid: int, gid: int) -> bool:
+    root = home / "homebrew"
+    plugins = root / "plugins"
+    for parent in (root, plugins):
+        if parent.exists() and not safe_dir(parent):
+            say(f"Ruta no segura: {parent}; se omite {name}.")
+            return False
+        if not parent.exists():
+            parent.mkdir(mode=0o755)
+            parent.chmod(0o755)
+            os.chown(parent, uid, gid)
+    target = plugins / name
+    if target.exists() or target.is_symlink():
+        say(f"{name} ya existe; se conserva sin sobrescribir.")
+        return True
+    source = PAYLOAD / name
+    if any(not (source / entry).is_file() for entry in FILES):
+        say(f"Payload de {name} incompleto; se omite.")
+        return False
+    staging = Path(tempfile.mkdtemp(prefix=f".{name}.", dir=plugins))
+    try:
+        staging.chmod(0o755)
+        (staging / "dist").mkdir()
+        (staging / "dist").chmod(0o755)
+        for entry in FILES:
+            dest = staging / entry
+            shutil.copy2(source / entry, dest)
+            dest.chmod(0o644)
+        license_file = source / "LICENSE"
+        if license_file.is_file():
+            shutil.copy2(license_file, staging / "LICENSE")
+            (staging / "LICENSE").chmod(0o644)
+        for directory, dirs, files in os.walk(staging):
+            os.chown(directory, uid, gid)
+            for filename in files:
+                os.chown(Path(directory) / filename, uid, gid)
+        if target.exists() or target.is_symlink():
+            say(f"{name} apareció durante la instalación; se conserva.")
+            return True
+        staging.rename(target)
+        say(f"{name} instalado; se cargará al reiniciar Decky o Gaming Mode.")
+        return True
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+
+
+def main() -> int:
+    if len(sys.argv) != 5 or os.geteuid() != 0:
+        print("uso: ugm-decky-integration USUARIO LOADER SHARP DOWNSAMPLING (0/1, root)", file=sys.stderr)
+        return 2
+    username, *flags = sys.argv[1:]
+    if any(flag not in ("0", "1") for flag in flags):
+        return 2
+    try:
+        account = pwd.getpwnam(username)
+    except KeyError:
+        say("Usuario UGM no encontrado.")
+        return 1
+    home = Path(account.pw_dir)
+    if account.pw_uid == 0 or not home.is_absolute() or not safe_dir(home):
+        say("Directorio personal o usuario UGM no válido.")
+        return 1
+    if flags == ["0", "0", "0"]:
+        return 0
+    if flags[0] == "1" and not install_loader(home, username):
+        return 1
+    if not loader_present(home):
+        say("Se eligieron plugins, pero Decky Loader no está instalado; no se copian.")
+        return 1
+    if not prepare_loader_permissions(home):
+        return 1
+    results = [
+        install_plugin(home, name, account.pw_uid, account.pw_gid)
+        for name, flag in zip(NAMES, flags[1:]) if flag == "1"
+    ]
+    reloaded = reload_loader()
+    return 0 if all(results) and reloaded else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

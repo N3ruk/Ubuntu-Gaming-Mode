@@ -121,16 +121,75 @@ class AmdVrsIntegrationTests(unittest.TestCase):
         stage.SOURCE = self.layer
         import sys
         from unittest.mock import patch
-        target = self.root / ".local/share/ubuntu-gaming-mode/vrs"
+        base = self.root / ".local/share/ubuntu-gaming-mode/vrs"
         for route in ("amd", "nvidia"):
             with patch.object(sys, "argv", [str(STAGE), route]), \
                  patch.dict(os.environ, {"HOME": str(self.root)}):
                 self.assertEqual(stage.main(), 0)
+            target = next(base.glob(f"{route}-*"))
             for arch in ("32", "64"):
                 library = target / f"libugm_{route}_vrs_{arch}.so"
                 manifest = json.loads((target / f"VK_LAYER_UGM_{route}_vrs_{arch}.json").read_text())
                 self.assertEqual(library.read_bytes(), b"test")
                 self.assertEqual(manifest["layer"]["library_path"], str(library))
+
+    def test_immutable_generation_keeps_previous_payload(self):
+        stage = load_script("ugm_stage_generations", STAGE)
+        base = self.root / "generations"
+        first = stage.stage("nvidia", self.layer, base)
+        library = first / "libugm_nvidia_vrs_64.so"
+        with library.open("rb") as old:
+            (self.layer / library.name).write_bytes(b"new payload")
+            second = stage.stage("nvidia", self.layer, base)
+            self.assertNotEqual(first, second)
+            self.assertEqual(old.read(), b"test")
+            self.assertEqual(library.read_bytes(), b"test")
+            self.assertEqual((second / library.name).read_bytes(), b"new payload")
+            self.assertEqual(stage.stage("nvidia", self.layer, base), second)
+        (second / library.name).write_bytes(b"corrupt")
+        with self.assertRaises(OSError):
+            stage.stage("nvidia", self.layer, base)
+
+    def test_stage_failure_does_not_publish_partial_generation(self):
+        stage = load_script("ugm_stage_failure", STAGE)
+        base = self.root / "generations"
+        first = stage.stage("amd", self.layer, base)
+        (self.layer / "VK_LAYER_UGM_amd_vrs_32.json").write_text("invalid json")
+        with self.assertRaises(ValueError):
+            stage.stage("amd", self.layer, base)
+        self.assertEqual(list(base.iterdir()), [first])
+
+    def test_concurrent_stage_same_generation(self):
+        from concurrent.futures import ThreadPoolExecutor
+        stage = load_script("ugm_stage_concurrent", STAGE)
+        base = self.root / "generations"
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            paths = list(pool.map(lambda _: stage.stage("amd", self.layer, base), range(16)))
+        self.assertEqual(len(set(paths)), 1)
+        self.assertEqual(list(base.iterdir()), [paths[0]])
+
+    def test_vrs_relation_is_independent_of_display_relation(self):
+        self.data["relation"]["state"] = "unknown"
+        self.data["vrs_relation"] = {"state": "matched"}
+        self.assertEqual(self.selector.select_route(self.data, self.layer), "amd")
+        self.data["vulkan"]["devices"].append({"deviceUUID": "gpu-b", "software": False})
+        self.assertEqual(self.selector.select_route(self.data, self.layer), "none")
+
+    def test_loader_override_preserves_other_layers(self):
+        for override in ("", "/external/layers"):
+            script = f'''function /usr/lib/ubuntu-gaming-mode/ugm-vrs-stage() {{ printf '%s\\n' '{self.layer}'; }}
+                source '{STEAM}'
+                UGM_VRS_ROUTE=nvidia
+                post_gamescope_start
+                printf '%s|%s|%s' "${{VK_LAYER_PATH:-}}" "${{VK_ADD_LAYER_PATH:-}}" "$VK_INSTANCE_LAYERS"
+                '''
+            env = dict(os.environ, HOME=str(self.root), UGM_DEV_BACKEND="sdl", UGM_RUNTIME_DIR=str(self.root),
+                       VK_LAYER_PATH=override, VK_ADD_LAYER_PATH="/additional/layers", VK_INSTANCE_LAYERS="VK_LAYER_OTHER")
+            result = subprocess.run(["bash", "-c", script], env=env, text=True, capture_output=True, check=True)
+            path, additional, layers = result.stdout.split("|")
+            self.assertEqual(path, f"{self.layer}:{override}" if override else "")
+            self.assertEqual(additional, "/additional/layers" if override else f"{self.layer}:/additional/layers")
+            self.assertEqual(layers, "VK_LAYER_UGM_nvidia_vrs:VK_LAYER_OTHER")
 
     def test_qam_file_and_selected_layer_exported(self):
         # Interceptar el ejecutable absoluto de staging sin tocar /usr.

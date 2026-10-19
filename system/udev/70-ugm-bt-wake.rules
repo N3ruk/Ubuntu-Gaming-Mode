@@ -1,0 +1,4 @@
+# Only a new 2.8 installation which opted into strict wake creates this marker.
+ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", TEST=="/var/lib/ubuntu-gaming-mode/usb-wake-default-deny", TAG+="systemd", ENV{SYSTEMD_WANTS}+="ugm-bt-wake-usb@%k.service"
+# A reconnected btusb adapter must regain its wake route after the USB default-deny event.
+ACTION=="add", SUBSYSTEM=="bluetooth", KERNEL=="hci[0-9]*", TEST=="/var/lib/ubuntu-gaming-mode/bt-wake-enabled", TAG+="systemd", ENV{SYSTEMD_WANTS}+="ugm-bt-wake-apply.service"

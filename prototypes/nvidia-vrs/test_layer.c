@@ -1,9 +1,15 @@
 /* Policy/integration mocks use real validated SPIR-V, not synthetic no-op shaders. */
 #define _POSIX_C_SOURCE 200809L
+#ifdef UGM_TEST_AMD
+#include "../amd-vrs/layer.c"
+#else
 #include "layer.c"
+#endif
 #include <assert.h>
 #include <stdint.h>
 static uintptr_t next_handle = 1;
+static void *test_key;
+static VkCommandBuffer test_command=(VkCommandBuffer)&test_key;
 static int got_dynamic_vrs, bound_rate, bind_calls;
 static VkResult pipeline_result = VK_SUCCESS;
 static VkResult fake_shader(VkDevice d, const VkShaderModuleCreateInfo *i,
@@ -18,11 +24,6 @@ static void fake_bind(VkCommandBuffer c, VkPipelineBindPoint p, VkPipeline v) {
 }
 static void fake_rate(VkCommandBuffer c, const VkExtent2D *r, const VkFragmentShadingRateCombinerOpKHR *ops) {
     (void)c; assert(ops[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR); bound_rate = (int)r->width;
-}
-static VkResult fake_allocate(VkDevice d, const VkCommandBufferAllocateInfo *info, VkCommandBuffer *out) {
-    (void)d;
-    for (uint32_t i = 0; i < info->commandBufferCount; i++) out[i] = (VkCommandBuffer)(uintptr_t)next_handle++;
-    return VK_SUCCESS;
 }
 static VkResult fake_pipeline(VkDevice d, VkPipelineCache c, uint32_t n,
         const VkGraphicsPipelineCreateInfo *infos, const VkAllocationCallbacks *a, VkPipeline *out) {
@@ -40,6 +41,25 @@ static VkShaderModuleCreateInfo load(const char *dir, const char *name) {
     assert(fread(code, 1, (size_t)size, f) == (size_t)size); fclose(f);
     return (VkShaderModuleCreateInfo){.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .codeSize=(size_t)size, .pCode=code};
 }
+static void fake_identifier(VkDevice device,const VkShaderModuleCreateInfo *ci,VkShaderModuleIdentifierEXT *out) {
+    (void)device; uint32_t hash=2166136261u;
+    for(size_t j=0;j<ci->codeSize/4;++j) hash=(hash^ci->pCode[j])*16777619u;
+    out->identifierSize=sizeof(hash); memcpy(out->identifier,&hash,sizeof(hash));
+}
+static void check_identifier(Device *d,const VkShaderModuleCreateInfo *source) {
+    d->shader_identifier=fake_identifier;
+    VkShaderModule shader; assert(vkCreateShaderModule(d->handle,source,NULL,&shader)==VK_SUCCESS);
+    VkShaderModuleIdentifierEXT id={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT};
+    fake_identifier(d->handle,source,&id);
+    vkDestroyShaderModule(d->handle,shader,NULL);
+    VkPipelineShaderStageModuleIdentifierCreateInfoEXT chain={.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT,
+        .identifierSize=id.identifierSize,.pIdentifier=id.identifier};
+    VkPipelineShaderStageCreateInfo stage={.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,.pNext=&chain,.stage=VK_SHADER_STAGE_VERTEX_BIT,.pName="main"};
+    VkGraphicsPipelineCreateInfo ci={.sType=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,.stageCount=1,.pStages=&stage};
+    assert(stage_flags(d,&ci,VK_SHADER_STAGE_VERTEX_BIT)==shader_flags(source));
+    id.identifier[0]^=1; assert(stage_flags(d,&ci,VK_SHADER_STAGE_VERTEX_BIT)==0);
+    d->shader_identifier=NULL;
+}
 static void check(Device *d, const VkShaderModuleCreateInfo *vs, const VkShaderModuleCreateInfo *fs,
                   int expected, int blend_on, int sample, int inline_module, int app_vrs) {
     VkShaderModule v = VK_NULL_HANDLE, f = VK_NULL_HANDLE;
@@ -54,7 +74,8 @@ static void check(Device *d, const VkShaderModuleCreateInfo *vs, const VkShaderM
     VkPipelineColorBlendAttachmentState attachment = {.blendEnable=blend_on};
     VkPipelineColorBlendStateCreateInfo blend = {.sType=VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO, .attachmentCount=1, .pAttachments=&attachment};
     VkPipelineFragmentShadingRateStateCreateInfoKHR native = {.sType=VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR, .fragmentSize={1,1}};
-    VkGraphicsPipelineCreateInfo ci = {.sType=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, .stageCount=2, .pStages=stages, .pMultisampleState=&ms, .pColorBlendState=&blend, .pNext=app_vrs ? &native : NULL};
+    VkPipelineRasterizationStateCreateInfo rs={.sType=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,.polygonMode=VK_POLYGON_MODE_FILL};
+    VkGraphicsPipelineCreateInfo ci = {.sType=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, .stageCount=2, .pStages=stages, .pRasterizationState=&rs, .pMultisampleState=&ms, .pColorBlendState=&blend, .pNext=app_vrs ? &native : NULL};
     VkPipeline pipeline;
     assert(vkCreateGraphicsPipelines(d->handle, VK_NULL_HANDLE, 1, &ci, NULL, &pipeline) == pipeline_result);
     assert(got_dynamic_vrs == expected);
@@ -63,7 +84,7 @@ static void check(Device *d, const VkShaderModuleCreateInfo *vs, const VkShaderM
     for (int rate = 1; rate <= 2; ++rate) {
         assert(setenv("UGM_VRS_RATE", rate == 2 ? "2x2" : "1x1", 1) == 0);
         bound_rate = 0;
-        vkCmdBindPipeline(commands->handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        vkCmdBindPipeline(test_command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         assert(bound_rate == (expected ? rate : 0));
     }
     vkDestroyPipeline(d->handle, pipeline, NULL);
@@ -71,11 +92,15 @@ static void check(Device *d, const VkShaderModuleCreateInfo *vs, const VkShaderM
 }
 int main(int argc, char **argv) {
     assert(argc == 2);
-    Device d = {.handle=(VkDevice)(uintptr_t)1, .active=1, .create_shader=fake_shader,
+    test_key=&test_key;
+    Device d = {.handle=(VkDevice)&test_key, .key=test_key, .active=1, .create_shader=fake_shader,
         .destroy_shader=fake_destroy, .create_pipelines=fake_pipeline, .bind_pipeline=fake_bind, .set_rate=fake_rate};
-    Command c = {.handle=(VkCommandBuffer)(uintptr_t)2, .device=&d}; devices=&d; commands=&c;
+    devices=&d; assert(!pthread_mutex_init(&d.objects_lock,NULL));
+    assert(!pthread_mutex_init(&d.rate.lock,NULL));
+    assert(table_init(&d.shaders) && table_init(&d.pipelines));
     VkShaderModuleCreateInfo perspective=load(argv[1],"perspective.vert"), checker=load(argv[1],"checker.frag");
     assert(shader_flags(&perspective) & SHADER_POSITION_COARSE);
+    check_identifier(&d,&perspective);
     check(&d,&perspective,&checker,1,0,0,0,0);
     check(&d,&perspective,&checker,1,0,0,1,0);
     check(&d,&perspective,&checker,0,1,0,0,0);
@@ -83,36 +108,42 @@ int main(int argc, char **argv) {
     check(&d,&perspective,&checker,0,0,0,0,1);
     pipeline_result = VK_ERROR_OUT_OF_DEVICE_MEMORY; /* successful handle in a partial batch */
     check(&d,&perspective,&checker,1,0,0,0,0); pipeline_result=VK_SUCCESS;
-    const char *protected_vs[]={"ui.vert","partial-ui.vert","local-ui.vert","select-ui.vert"};
+    const char *modern_safe[]={"modern-perspective.vert","modern-dynamic.vert","modern-capabilities.vert"};
+    for(unsigned i=0;i<sizeof(modern_safe)/sizeof(*modern_safe);++i) {
+        VkShaderModuleCreateInfo v=load(argv[1],modern_safe[i]);
+        check(&d,&v,&checker,1,0,0,0,0); check(&d,&v,&checker,1,0,0,1,0); free((void*)v.pCode);
+    }
+    const char *protected_vs[]={"ui.vert","partial-ui.vert","local-ui.vert","select-ui.vert","arithmetic-ui.vert","mixed-ui.vert","modern-ui.vert","modern-cancel-ui.vert","modern-fma-ui.vert","modern-impure.vert","modern-cancel-dynamic-ui.vert"};
     for (unsigned i=0;i<sizeof(protected_vs)/sizeof(*protected_vs);++i) {
         VkShaderModuleCreateInfo v=load(argv[1],protected_vs[i]);
         printf("%-24s flags=%u\n",protected_vs[i],shader_flags(&v));
         check(&d,&v,&checker,0,0,0,0,0); check(&d,&v,&checker,0,0,0,1,0); free((void*)v.pCode);
     }
+    VkShaderModuleCreateInfo dot=load(argv[1],"dot.vert");
+    check(&d,&dot,&checker,1,0,0,0,0); free((void*)dot.pCode);
     VkShaderModuleCreateInfo matrix=load(argv[1],"matrix.vert");
     check(&d,&matrix,&checker,1,0,0,0,0); free((void*)matrix.pCode);
-    const char *protected_fs[]={"fragcoord.frag","discard.frag","flat.frag","sample.frag"};
+    const char *protected_fs[]={"fragcoord.frag","discard.frag","flat.frag","sample.frag","derivative.frag","storage.frag","storage-write.frag","depth.frag","noperspective.frag","storage-write-dynamic.frag","demote.frag"};
     for (unsigned i=0;i<sizeof(protected_fs)/sizeof(*protected_fs);++i) {
         VkShaderModuleCreateInfo f=load(argv[1],protected_fs[i]);
         check(&d,&perspective,&f,0,0,0,0,0); free((void*)f.pCode);
     }
+    VkShaderModuleCreateInfo local_array=load(argv[1],"local-array.frag");
+    check(&d,&perspective,&local_array,1,0,0,0,0); free((void*)local_array.pCode);
+    VkShaderModuleCreateInfo helper=load(argv[1],"helper.frag");
+    check(&d,&perspective,&helper,1,0,0,0,0); free((void*)helper.pCode);
     assert(parse_rate("2x1").width == 1); assert(parse_rate("2x2extra").width == 1);
     assert(parse_rate("2x2\n").width == 2);
     uint32_t malformed[]={0x07230203,0x10000,0,2,0,0x20000};
     VkShaderModuleCreateInfo bad={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,.pCode=malformed,.codeSize=sizeof(malformed)};
     assert(!(shader_flags(&bad)&SHADER_VALID));
     check(&d,&perspective,&bad,0,0,0,0,0);
-    assert(!shaders && !pipelines);
+    assert(!d.shaders.count && !d.pipelines.count);
     /* Ineligible/native-VRS devices must still reach the downstream driver. */
-    d.active = 0; d.allocate_commands = fake_allocate;
-    VkCommandBufferAllocateInfo alloc = {.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .commandBufferCount=1};
-    VkCommandBuffer cb;
-    assert(vkAllocateCommandBuffers(d.handle, &alloc, &cb) == VK_SUCCESS);
-    bound_rate = 0; int before = bind_calls;
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, (VkPipeline)(uintptr_t)999);
-    assert(bind_calls == before + 1 && bound_rate == 0);
-    vkFreeCommandBuffers(d.handle, VK_NULL_HANDLE, 1, &cb);
-    assert(commands == &c);
+    d.active=0;
+    bound_rate=0; int before=bind_calls;
+    vkCmdBindPipeline(test_command,VK_PIPELINE_BIND_POINT_GRAPHICS,(VkPipeline)(uintptr_t)999);
+    assert(bind_calls==before+1 && !bound_rate);
     /* Fuzz bounded parser operands/instruction lengths under ASan+UBSan. */
     uint32_t *mutation = malloc(perspective.codeSize); assert(mutation);
     uint32_t random = 0x12345678;
@@ -126,5 +157,8 @@ int main(int argc, char **argv) {
     }
     free(mutation);
     free((void*)perspective.pCode); free((void*)checker.pCode);
+    free(d.shader_proofs);
+    rate_destroy(&d.rate);
+    table_clear(&d.shaders); table_clear(&d.pipelines); pthread_mutex_destroy(&d.objects_lock);
     puts("VRS real-SPIR-V policy, pipeline passthrough and dynamic toggle: OK");
 }

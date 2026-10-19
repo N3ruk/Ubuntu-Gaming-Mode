@@ -2,9 +2,8 @@
 
 **English** | [Español](SOURCE_es.md)
 
-This tree contains the **Ubuntu Gaming Mode 2.5.0-5** release source
-and the reproducible record of the Gamescope 3.16.30 runtime retained from
-2.0.0-1.
+This tree contains the **Ubuntu Gaming Mode 2.8.0-2** sources. It retains the historical
+2.5 Gamescope 3.16.30 record and adds patch 0010 for 2.8.
 
 ## Layout
 
@@ -15,8 +14,11 @@ and the reproducible record of the Gamescope 3.16.30 runtime retained from
 - `gamescope/versions/3.16.30-gbm/`: patches, provenance and validation.
 - `tests/`: tests for optional integrations.
 - `docs/`: installation, rollback, architecture and performance.
-- `prototypes/nvidia-vrs/` and `prototypes/amd-vrs/`: source, build scripts and
-  tests for the bundled VRS layers. Generated `.so` files are not tracked.
+- `prototypes/vrs-common/`, `prototypes/nvidia-vrs/` and
+  `prototypes/amd-vrs/`: source, builds and tests for bundled VRS layers.
+  Generated `.so` files are not tracked.
+- `integrations/decky/`: minimal payload for the two optional plugins.
+- `docs/es/ugm-2.8/`: feature documentation and limitations.
 - `system/icons/`: tracked PNG icons for UGM and the Bluetooth app.
 
 ## Binary input and application icon
@@ -45,14 +47,19 @@ are required; see each layer's README. Prototype build artifacts are ignored.
 - Binary SHA256:
   `5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
 
-Exact source preparation:
+The tree and hash above apply **only to 2.5 (patches 0001–0009)**.
+2.8 adds patch 0010 and pins Gamescope SHA256
+`4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03`.
+See the [2.8 build notes](docs/es/ugm-2.8/downsampling.md).
+
+Historical 2.5 source preparation:
 
 ```bash
 git clone https://github.com/ValveSoftware/gamescope.git
 cd gamescope
 git checkout ad2763da1c48860f649abfe842a087188dcb6e20
 git submodule update --init --recursive
-git am /path/to/gamescope/versions/3.16.30-gbm/patches/*.patch
+for patch in $(sed -n '1,9p' /path/to/gamescope/versions/3.16.30-gbm/patches/series); do git am "/path/to/gamescope/versions/3.16.30-gbm/patches/$patch"; done
 ```
 
 See [`BUILD.md`](gamescope/versions/3.16.30-gbm/BUILD.md) for the toolchain and

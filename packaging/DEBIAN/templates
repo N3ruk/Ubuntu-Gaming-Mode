@@ -94,7 +94,9 @@ Description: Enable Bluetooth and show the optional gamepad wake app?
  BlueZ as a recommended package. If selected and BlueZ is available, UGM
  enables and starts bluetooth.service, prepares the USB wake route and its
  boot services, and shows the controller selector. The app changes only
- WakeAllowed; newly paired controllers default to no wake. Test suspend/resume.
+ WakeAllowed. On a fresh 2.8 installation, other USB peripherals default to
+ no wake and all paired gamepads require approval in the app; upgrades keep
+ their previous wake policy. Test suspend/resume.
  If BlueZ cannot be installed, UGM continues and reports the missing support.
  This option is disabled by default and can be changed with
  "dpkg-reconfigure ubuntu-gaming-mode".
@@ -103,7 +105,9 @@ Description-es.UTF-8: ¿Activar Bluetooth y mostrar la app de despertar por mand
  BlueZ como paquete recomendado. Si acepta y BlueZ está disponible, UGM
  habilita y arranca bluetooth.service, prepara la ruta USB y sus servicios
  de arranque y muestra la app de mandos. La app solo cambia WakeAllowed;
- los mandos recién vinculados quedan sin permiso de despertar. Pruebe la suspensión.
+ en una instalación nueva de 2.8, los demás periféricos USB no despiertan
+ el equipo y todos los mandos emparejados requieren autorización en la app.
+ Las actualizaciones conservan la política anterior. Pruebe la suspensión.
  Si BlueZ no se puede instalar, UGM continúa y avisa de la falta de soporte.
  La opción está desactivada por defecto y puede cambiarse con
  «dpkg-reconfigure ubuntu-gaming-mode».
@@ -135,3 +139,40 @@ Description-es.UTF-8: El servicio Bluetooth no está habilitado y activo; UGM co
  Gaming Mode funciona sin él. Si aceptó la app opcional, UGM intentó
  habilitar y arrancar el servicio; compruebe por qué falló. En caso contrario,
  UGM no cambió el estado del servicio.
+
+Template: ubuntu-gaming-mode/decky-loader
+Type: boolean
+Default: false
+Description: Install Decky Loader for the UGM Gaming Mode user?
+ Optional. If absent, UGM downloads a SHA256-pinned official installer from
+ SteamDeckHomebrew. Network access is required. An existing Decky installation
+ is not replaced. A failed optional install does not block UGM; retry with
+ "dpkg-reconfigure ubuntu-gaming-mode".
+Description-es.UTF-8: ¿Instalar Decky Loader para el usuario Gaming Mode de UGM?
+ Opcional. Si falta, UGM descarga un instalador oficial de SteamDeckHomebrew
+ fijado por SHA256. Requiere conexión. No sustituye un Decky existente. Si
+ falla, UGM continúa; reintente con «dpkg-reconfigure ubuntu-gaming-mode».
+
+Template: ubuntu-gaming-mode/decky-sharp-filter-selector
+Type: boolean
+Default: false
+Description: Install the Sharp Filter Selector Decky plugin?
+ Adds FSR/NIS/SGSR controls to the Quick Access Menu. Requires Decky Loader,
+ already installed or selected above. Existing plugins and settings are not
+ overwritten. Disabled by default.
+Description-es.UTF-8: ¿Instalar el plugin Sharp Filter Selector de Decky?
+ Añade controles FSR/NIS/SGSR al menú de acceso rápido. Requiere Decky Loader,
+ ya instalado o seleccionado arriba. No sobrescribe plugins ni ajustes.
+ Desactivado por defecto.
+
+Template: ubuntu-gaming-mode/decky-downsampling-sharpener
+Type: boolean
+Default: false
+Description: Install the UGM Downsampling Sharpener Decky plugin?
+ Offers downsampling sharpening controls when Gamescope includes patch 0010.
+ Requires Decky Loader, already installed or selected above. Existing plugins
+ and settings are not overwritten. Disabled by default.
+Description-es.UTF-8: ¿Instalar el plugin UGM Downsampling Sharpener de Decky?
+ Ofrece la nitidez de downsampling cuando Gamescope incluye el parche 0010.
+ Requiere Decky Loader, ya instalado o seleccionado arriba. No sobrescribe
+ plugins ni ajustes. Desactivado por defecto.
