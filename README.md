@@ -11,9 +11,7 @@ and Gaming Mode without replacing Ubuntu with another distribution.
 The package adds selective downsampling sharpening, optional Decky Loader and
 two plugins, a USB wake policy for Bluetooth wake, and an updated AMD/NVIDIA
 VRS layer. It also fixes the Decky permissions issue found in 2.8.0-1.
-Carlos installed and used 2.8.0-2 for several days without observed issues;
-this is not a claim of validation on all hardware. See the
-[2.8 overview](docs/es/ugm-2.8/README.md), [changelog](CHANGELOG.md) and
+See the [2.8 overview](docs/es/ugm-2.8/README.md), [changelog](CHANGELOG.md) and
 [VRS details](docs/es/ugm-2.8/vrs.md) (Spanish).
 
 

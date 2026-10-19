@@ -2,7 +2,7 @@
 
 ## Estado real
 
-Implementada, compilada y preparada para instalación manual. **No instalada por el asistente**. No había ningún Gamescope/juego activo durante esta intervención. La desaparición del tirón y la recuperación de los ~25 FPS comunicados por Carlos **no están verificadas**. No se han cambiado VRR, sincronización, limitadores, VRS ni preferencias del usuario.
+Implementada, compilada y preparada para instalación manual. **No instalada por el asistente**. No había ningún Gamescope/juego activo durante esta intervención. La desaparición del tirón y la recuperación de los ~25 FPS comunicados durante la prueba **no están verificadas**. No se han cambiado VRR, sincronización, limitadores, VRS ni preferencias del usuario.
 
 ## Diagnóstico
 

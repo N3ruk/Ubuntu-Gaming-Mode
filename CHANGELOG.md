@@ -5,7 +5,6 @@
 ## 2.8.0-2
 
 - Fix the Decky installer umask, `PluginLoader` and both plugin payload permissions; reload an active service.
-- Carlos reports a successful installation and several days of use without observed issues. Compatibility on other systems depends on their hardware and configuration.
 
 ## 2.8.0-1 — local package (unreleased)
 

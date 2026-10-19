@@ -11,8 +11,7 @@ el escritorio normal y Gaming Mode sin sustituir Ubuntu por otra distribución.
 El paquete incorpora nitidez selectiva al reducir resolución, integración
 opcional de Decky y dos plugins, política USB para despertar Bluetooth y una
 capa VRS AMD/NVIDIA actualizada. Corrige además los permisos de Decky detectados
-en el candidato 2.8.0-1. Carlos ha instalado y usado 2.8.0-2 durante varios
-días sin observar problemas; esto no sustituye pruebas en todos los equipos.
+en el candidato 2.8.0-1.
 Consulta el [resumen 2.8](docs/es/ugm-2.8/README.md), el
 [historial](CHANGELOG_es.md) y el [detalle VRS](docs/es/ugm-2.8/vrs.md).
 

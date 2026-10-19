@@ -4,7 +4,7 @@
 
 2026-10-14. **Instalada y verificada por SHA256; sin backups.** Pruebas realizadas el 2026-10-13. Los 50 archivos protegidos de plugins siguen intactos. [Verificación de instalación](validation/v0.4/installation-result.json).
 
-Carlos confirma que la versión 0.3 mantiene la fluidez y tiene una nitidez adecuada. Observación comunicada: HADES, fuente 3840×2160, salida 2560×1440, HDR y VRR, FPS deslimitados: carga GPU aproximada 78 % sin filtro y 88 % con él. Son observaciones del usuario, no medidas instrumentadas por Wilson. No se dispone de una captura de la sesión de juego que identifique su colorspace, LUT, FPS y frametimes exactos.
+La evaluación de la versión 0.3 indicó fluidez y nitidez adecuadas. Observación comunicada: HADES, fuente 3840×2160, salida 2560×1440, HDR y VRR, FPS deslimitados: carga GPU aproximada 78 % sin filtro y 88 % con él. Son observaciones del usuario, no medidas instrumentadas de laboratorio. No se dispone de una captura de la sesión de juego que identifique su colorspace, LUT, FPS y frametimes exactos.
 
 Objetivo: reducir trabajo GPU sin alterar la imagen ni la presentación. No se modifica Decky, su detección ni su intensidad guardada.
 
@@ -73,14 +73,14 @@ prototypes/downsampling-sharpener/validation/v0.4/install-local-0.4.0.sh --check
 sudo prototypes/downsampling-sharpener/validation/v0.4/install-local-0.4.0.sh
 ```
 
-Solo sustituye `/usr/lib/ubuntu-gaming-mode/gamescope`, atómicamente, comprobando hashes y conservando propietario, permisos y atributos. Rechaza instalación si Gamescope está ejecutándose o el destino cambió. No crea backups ni reinicia servicios; volver a UGM 2.5 se haría reinstalando el DEB publicado en Git, según la preferencia de Carlos.
+Solo sustituye `/usr/lib/ubuntu-gaming-mode/gamescope`, atómicamente, comprobando hashes y conservando propietario, permisos y atributos. Rechaza instalación si Gamescope está ejecutándose o el destino cambió. No crea backups ni reinicia servicios; volver a UGM 2.5 se haría reinstalando el DEB publicado en Git.
 
-**Seguimiento en el juego:** Carlos confirmó posteriormente nitidez y fluidez, y comunicó las lecturas de carga GPU recogidas abajo. No hay registro instrumentado de FPS/frametimes ni escena controlada; esas magnitudes siguen sin medirse.
+**Seguimiento en el juego:** Se valoraron positivamente la nitidez y la fluidez, y se comunicaron las lecturas de carga GPU recogidas abajo. No hay registro instrumentado de FPS/frametimes ni escena controlada; esas magnitudes siguen sin medirse.
 
-## Confirmación posterior en HADES (Carlos)
+## Observación posterior en HADES
 
-Tras instalar 0.4, Carlos confirmó que mantiene la fluidez y nitidez. Con la
-misma configuración descrita arriba, comunicó **78–79 % de carga GPU sin filtro
+Tras instalar 0.4, la evaluación de juego indicó que se mantienen la fluidez y la nitidez. Con la
+misma configuración descrita arriba, se comunicaron **78–79 % de carga GPU sin filtro
 y 81–82 % con filtro**. Es una observación práctica con FPS deslimitados, no
 una medición instrumentada de frametimes ni una conversión directa de los
 resultados del microbenchmark a carga total de GPU. Se cierra el apartado de

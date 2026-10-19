@@ -5,7 +5,6 @@
 ## 2.8.0-2
 
 - Corrige el `umask` del instalador de Decky, permisos de `PluginLoader` y payload de ambos plugins; recarga el servicio si está activo.
-- Instalación y uso durante varios días confirmados por Carlos sin problemas observados. La compatibilidad en otros equipos depende de su hardware y configuración.
 
 ## 2.8.0-1 — paquete local (sin publicar)
 

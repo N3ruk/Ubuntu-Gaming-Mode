@@ -1,6 +1,6 @@
 # UGM 2.8.0 — estado del proyecto y novedades
 
-Actualizado: 2026-10-19. **Paquete 2.8.0-2 instalado y probado por Carlos.**
+Actualizado: 2026-10-19. **Paquete 2.8.0-2 publicado.**
 Este índice documenta las novedades frente a 2.5.0-5 y enlaza sus evidencias.
 
 ## Cambios preparados frente a 2.5
@@ -34,10 +34,9 @@ ajustes y metadatos de empaquetado al importar VRS.
 - 2.8.0-2 ejecuta el instalador oficial de Decky con `umask 022`, corrige
   `PluginLoader` a `0755`, fija los permisos del payload y recarga el servicio
   si ya está activo. Pasó 82 pruebas automatizadas antes de la instalación.
-- Carlos confirmó instalación y varios días de uso de 2.8.0-2 sin problemas
-  observados. No implica validación en todo hardware ni prueba aislada de cada
-  ruta VRS/USB con suspensión real. La comprobación física de despertar
-  depende del firmware y del equipo.
+- No se ha validado el paquete en todo el hardware ni cada ruta VRS/USB con
+  suspensión real. La comprobación física de despertar depende del firmware
+  y del equipo.
 - El paquete generado está en
   `dist/ubuntu-gaming-mode_2.8.0-2_amd64.deb` (directorio local, ignorado por Git).
 

@@ -1,6 +1,6 @@
 # UGM Downsampling Sharpener — filtro 0.4 / Decky 0.2
 
-Prototipo experimental de UGM 2.8. Carlos confirma la fluidez y nitidez de 0.3. La versión **0.4 conserva el resultado y optimiza exclusivamente la carga de muestras del shader**; instalada y verificada por SHA256 el 2026-10-14, sin backups. Decky permanece intacto en 0.2. Está integrado de forma opcional en el candidato local 2.8.0-2, aún sin publicar.
+Prototipo experimental de UGM 2.8. La versión 0.3 obtuvo una valoración positiva de fluidez y nitidez. La versión **0.4 conserva el resultado y optimiza exclusivamente la carga de muestras del shader**; instalada y verificada por SHA256 el 2026-10-14, sin backups. Decky permanece intacto en 0.2. Está integrado de forma opcional en 2.8.0-2.
 
 Resultados e instalación actuales: [VALIDACION-0.4.md](VALIDACION-0.4.md). Histórico: [VALIDACION-0.3.md](VALIDACION-0.3.md), [VALIDACION-0.2.md](VALIDACION-0.2.md).
 
@@ -41,4 +41,4 @@ pnpm build
 3. Capturar la misma escena a 0, 25, 50 y 100. Buscar detalle real, halos/aliasing, textos de Steam sin filtrar. Medir frametimes y confirmar que FSR/NIS/SGSR y el plugin Sharp Filter Selector no cambian de estado.
 4. Repetir en SDR, HDR, VRR y con relación de aspecto distinta. La pasada fuerza composición cuando está activa y puede perder scanout directo; medir el coste antes de decidir integración en 2.8.
 
-**Estado verificado:** 0.4 instalada y verificada por SHA256, SPIR-V validado y coincidente con el shader medido; 27 comparaciones FP32 idénticas a 0.3; menor coste GPU del shader en pruebas SDR/HDR; filtro apagado sin regresión apreciable. Decky sin cambios. **Confirmado por Carlos en HADES:** carga GPU 78–79 % sin filtro y 81–82 % con 0.4; nitidez y fluidez correctas. La comparación es observación de juego, no un benchmark de frametimes controlado. No convertir porcentajes del microbenchmark en porcentajes de carga total del juego.
+**Estado verificado:** 0.4 instalada y verificada por SHA256, SPIR-V validado y coincidente con el shader medido; 27 comparaciones FP32 idénticas a 0.3; menor coste GPU del shader en pruebas SDR/HDR; filtro apagado sin regresión apreciable. Decky sin cambios. **Observación de juego en HADES:** carga GPU 78–79 % sin filtro y 81–82 % con 0.4; nitidez y fluidez correctas. La comparación es observación de juego, no un benchmark de frametimes controlado. No convertir porcentajes del microbenchmark en porcentajes de carga total del juego.

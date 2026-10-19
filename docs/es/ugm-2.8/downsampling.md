@@ -1,6 +1,6 @@
 # UGM 2.8: downsampling con nitidez selectiva (parche 0010)
 
-**Estado (14-10-2026): cerrado en el equipo de Carlos.** El filtro Gamescope 0.4 y el plugin Decky UGM Downsampling Sharpener 0.2 se probaron en HADES. Carlos confirma que la nitidez y la fluidez son correctas. Fuente 3840×2160, salida 2560×1440, HDR, VRR y FPS deslimitados: observó **78–79 % de carga GPU sin filtro y 81–82 % con filtro**. Son lecturas comunicadas por Carlos, no mediciones instrumentadas ni prueba de frametimes constantes. No se debe convertirlas en una reducción porcentual exacta del trabajo de toda la GPU.
+**Estado (14-10-2026): validación local completada.** El filtro Gamescope 0.4 y el plugin Decky UGM Downsampling Sharpener 0.2 se probaron en HADES. La nitidez y la fluidez se valoraron como correctas. Fuente 3840×2160, salida 2560×1440, HDR, VRR y FPS deslimitados: se comunicaron **78–79 % de carga GPU sin filtro y 81–82 % con filtro**. Son lecturas de una sesión de juego, no mediciones instrumentadas ni prueba de frametimes constantes. No se debe convertirlas en una reducción porcentual exacta del trabajo de toda la GPU.
 
 ## Disposición de fuentes
 
@@ -19,7 +19,7 @@
 
 La comparación 0.3→0.4 dio **27 imágenes FP32 idénticas byte a byte** (incluyendo SDR/HDR sintético, intensidades, giros, bordes, overlays y tamaños impares). En microbenchmark Vulkan de RTX 2060, 3840×2160→2560×1440, intensidad 25, la mediana del shader SDR→HDR fue **2,456224 → 2,041728 ms (−16,88 %)**; el coste incremental frente al filtro apagado fue aprox. 1,077→0,663 ms. El benchmark mide el shader, no el porcentaje total de carga de un juego. [Resultados detallados](../../../prototypes/downsampling-sharpener/VALIDACION-0.4.md).
 
-La versión 0.4 fue instalada y verificada por SHA256; no se crearon backups. Después, Carlos confirmó la experiencia en HADES y el sobrecoste de unos 2–4 puntos de carga GPU. El comportamiento en otros juegos/hardware no está probado por esa observación. Se deja esta función sin más cambios antes de retomar VRS.
+La versión 0.4 fue instalada y verificada por SHA256; no se crearon backups. Después, en HADES se comunicó un aumento de unos 2–4 puntos de carga GPU. El comportamiento en otros juegos/hardware no está probado por esa observación. Se deja esta función sin más cambios antes de retomar VRS.
 
 ## Build 2.8
 

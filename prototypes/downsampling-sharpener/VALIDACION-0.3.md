@@ -2,7 +2,7 @@
 
 ## Estado
 
-**Instalada por Wilson el 2026-10-13, sin crear backups**, por petición de Carlos. SHA256 del destino comprobado después de la sustitución atómica. No había Gamescope activo; se usará al entrar en modo gaming. Carlos confirmó posteriormente que 0.3 mantiene la fluidez y ofrece la nitidez adecuada (HADES, 4K→1440p, HDR/VRR); la optimización posterior se documenta en VALIDACION-0.4.md.
+**Instalada el 2026-10-13, sin crear backups**. SHA256 del destino comprobado después de la sustitución atómica. No había Gamescope activo; se usará al entrar en modo gaming. La evaluación posterior indicó que 0.3 mantiene la fluidez y ofrece la nitidez adecuada (HADES, 4K→1440p, HDR/VRR); la optimización posterior se documenta en VALIDACION-0.4.md.
 
 **Decky no se ha modificado**, ni sus preferencias ni sus archivos fuente/instalados comprobados. Respecto al parche 0.2, solo cambia `src/shaders/cs_composite_blit.comp`. Sin cambios en detección, composición, sincronización, VRR, escalador ni VRS.
 
@@ -53,7 +53,7 @@ prototypes/downsampling-sharpener/validation/v0.3/install-local-0.3.0.sh --check
 sudo prototypes/downsampling-sharpener/validation/v0.3/install-local-0.3.0.sh
 ```
 
-Payload conservado en `.build/downsampling-sharpener/releases/0.3.0/`, dentro del proyecto y fuera de Git. Sustituye solo `/usr/lib/ubuntu-gaming-mode/gamescope`, comprueba hashes y conserva propietario, permisos y atributos. No toca Decky ni reinicia servicios. No crea copia de seguridad: para volver a UGM 2.5, reinstalar el DEB publicado en Git, según la preferencia de Carlos.
+Payload conservado en `.build/downsampling-sharpener/releases/0.3.0/`, dentro del proyecto y fuera de Git. Sustituye solo `/usr/lib/ubuntu-gaming-mode/gamescope`, comprueba hashes y conserva propietario, permisos y atributos. No toca Decky ni reinicia servicios. No crea copia de seguridad: para volver a UGM 2.5, reinstalar el DEB publicado en Git.
 
 Entrar en modo gaming carga el binario nuevo. Mantener Decky 0.2 sin reinstalarlo. Diagnóstico de solo lectura: `validation/diagnose-session.py`.
 
