@@ -18,7 +18,7 @@ This tree contains the **Ubuntu Gaming Mode 2.8.0-2** sources. It retains the hi
   `prototypes/amd-vrs/`: source, builds and tests for bundled VRS layers.
   Generated `.so` files are not tracked.
 - `integrations/decky/`: minimal payload for the two optional plugins.
-- `docs/es/ugm-2.8/`: feature documentation and limitations.
+- `docs/ugm-2.8/` and `docs/es/ugm-2.8/`: bilingual feature documentation and limitations.
 - `system/icons/`: tracked PNG icons for UGM and the Bluetooth app.
 
 ## Binary input and application icon
@@ -50,7 +50,7 @@ are required; see each layer's README. Prototype build artifacts are ignored.
 The tree and hash above apply **only to 2.5 (patches 0001–0009)**.
 2.8 adds patch 0010 and pins Gamescope SHA256
 `4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03`.
-See the [2.8 build notes](docs/es/ugm-2.8/downsampling.md).
+See the [2.8 build notes](docs/ugm-2.8/downsampling.md).
 
 Historical 2.5 source preparation:
 

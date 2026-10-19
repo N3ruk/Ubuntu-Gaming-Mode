@@ -1,5 +1,7 @@
 # Despertar por mando Bluetooth en UGM 2.8
 
+[English](../../ugm-2.8/usb-wake.md) | **Español** · [Resumen 2.8](README.md)
+
 Al aceptar la opción de despertar Bluetooth en una **instalación nueva de
 2.8**, UGM aplica una política de denegación por defecto a los dispositivos
 USB físicos que admitan `power/wakeup`. Mantiene habilitados el adaptador

@@ -1,9 +1,11 @@
 # UGM 2.8.0 — estado del proyecto y novedades
 
+[English](../../ugm-2.8/README.md) | **Español** · [Índice](../README.md)
+
 Actualizado: 2026-10-19. **Paquete 2.8.0-2 publicado.**
 Este índice documenta las novedades frente a 2.5.0-5 y enlaza sus evidencias.
 
-## Cambios preparados frente a 2.5
+## Cambios frente a 2.5
 
 | Área | Cambio | Documentación |
 |---|---|---|
@@ -37,8 +39,8 @@ ajustes y metadatos de empaquetado al importar VRS.
 - No se ha validado el paquete en todo el hardware ni cada ruta VRS/USB con
   suspensión real. La comprobación física de despertar depende del firmware
   y del equipo.
-- El paquete generado está en
-  `dist/ubuntu-gaming-mode_2.8.0-2_amd64.deb` (directorio local, ignorado por Git).
+- El `.deb` y `SHA256SUMS` están en la [release publicada](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.0-2).
+  `dist/` es un directorio local de build ignorado por Git.
 
 [Historial completo](../../../CHANGELOG_es.md) ·
 [Instalación](../instalacion.md) · [Fuentes](../../../SOURCE_es.md).

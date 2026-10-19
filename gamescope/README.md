@@ -2,7 +2,7 @@
 
 **English** | [Español](README_es.md)
 
-Ubuntu Gaming Mode 2.0.0-1 bundles a reproducible Gamescope 3.16.30 GBM build:
+Ubuntu Gaming Mode 2.8.0-2 bundles a reproducible Gamescope 3.16.30 GBM build with patch 0010. The values below identify the **historical 2.5 binary**, not 2.8:
 
 ```text
 version:  gamescope 3.16.30-8-gb211c9d
@@ -39,6 +39,6 @@ The historical Gamescope 3.16.28 used in UGM 1.0.0-3 cannot be reproduced
 because its modified tree was lost. That limitation is confined to the old
 release; the 3.16.30 runtime in 2.0.0-1 is fully documented.
 
-**2.8 development:** patch 0010 follows the nine stable patches in the series.
-See the [downsampling notes](../docs/es/ugm-2.8/downsampling.md). The SHA256
-above identifies only the historical 2.5 runtime.
+**2.8 release:** patch 0010 follows the nine historical patches in the series.
+The 2.8 Gamescope SHA256 is `4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03`.
+See the [downsampling notes](../docs/ugm-2.8/downsampling.md).

@@ -1,5 +1,10 @@
 # Publicación de UGM 2.5.0-5
 
+[English](release-record-2.5.md) | **Español** · [Índice](es/README.md)
+
+> Registro histórico de 2.5. La receta de build actual es solo para 2.8.
+
+
 Código fuente y paquete forman la release estable `v2.5.0-5` en GitHub.
 La numeración Debian conserva el formato `X.Y.Z-n`.
 

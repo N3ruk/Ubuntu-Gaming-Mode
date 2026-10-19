@@ -1,161 +1,67 @@
-# Install Ubuntu Gaming Mode on Ubuntu 26.04
+# Install Ubuntu Gaming Mode
 
-**English** | [Español](es/instalacion.md)
-
-## Stable release: 2.5.0-5
-
-Download the `.deb` and `SHA256SUMS` from the `v2.5.0-5` GitHub release.
-Install it from an interactive terminal:
-
-```bash
-sudo apt install ./ubuntu-gaming-mode_2.5.0-5_amd64.deb
-```
-
-Verify the downloaded package with `sha256sum -c SHA256SUMS` before installation.
-Debconf can opt into experimental VRS layers on an unambiguously eligible GPU;
-the recognized native RADV route is automatic. The Bluetooth app defaults off.
-See [VRS](vrs-y-capacidades-steamos.md) and
-[controller wake](es/despertar-mando-bluetooth.md). Run
-`sudo ubuntu-gaming-mode-doctor` after installation. VRS toggle and in-game
-behavior depend on the GPU, driver and game. Upgrades retain the original
-snapshot; reinstall or reconfigure to reevaluate the install-time VRS route.
-
-## Historical reference: published 2.0.0-1 release
+**English** | [Español](es/instalacion.md) · [Documentation index](README.md)
 
 ## Requirements
 
-Ubuntu Gaming Mode 2.0.0-1 is packaged for **Ubuntu 26.04 amd64**.
+The published `2.8.0-2` package targets **Ubuntu 26.04 amd64**. Install it from
+an interactive desktop terminal with APT, which resolves package dependencies.
+Hardware-specific features (HDR, VRR, VRS and Bluetooth wake) depend on the
+GPU, driver, monitor and firmware; see [known issues](known-issues.md).
 
-The package includes the validated custom Gamescope runtime used by UGM and declares its runtime dependencies through APT.
+## Download and verify
 
-## Verify the release
-
-Download both files from the same GitHub Release:
-
-- `ubuntu-gaming-mode_2.0.0-1_amd64.deb`
-- `SHA256SUMS`
-
-Verify the package before installation:
+Download `ubuntu-gaming-mode_2.8.0-2_amd64.deb` and `SHA256SUMS` from the
+[same GitHub release](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.0-2).
+In the download directory:
 
 ```bash
 sha256sum -c SHA256SUMS
+sudo apt install ./ubuntu-gaming-mode_2.8.0-2_amd64.deb
 ```
 
-Expected result:
+The checksum command should report `OK`. Keep the terminal open for Debconf
+prompts. The installer records the original state for rollback, configures the
+session and runs Doctor; it does not restart GDM or log out the current desktop.
+An upgrade preserves the original baseline.
 
-```text
-ubuntu-gaming-mode_2.0.0-1_amd64.deb: OK
-```
+## Optional choices
 
-The release package SHA256 is:
+Debconf offers separate, default-off choices for Decky Loader and its two
+plugins; an existing Decky installation is respected. Installing Decky requires
+network access, and failure of that optional step does not abort UGM. See
+[Decky integration](ugm-2.8/decky.md).
 
-```text
-48779954b0bc4518d2fadeb29ba636e370c84a143317f19475b4cf3f5dea369f
-```
+Bluetooth controller wake and its app are optional. On **fresh 2.8 installs**
+that enable wake, UGM applies the [USB wake policy](ugm-2.8/usb-wake.md).
+Upgrades from 2.5 retain the earlier policy. A real suspend/resume test is
+needed to establish support on your hardware.
 
-## Install
+The native RADV APU VRS route can be selected automatically on eligible hardware.
+Custom AMD/NVIDIA VRS layers are experimental opt-ins. Neither a VRS toggle nor
+a performance gain is guaranteed for every game. See [VRS](ugm-2.8/vrs.md).
+The physical power-button bridge and global `gamescope` command are also
+optional; the latter does not remove Ubuntu's Gamescope package.
 
-```bash
-sudo apt install ./ubuntu-gaming-mode_2.0.0-1_amd64.deb
-```
-
-During a first installation UGM:
-
-1. detects the target desktop user and Ubuntu session;
-2. creates an immutable snapshot of the pre-UGM state;
-3. installs the dedicated Gamescope runtime and session integration;
-4. configures GDM/AccountsService state required by UGM;
-5. creates the managed-state for the installed version;
-6. runs `ubuntu-gaming-mode-doctor` automatically.
-
-The installer does **not** restart GDM and does **not** close the current desktop session.
-
-## Console-style physical power button (optional)
-
-Version 2.0.0-1 can optionally bridge a short physical power-button press to
-Steam's native suspend flow. The option is **disabled by default** and captures
-the button only while UGM's managed Steam Gaming Mode session is active. The
-normal Ubuntu Desktop behavior remains unchanged.
-
-The system daemon only captures and validates the button. Steam's fixed URI is
-run by `ugm-steam-shortpowerpress.service` in the session's `systemd --user`,
-so Steam's launcher does not inherit the system daemon sandbox.
-
-The choice can be changed later and is fully reversible:
+To revisit install-time options:
 
 ```bash
 sudo dpkg-reconfigure ubuntu-gaming-mode
 ```
 
-## UGM Gamescope as the system-wide command (optional)
+## First use and diagnosis
 
-The installer detects whether a `gamescope` command already exists and can
-publish UGM's validated runtime through this link:
+Run `sudo ubuntu-gaming-mode-doctor` to inspect the installed runtime and
+session integration. From Ubuntu Desktop, use **Volver a Gaming Mode** to prepare
+the next GDM login; UGM asks before logging out. Leaving Gaming Mode returns to
+the configured Ubuntu desktop session.
 
-```text
-/usr/local/bin/gamescope -> /usr/lib/ubuntu-gaming-mode/gamescope
-```
-
-The option is disabled by default. It does not uninstall or modify Ubuntu's
-Gamescope package: `/usr/local/bin` normally takes precedence over `/usr/bin`.
-UGM preserves the previous file or link state and restores it when the option
-is disabled or the package is removed. The choice can also be changed with
-`sudo dpkg-reconfigure ubuntu-gaming-mode`.
-
-## Expected diagnostic result
-
-A valid installation must finish with zero failures. The number of checks can
-vary with hardware and selected options:
-
-```text
-Fallos:   0
-```
-
-The diagnostic can be run manually:
+To remove UGM and restore the captured baseline:
 
 ```bash
-sudo ubuntu-gaming-mode-doctor
+sudo apt purge ubuntu-gaming-mode
 ```
 
-## Enter Gaming Mode
-
-From Ubuntu Desktop, open:
-
-**Volver a Gaming Mode**
-
-UGM asks for confirmation before logging out of the desktop session.
-
-The next GDM login enters the managed `steam-gaming-mode` session.
-
-## Upgrade from 1.0.0-3
-
-The package preserves UGM's original snapshot when upgrading from 1.0.0-3:
-
-```bash
-sudo apt install ./ubuntu-gaming-mode_2.0.0-1_amd64.deb
-```
-
-The upgrade preserves the immutable baseline and renews only the state managed
-by the installed version. Review any installer warning and run Doctor when it
-finishes.
-
-## Bluetooth controller wake (optional in 2.5)
-
-Install the 2.5 release directly from its single `.deb` in an interactive
-terminal:
-
-```bash
-sudo apt install ./ubuntu-gaming-mode_2.5.0-5_amd64.deb
-```
-
-Debconf asks UGM's installation questions. If it detects a USB Bluetooth
-adapter, it also displays the BIOS USB/PCIe wake notice and asks whether to
-**enable Bluetooth and show the controller wake app in the applications menu**. The default is no.
-The app is part of the same package; no helper script or second `.deb`
-is required. By default, APT tries to install BlueZ and the app-only dependencies as recommended packages. With recommendations disabled or `dpkg -i`, APT does not install them. If the app was selected and BlueZ is still unavailable, UGM continues with a warning; the controller app needs BlueZ
-to work. Selecting yes enables and starts `bluetooth.service` when BlueZ is
-installed; failures are reported without blocking UGM. Selecting no leaves the
-service unchanged. Selecting yes does not enable any controllers:
-choose them in the app and test a real suspend/resume. Change the choice later
-with `sudo dpkg-reconfigure ubuntu-gaming-mode`. Noninteractive installations
-use the default answers.
+See [uninstall and rollback](uninstall-and-rollback.md). For older versions,
+consult the [historical records](README.md#previous-releases); do not use their
+package filenames or hashes to install 2.8.

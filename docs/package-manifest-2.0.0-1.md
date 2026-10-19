@@ -1,5 +1,9 @@
 # Ubuntu Gaming Mode 2.0.0-1 package manifest
 
+**English** | [Español](es/manifiesto-2.0.0-1.md) · [Documentation index](README.md)
+
+> Historical 2.0 record; it does not describe the current 2.8 package.
+
 ## Components shipped in the package
 
 - Validated Gamescope 3.16.30 GBM runtime, installed only at

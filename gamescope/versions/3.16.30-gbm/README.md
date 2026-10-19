@@ -1,6 +1,6 @@
 # Gamescope 3.16.30 GBM scan-out port
 
-**English** | [Español](README_es.md) | [Full technical audit (Spanish)](AUDIT.txt)
+**English** | [Español](README_es.md) | [Technical audit (English)](AUDIT.md)
 
 This directory preserves the reproducible Gamescope build used to restore stable NVIDIA 4K scan-out on the Ubuntu Gaming Mode reference system.
 
@@ -50,8 +50,8 @@ runtime.
 
 The compiled binary is intentionally not committed to Git. It belongs in a versioned UGM release artifact and is identified by its SHA256.
 
-## 2.8 development extension
+## 2.8 release extension
 
 `patches/series` now appends patch 0010 for downsampling sharpening. The
 historical tree and binary SHA256 above represent **patches 0001–0009 only**.
-See the [2.8 downsampling notes](../../../docs/es/ugm-2.8/downsampling.md).
+See the [2.8 downsampling notes](../../../docs/ugm-2.8/downsampling.md).

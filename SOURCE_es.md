@@ -17,7 +17,7 @@ histórico de Gamescope 3.16.30 de 2.5 y añade el parche 0010 para 2.8.
 - `prototypes/vrs-common/`, `prototypes/nvidia-vrs/` y `prototypes/amd-vrs/`:
   fuentes, build y pruebas de las capas VRS. Los `.so` generados no se guardan en Git.
 - `integrations/decky/`: payload mínimo de los dos plugins opcionales.
-- `docs/es/ugm-2.8/`: documentación y límites de las novedades.
+- `docs/ugm-2.8/` y `docs/es/ugm-2.8/`: documentación bilingüe y límites de las novedades.
 - `system/icons/`: iconos PNG de UGM y de la app Bluetooth, ambos versionados.
 
 ## Entrada binaria e icono de la aplicación

@@ -43,30 +43,26 @@ UGM utiliza su propio binario validado de Gamescope:
 /usr/lib/ubuntu-gaming-mode/gamescope
 ```
 
-Versión validada:
+El paquete publicado **2.8.0-2** utiliza la base 3.16.30 GBM y añade el
+**parche 0010** de nitidez selectiva al reducir resolución. El SHA256 esperado
+del binario Gamescope, fijado en la receta del paquete, es:
 
 ```text
-gamescope 3.16.30-8-gb211c9d
+4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03
 ```
 
-SHA256 validado:
+El runtime histórico de **2.5** usaba los parches 0001–0009 y SHA256
+`5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
+Su versión incrustada era `gamescope 3.16.30-8-gb211c9d`.
+Ese hash **no** identifica el binario 2.8. Consulta el
+[registro de fuentes de Gamescope](../../gamescope/README_es.md) y
+[el detalle de downsampling](ugm-2.8/downsampling.md). Sharp Filter Selector
+usa capacidades expuestas por Gamescope/Steam; la serie GBM no contiene un
+conector oculto de selección de filtro.
 
-```text
-5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
-```
-
-Este binario de Gamescope es una build 3.16.30 específica y reproducible. Su
-base upstream exacta, serie de nueve patches, árbol final, receta de compilación
-y validación se publican en `gamescope/versions/3.16.30-gbm/`. Sharp Filter
-Selector utiliza las capacidades que expone este runtime mediante
-Gamescope/Steam; la serie no contiene un conector oculto de selección de filtro.
-
-El wrapper/runtime de la sesión también se instala bajo `/usr/lib/ubuntu-gaming-mode/`.
-
-El wrapper/runtime cambió en 2.5 y se comprueba como parte del paquete;
-el SHA256 histórico del wrapper de 2.0 no es un valor de integridad válido
-para 2.5. El SHA256 del binario Gamescope anterior no cambió. Consulta el
-manifiesto de la versión 2.5 para los archivos empaquetados.
+El wrapper/runtime de sesión también se instala en `/usr/lib/ubuntu-gaming-mode/`.
+Su contenido cambió entre versiones; compara los hashes con el paquete
+publicado correspondiente, no con el manifiesto de una versión anterior.
 
 ## DRM scanout
 

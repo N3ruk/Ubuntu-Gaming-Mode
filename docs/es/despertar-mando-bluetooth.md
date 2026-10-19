@@ -1,5 +1,11 @@
 # Despertar por mando Bluetooth (UGM 2.5)
 
+[English](../bluetooth-controller-wake-2.5.md) | **Español** · [Índice](README.md)
+
+> Registro de 2.5. Para instalar 2.8 consulta [la guía vigente](instalacion.md)
+> y [la nueva política USB](ugm-2.8/despertar-usb.md).
+
+
 ## Alcance demostrado
 
 En el equipo de referencia MSI MPG Z390 GAMING PLUS (MS-7B51), con Bluetooth Intel USB `8087:0aaa` (`btusb`), Linux 7.0.0-38, BlueZ 5.85 y dos DualShock 4 emparejados, un mando consiguió despertar el PC desde suspensión S3 (`deep`). La BIOS tenía habilitadas las opciones de despertar por PCIe y USB. Los tres nodos de la ruta (adaptador USB, hub USB y controlador PCI XHCI) estaban en `power/wakeup=enabled`; ACPI XHC figuraba habilitado. Esta observación valida **esa combinación**, no cualquier placa, adaptador ni firmware.

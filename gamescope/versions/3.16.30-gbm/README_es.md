@@ -50,7 +50,7 @@ patches.
 
 El binario compilado no se guarda en Git. Debe distribuirse dentro de una release versionada de UGM e identificarse mediante su SHA256.
 
-## Rama de desarrollo 2.8
+## Extensión publicada en 2.8
 
 El parche 0010 se ha añadido al final de `patches/series`. Implementa el filtro
 selectivo de downsampling 0.4 y **no forma parte del binario 2.5 descrito arriba**.

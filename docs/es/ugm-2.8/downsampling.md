@@ -1,5 +1,7 @@
 # UGM 2.8: downsampling con nitidez selectiva (parche 0010)
 
+[English](../../ugm-2.8/downsampling.md) | **Español** · [Resumen 2.8](README.md)
+
 **Estado (14-10-2026): validación local completada.** El filtro Gamescope 0.4 y el plugin Decky UGM Downsampling Sharpener 0.2 se probaron en HADES. La nitidez y la fluidez se valoraron como correctas. Fuente 3840×2160, salida 2560×1440, HDR, VRR y FPS deslimitados: se comunicaron **78–79 % de carga GPU sin filtro y 81–82 % con filtro**. Son lecturas de una sesión de juego, no mediciones instrumentadas ni prueba de frametimes constantes. No se debe convertirlas en una reducción porcentual exacta del trabajo de toda la GPU.
 
 ## Disposición de fuentes

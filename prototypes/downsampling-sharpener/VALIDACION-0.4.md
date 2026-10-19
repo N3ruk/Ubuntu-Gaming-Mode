@@ -1,8 +1,13 @@
 # Nitidez downsampling 0.4 — menos coste, misma imagen
 
+[English](VALIDATION-0.4.md) | **Español** · [Componente](README.md)
+
+> Los resultados bajo `validation/` son artefactos locales ignorados por Git;
+> las rutas citadas abajo no son descargas disponibles en GitHub.
+
 ## Estado y objetivo
 
-2026-10-14. **Instalada y verificada por SHA256; sin backups.** Pruebas realizadas el 2026-10-13. Los 50 archivos protegidos de plugins siguen intactos. [Verificación de instalación](validation/v0.4/installation-result.json).
+2026-10-14. **Instalada y verificada por SHA256; sin backups.** Pruebas realizadas el 2026-10-13. Los 50 archivos protegidos de plugins siguen intactos. `validation/v0.4/installation-result.json` (Verificación de instalación).
 
 La evaluación de la versión 0.3 indicó fluidez y nitidez adecuadas. Observación comunicada: HADES, fuente 3840×2160, salida 2560×1440, HDR y VRR, FPS deslimitados: carga GPU aproximada 78 % sin filtro y 88 % con él. Son observaciones del usuario, no medidas instrumentadas de laboratorio. No se dispone de una captura de la sesión de juego que identifique su colorspace, LUT, FPS y frametimes exactos.
 
@@ -19,7 +24,7 @@ Se distribuyen cooperativamente las **mismas 96 muestras** por bloque de 64 píx
 - No introduce extensiones, dependencias de subgrupos ni requisitos específicos de NVIDIA.
 - La necesidad de composición con el filtro activo sigue existiendo; no se puede prometer eliminar todo el sobrecoste manteniendo este filtro.
 
-[Diff exclusivo 0.3→0.4](validation/v0.4/v0.3-to-v0.4.diff).
+`validation/v0.4/v0.3-to-v0.4.diff` (Diff exclusivo 0.3→0.4).
 
 Los dos parches completos son idénticos y siguen siendo el parche experimental 0010 sobre el commit base `2dd5d3b0599eb2dda4dac5258aaec9374e1db16f`. No aplicar 0010 encima de otra versión del propio 0010. El diff enlazado permite identificar el ajuste de shader entre 0.3 y 0.4.
 
@@ -47,7 +52,7 @@ La primera ronda SDR tuvo un p95 mayor en el candidato (2,515776 frente a 2,4330
 
 El escenario PQ con bilinear manual es una prueba sintética adicional, no una identificación de la ruta real de HADES. El harness usa LUTs de prueba, no las del monitor. Las mediciones de rendimiento usan destino RGBA8; para detectar diferencias ocultas por cuantización se comparó por separado el cálculo con RGBA32F. No equivale a validar salida física HDR de 10 bits ni KMS/VRR.
 
-Logs y datos: [performance-results.json](validation/v0.4/performance-results.json), [repetición SDR](validation/v0.4/sdr-repeat.log). Los avisos `Authorization required, but no authorization protocol specified` del loader al explorar plataformas aparecen en los logs; las pruebas headless terminaron con código 0 en RTX 2060.
+Logs y datos: `validation/v0.4/performance-results.json` (performance-results.json), `validation/v0.4/sdr-repeat.log` (repetición SDR). Los avisos `Authorization required, but no authorization protocol specified` del loader al explorar plataformas aparecen en los logs; las pruebas headless terminaron con código 0 en RTX 2060.
 
 ## Igualdad y construcción
 
@@ -59,7 +64,7 @@ Logs y datos: [performance-results.json](validation/v0.4/performance-results.jso
 - 51 archivos protegidos comprobados antes de instalar: Gamescope actual y fuentes/instalación de plugins. No se escribe en Decky.
 - El harness amplía el existente con EOTF de salida, ITM, bilinear y salida/entrada FP32. No hay capa Khronos de validación Vulkan instalada; la validación citada de SPIR-V no equivale a validación de toda la API Vulkan.
 
-[Casos de calidad](validation/v0.4/quality-results.json), [verificador reproducible](validation/v0.4/validate_quality.py), [benchmark reproducible](validation/v0.4/validate_performance.py), [verificación de integración](validation/v0.4/integration-checks.json).
+`validation/v0.4/quality-results.json` (Casos de calidad), `validation/v0.4/validate_quality.py` (verificador reproducible), `validation/v0.4/validate_performance.py` (benchmark reproducible), `validation/v0.4/integration-checks.json` (verificación de integración).
 
 ## Instalación sin backups
 

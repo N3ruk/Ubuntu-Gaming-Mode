@@ -1,5 +1,7 @@
 # UGM Downsampling Sharpener — filtro 0.4 / Decky 0.2
 
+[English](README_en.md) | **Español** · [Índice de prototipos](../README_es.md)
+
 Prototipo experimental de UGM 2.8. La versión 0.3 obtuvo una valoración positiva de fluidez y nitidez. La versión **0.4 conserva el resultado y optimiza exclusivamente la carga de muestras del shader**; instalada y verificada por SHA256 el 2026-10-14, sin backups. Decky permanece intacto en 0.2. Está integrado de forma opcional en 2.8.0-2.
 
 Resultados e instalación actuales: [VALIDACION-0.4.md](VALIDACION-0.4.md). Histórico: [VALIDACION-0.3.md](VALIDACION-0.3.md), [VALIDACION-0.2.md](VALIDACION-0.2.md).

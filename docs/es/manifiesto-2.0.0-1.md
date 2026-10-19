@@ -1,5 +1,9 @@
 # Manifiesto de Ubuntu Gaming Mode 2.0.0-1
 
+[English](../package-manifest-2.0.0-1.md) | **Español** · [Índice](README.md)
+
+> Registro histórico de 2.0; no describe el paquete actual 2.8.
+
 ## Componentes incluidos en el paquete
 
 - Runtime Gamescope 3.16.30 GBM validado, instalado únicamente bajo

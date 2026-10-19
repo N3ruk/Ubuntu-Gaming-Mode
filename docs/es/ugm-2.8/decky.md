@@ -1,5 +1,7 @@
 # Integración opcional de Decky en UGM 2.8
 
+[English](../../ugm-2.8/decky.md) | **Español** · [Resumen 2.8](README.md)
+
 La fuente del `.deb` pregunta **por separado**, con valor predeterminado «no», si desea instalar Decky Loader, Sharp Filter Selector y UGM Downsampling Sharpener. Un Decky ya instalado permite elegir solo los plugins. No se instala nada al editar el proyecto: las preguntas se ejecutarán únicamente al instalar/reconfigurar un paquete construido con estos cambios.
 
 Los dos plugins están congelados como payload mínimo en [`integrations/decky/`](../../../integrations/decky/): `plugin.json`, `package.json`, `main.py`, `dist/index.js` y, para Sharp Filter Selector, su licencia BSD-3-Clause. Se tomaron de los plugins probados en este equipo: Sharp Filter Selector 1.1.0 y UGM Downsampling Sharpener 0.2.0. No se copian datos de usuario, ajustes, logs, `node_modules`, sourcemaps ni archivos de prueba. Los fuentes y el historial del segundo siguen en [`prototypes/downsampling-sharpener/`](../../../prototypes/downsampling-sharpener/).

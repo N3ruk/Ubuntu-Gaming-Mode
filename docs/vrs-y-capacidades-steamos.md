@@ -1,5 +1,10 @@
 # VRS y capacidades de pantalla en UGM 2.5.0-5
 
+[English](vrs-and-steamos-capabilities-2.5.md) | **Español** · [Índice](es/README.md)
+
+> Describe 2.5, no los cambios VRS de 2.8.
+
+
 **Estado:** versión estable. La integración y las pruebas automatizadas están
 hechas. El resultado de VRS depende de la GPU, el controlador y el juego.
 

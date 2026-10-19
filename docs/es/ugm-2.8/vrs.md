@@ -1,7 +1,9 @@
 # Capa VRS incorporada a UGM 2.8
 
+[English](../../ugm-2.8/vrs.md) | **Español** · [Resumen 2.8](README.md)
+
 Fecha de integración: 2026-10-17. Las fuentes están incorporadas al paquete
-local 2.8.0-2; esta sección conserva la procedencia de la importación.
+publicado 2.8.0-2; esta sección conserva la procedencia de la importación.
 
 ## Procedencia y alcance
 
@@ -140,7 +142,7 @@ Ejecutado en este proyecto destino el 2026-10-17:
 
 [Resultados y hashes](vrs-verification.json). Los logs completos se conservan en
 `.build/vrs-import-20261017/` (artefactos locales ignorados por Git). En el momento de esta verificación no se habían construido el `.deb` completo
-ni el nuevo Gamescope. Ambos se construyeron después para 2.8; GitHub aún no se ha actualizado.
+ni el nuevo Gamescope. Ambos se construyeron después para la release publicada 2.8.0-2.
 
 ### Reproducción desde la raíz del proyecto
 

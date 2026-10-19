@@ -1,218 +1,62 @@
-# Ubuntu Gaming Mode para Ubuntu 26.04
+# Ubuntu Gaming Mode
 
 [English](README.md) | **Español**
 
-**Ubuntu Gaming Mode (UGM)** añade a Ubuntu Desktop una sesión de juego tipo
-consola basada en Gamescope DRM/KMS y Steam Gamepad UI. Permite cambiar entre
-el escritorio normal y Gaming Mode sin sustituir Ubuntu por otra distribución.
+Ubuntu Gaming Mode (UGM) añade a Ubuntu Desktop una sesión dedicada con
+Gamescope DRM/KMS y Steam Gamepad UI. Permite alternar entre el escritorio
+habitual y Gaming Mode sin sustituir Ubuntu. El paquete estable actual es
+**2.8.0-2** para **Ubuntu 26.04 amd64**.
 
-## UGM 2.8.0-2
+## Por dónde empezar
 
-El paquete incorpora nitidez selectiva al reducir resolución, integración
-opcional de Decky y dos plugins, política USB para despertar Bluetooth y una
-capa VRS AMD/NVIDIA actualizada. Corrige además los permisos de Decky detectados
-en el candidato 2.8.0-1.
-Consulta el [resumen 2.8](docs/es/ugm-2.8/README.md), el
-[historial](CHANGELOG_es.md) y el [detalle VRS](docs/es/ugm-2.8/vrs.md).
-
-
-## Versión anterior: 2.5.0-5
-
-La versión estable `2.5.0-5` para Ubuntu 26.04 amd64 conservaba
-el Gamescope 3.16.30 GBM de 2.0 e incorpora:
-
-- inventario de GPU/Vulkan y opciones HDR/VRR sin bloquear el arranque;
-- VRS dinámico nativo para una lista conservadora de APU RADV, o capas Vulkan
-  experimentales AMD/NVIDIA de 32 y 64 bits, seleccionadas en la instalación;
-- la app opcional de despertar por mando Bluetooth y su icono, dentro del mismo
-  `.deb`, desactivada por defecto;
-- la corrección que prepara las capas VRS desde el payload legible del
-  paquete sin abrir el estado privado de instalación.
-
-La versión ha sido probada por el mantenedor. El comportamiento de VRS depende
-del juego, la GPU y el controlador; no se afirma compatibilidad universal.
-Consulta [la guía de instalación](docs/es/instalacion.md),
-[las rutas VRS](docs/vrs-y-capacidades-steamos.md) y
-[el estado de publicación](docs/preparacion-publicacion-2.5.md).
-
-## Versión anterior: 2.0.0-1
-
-**Ubuntu Gaming Mode 2.0.0-1**
-
-- Ubuntu 26.04 amd64.
-- Gamescope `3.16.30-8-gb211c9d` con port GBM reproducible.
-- Salida 4K, HDR y VRR/Adaptive Sync validados en NVIDIA RTX 2060.
-- Steam Overlay, mando y MangoApp/MangoHud.
-- Escalado FSR, NIS y SGSR, con control opcional desde el menú de acceso rápido
-  mediante [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector).
-- Cambio Desktop ↔ Gaming Mode mediante GDM y AccountsService.
-- Suspensión estilo consola mediante el botón físico, opcional.
-- Publicación del Gamescope de UGM como comando global, opcional y reversible.
-- Snapshot original, rollback y Doctor integrado.
-
-El `.deb` y su `SHA256SUMS` se publican juntos en la release de GitHub.
-
-## Novedades de 2.0.0-1
-
-### Gamescope 3.16.30 reproducible
-
-UGM incluye un runtime dedicado en:
-
-```text
-/usr/lib/ubuntu-gaming-mode/gamescope
-```
-
-Su código se reconstruye desde el commit upstream
-`ad2763da1c48860f649abfe842a087188dcb6e20` y la serie versionada de nueve
-patches de [`gamescope/versions/3.16.30-gbm/`](gamescope/versions/3.16.30-gbm/README_es.md).
-Los patches producen el árbol final
-`5fd5ea2159236ba93defec52ffef4ee0ddfa0bc1`.
-
-Los ocho primeros trasladan la ruta de buffers GBM aptos para scan-out. El
-noveno añade un fallback seguro cuando falla la importación del semáforo de
-reescalado preventivo. En el sistema NVIDIA de referencia esto conserva una
-sesión 4K estable con HDR y VRR.
-
-### Sharp Filter Selector: SGSR, FSR y NIS desde el QAM
-
-El Gamescope 3.16.30 de UGM 2.0.0-1 expone las propiedades modernas de escalado
-que utiliza [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector),
-un plugin opcional de Decky Loader que añade al menú de acceso rápido controles
-explícitos **Usar FSR** y **Usar NIS**, conservando a la vez la ruta Sharp nativa
-de Gamescope. El plugin empaquetado actual puede descargarse desde su
-[página de releases](https://github.com/N3ruk/Sharp-Filter-Selector/releases/latest).
-
-La combinación permite:
-
-- **SGSR nativo** cuando la entrada de la aplicación es SDR y ambos overrides
-  están desactivados;
-- el **fallback FSR nativo** de Gamescope cuando la aplicación entrega HDR;
-- seleccionar explícitamente FSR o NIS y ajustar una nitidez común de 0 a 5;
-- mostrar las opciones según el feedback HDR de la aplicación activa, no solo
-  porque la salida de pantalla esté configurada en HDR; y
-- sincronizar los distintos Xwayland de Gamescope sin sobrescribir el modo de
-  reescalado elegido en Steam/QAM (`Automático`, `Ajustar`, `Entero` o `Estirar`).
-
-La conexión es deliberadamente limitada: Steam/QAM continúa controlando
-`GAMESCOPE_NEW_SCALING_SCALER`; el plugin detecta la sesión Gamescope/Xwayland
-activa y escribe únicamente propiedades de filtro/nitidez como
-`GAMESCOPE_NEW_SCALING_FILTER`, `GAMESCOPE_SHARP_FILTER` y
-`GAMESCOPE_FSR_SHARPNESS`. Gamescope realiza después el reescalado real. El
-plugin no parchea, sustituye ni instala Gamescope, y UGM no incluye ni instala
-Decky Loader ni el propio plugin.
-
-### Botón físico estilo consola
-
-El instalador puede habilitar, de forma **opcional y desactivada por defecto**,
-una pulsación corta del botón físico que entrega a Steam su flujo nativo
-`steam://shortpowerpress`. Solo se captura en la sesión Gaming Mode gestionada;
-el escritorio conserva su comportamiento normal.
-
-### Comando Gamescope global
-
-Otra opción, también desactivada por defecto, permite crear:
-
-```text
-/usr/local/bin/gamescope -> /usr/lib/ubuntu-gaming-mode/gamescope
-```
-
-No desinstala el Gamescope de Ubuntu. UGM conserva el estado anterior y lo
-restaura al desactivar la opción o purgar el paquete.
-
-Ambas opciones pueden cambiarse posteriormente:
+1. Descarga el `.deb` y `SHA256SUMS` de la
+   [última versión](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/latest).
+2. Sigue la [guía de instalación y verificación](docs/es/instalacion.md).
+3. Para funcionamiento, configuración y límites, usa el [índice de documentación](docs/es/README.md).
 
 ```bash
-sudo dpkg-reconfigure ubuntu-gaming-mode
-```
-
-## Instalación
-
-Descarga el `.deb` y `SHA256SUMS` desde la release, y ejecuta:
-
-```bash
+# Desde el directorio donde hayas descargado ambos archivos:
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.0.0-1_amd64.deb
-```
-
-El instalador crea el snapshot original, configura la sesión y ejecuta Doctor.
-No reinicia GDM ni cierra la sesión actual.
-
-Diagnóstico manual:
-
-```bash
+sudo apt install ./ubuntu-gaming-mode_2.8.0-2_amd64.deb
 sudo ubuntu-gaming-mode-doctor
 ```
 
-Consulta la [guía de instalación](docs/es/instalacion.md).
+No utilices un fichero de checksums de otra versión. La instalación o
+reconfiguración ofrece funciones opcionales: Decky Loader, ambos plugins,
+despertar por mando Bluetooth y las capas VRS experimentales no se activan
+todas automáticamente.
 
-## Cambiar de modo
+## Qué incorpora 2.8
 
-Desde Ubuntu Desktop abre **Volver a Gaming Mode**. UGM prepara la siguiente
-sesión GDM, solicita confirmación y cierra el escritorio de forma ordenada.
-Al salir de Gaming Mode restaura la sesión Ubuntu configurada.
+- Runtime dedicado Gamescope 3.16.30 GBM con nitidez selectiva al reducir
+  resolución (parche 0010), controlable opcionalmente con un plugin Decky.
+- Integración opcional de Decky Loader, Sharp Filter Selector y UGM Downsampling
+  Sharpener, con preguntas independientes y una corrección de permisos en 2.8.0-2.
+- Opción de despertar por mando Bluetooth, con política USB de denegación por
+  defecto **solo en instalaciones nuevas de 2.8 que la activen**. Las
+  actualizaciones desde 2.5 conservan su política anterior.
+- Capas VRS AMD/NVIDIA de 32/64 bits con selección y fallback conservadores;
+  la ruta APU RADV nativa es independiente. El beneficio y la compatibilidad
+  dependen de la GPU, el controlador y el juego.
+- Cambio Desktop ↔ Gaming Mode, rollback, preferencias HDR/VRR y Doctor.
 
-## Desinstalación y rollback
+Consulta el [resumen de funciones 2.8](docs/es/ugm-2.8/README.md) para conocer
+las pruebas y los límites. El [historial](CHANGELOG_es.md) recoge versiones anteriores.
 
-```bash
-sudo apt purge ubuntu-gaming-mode
-```
+## Mapa del proyecto
 
-UGM restaura el baseline capturado antes de la primera instalación. Consulta
-[desinstalación y rollback](docs/es/desinstalacion-y-rollback.md).
+| Ruta | Función |
+| --- | --- |
+| [`docs/`](docs/es/README.md) | Guías, funciones actuales, arquitectura e histórico |
+| [`src/`](src/) y [`system/`](system/) | Herramientas de sesión/runtime e integración del sistema |
+| [`packaging/`](packaging/) | Metadatos y receta de construcción Debian |
+| [`gamescope/`](gamescope/README_es.md) | Serie versionada de parches y procedencia de Gamescope |
+| [`integrations/`](integrations/) | Payloads de los plugins Decky opcionales |
+| [`prototypes/`](prototypes/README_es.md) | Fuentes, pruebas e investigación histórica de componentes experimentales |
+| [`tests/`](tests/) | Pruebas automatizadas del proyecto |
 
-## Plataforma validada
-
-La aceptación física principal se realizó sobre Ubuntu 26.04, una NVIDIA RTX
-2060 de 6 GB y el driver propietario NVIDIA 595.91.07. UGM no afirma
-compatibilidad universal con todas las GPU: NVIDIA sigue siendo una ruta más
-exigente que la configuración AMD habitual dentro del ecosistema Gamescope.
-
-## Rendimiento
-
-UGM evita ejecutar Gamescope anidado dentro de GNOME/Mutter. En la medición de
-Dragon Ball Z: Kakarot, 1080p interno → 1440p, la sesión DRM dedicada alcanzó
-aproximadamente un 18–25 % más rendimiento lineal y un 25–33 % más con FSR/NIS
-que las rutas nested probadas. Consulta la
-[metodología completa](docs/es/rendimiento-fsr-nis-gamescope-nested-vs-drm.md).
-
-## Problema conocido de Steam
-
-Algunas notificaciones de Steam Big Picture muestran un rectángulo negro en la
-pila NVIDIA probada. También ocurre desde el escritorio sin Gamescope y la
-superficie ya llega opaca al compositor, por lo que actualmente no existe una
-corrección segura dentro de UGM. Consulta
-[problemas conocidos](docs/es/problemas-conocidos.md).
-
-## Código fuente y reproducibilidad
-
-- `src/`: runtime y helpers de UGM.
-- `system/`: unidades systemd, sesión y configuración de Gamescope.
-- `packaging/`: metadatos y construcción del paquete Debian.
-- `gamescope/versions/3.16.30-gbm/`: patches, procedencia, build y validación.
-- `tests/`: pruebas deterministas de las integraciones opcionales.
-
-El binario Gamescope no se guarda en Git. El icono de la aplicación está en
-`system/icons/` y ambos se incluyen en el `.deb` versionado. Consulta
-[SOURCE_es.md](SOURCE_es.md).
-
-## Agradecimientos
-
-UGM se apoya en Valve/SteamOS/Gamescope y en la infraestructura de sesión de
-ChimeraOS `gamescope-session-plus`. También agradece la documentación y el
-trabajo de Bazzite y de la comunidad Linux gaming. UGM es un proyecto
-independiente, no afiliado ni respaldado por Valve, ChimeraOS, Bazzite, NVIDIA
-o Canonical.
-
-## Licencia
-
-El código original de UGM usa [MIT](LICENSE). Los componentes de terceros
-mantienen sus licencias; consulta [THIRD_PARTY_NOTICES_es.md](THIRD_PARTY_NOTICES_es.md).
-
-### Documentación de 2.8
-
-El [resumen de cambios](docs/es/ugm-2.8/README.md) enlaza las notas de
-[downsampling](docs/es/ugm-2.8/downsampling.md),
-[Decky](docs/es/ugm-2.8/decky.md),
-[despertar USB](docs/es/ugm-2.8/despertar-usb.md) y
-[VRS](docs/es/ugm-2.8/vrs.md). Las descripciones históricas de 2.0 y 2.5
-anteriores no describen el contenido nuevo del paquete 2.8.
+Para colaborar: [guía de desarrollo](docs/es/desarrollo.md),
+[fuentes y reproducibilidad](SOURCE_es.md) y [avisos de terceros](THIRD_PARTY_NOTICES_es.md).
+El código original de UGM usa la [licencia MIT](LICENSE); los componentes de
+terceros conservan sus licencias. UGM es independiente de Valve, ChimeraOS,
+Bazzite, NVIDIA y Canonical.

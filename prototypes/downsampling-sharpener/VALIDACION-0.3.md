@@ -1,5 +1,10 @@
 # Nitidez downsampling 0.3 — ajuste exclusivo del shader
 
+[English](VALIDATION-0.3.md) | **Español** · [Componente](README.md)
+
+> Los resultados bajo `validation/` son artefactos locales ignorados por Git;
+> las rutas citadas abajo no son descargas disponibles en GitHub.
+
 ## Estado
 
 **Instalada el 2026-10-13, sin crear backups**. SHA256 del destino comprobado después de la sustitución atómica. No había Gamescope activo; se usará al entrar en modo gaming. La evaluación posterior indicó que 0.3 mantiene la fluidez y ofrece la nitidez adecuada (HADES, 4K→1440p, HDR/VRR); la optimización posterior se documenta en VALIDACION-0.4.md.
@@ -41,7 +46,7 @@ En la región de textura sintética, la diferencia media frente al filtro apagad
 - Instalador simulado en directorio temporal: instalación, hashes, idempotencia y rollback manual/ante fallo. No se ejecuta sudo.
 - Huellas de Decky comprobadas antes/después sin cambios.
 
-[Comparación sintética](validation/v0.3/comparacion-sintetica.png), [métricas](validation/v0.3/image-metrics.json), [comprobación de límites](validation/v0.3/check_bounds.py).
+`validation/v0.3/comparacion-sintetica.png` (Comparación sintética), `validation/v0.3/image-metrics.json` (métricas), `validation/v0.3/check_bounds.py` (comprobación de límites).
 
 ## Instalación y recuperación
 

@@ -1,5 +1,10 @@
 # Nitidez downsampling 0.2 — 2026-10-13
 
+[English](VALIDATION-0.2.md) | **Español** · [Componente](README.md)
+
+> Registro histórico. Las rutas bajo `validation/` son locales y no están
+> publicadas en Git; para instalar UGM usa la [guía 2.8](../../docs/es/instalacion.md).
+
 ## Estado real
 
 Implementada, compilada y preparada para instalación manual. **No instalada por el asistente**. No había ningún Gamescope/juego activo durante esta intervención. La desaparición del tirón y la recuperación de los ~25 FPS comunicados durante la prueba **no están verificadas**. No se han cambiado VRR, sincronización, limitadores, VRS ni preferencias del usuario.

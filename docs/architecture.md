@@ -43,30 +43,26 @@ UGM uses its own validated Gamescope binary:
 /usr/lib/ubuntu-gaming-mode/gamescope
 ```
 
-Validated version:
+The published **2.8.0-2** package uses the 3.16.30 GBM base plus
+**patch 0010** for selective downsampling sharpening. The expected Gamescope
+binary SHA256 pinned in the package build is:
 
 ```text
-gamescope 3.16.30-8-gb211c9d
+4251c390803678e1d3ce626ae4c36b51c00763338efa358ef1d2d5f5c8ef7c03
 ```
 
-Validated SHA256:
-
-```text
-5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256
-```
-
-This Gamescope binary is a project-specific, reproducible 3.16.30 build. Its
-exact upstream base, nine-patch series, final tree, build recipe and validation
-record are published under `gamescope/versions/3.16.30-gbm/`. Sharp Filter
-Selector uses the Gamescope/Steam capabilities exposed by this runtime; the
-patch series does not contain a hidden filter-selection connector.
+The historical **2.5** runtime used patches 0001–0009 and SHA256
+`5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256`.
+Its embedded version string was `gamescope 3.16.30-8-gb211c9d`.
+That hash is **not** the 2.8 binary identity. See the
+[Gamescope source record](../gamescope/README.md) and
+[2.8 downsampling details](ugm-2.8/downsampling.md). Sharp Filter Selector
+uses Gamescope/Steam capabilities exposed by the runtime; the GBM patch
+series does not contain a hidden filter-selection connector.
 
 The session wrapper/runtime is also installed under `/usr/lib/ubuntu-gaming-mode/`.
-
-The wrapper/runtime changed for 2.5 and is checked as part of the package;
-the historical 2.0 wrapper SHA256 is not a 2.5 integrity value. Gamescope's
-binary SHA256 above is unchanged. See the 2.5 release manifest for the
-packaged files.
+Its content changed across releases; compare hashes with the matching
+published package, not a prior version's manifest.
 
 ## DRM scanout
 

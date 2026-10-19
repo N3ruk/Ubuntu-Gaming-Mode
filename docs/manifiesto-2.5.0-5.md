@@ -1,5 +1,10 @@
 # Manifiesto UGM 2.5.0-5
 
+[English](package-manifest-2.5.0-5.md) | **Español** · [Índice](es/README.md)
+
+> Registro histórico de 2.5; no describe el paquete actual 2.8.
+
+
 Estado: versión estable para Ubuntu 26.04 amd64. Este
 manifiesto describe componentes, no una validación física universal.
 
