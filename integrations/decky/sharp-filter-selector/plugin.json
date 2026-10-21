@@ -9,9 +9,10 @@
       "scaling",
       "fsr",
       "nis",
+      "sgsr",
       "steam-deck"
     ],
-    "description": "Switch Gamescope scaling between AMD FSR and NVIDIA NIS and adjust sharpening from Decky's Quick Access Menu.",
+    "description": "Link QAM Sharp to SGSR on supported Gamescope builds; also select NVIDIA NIS or force AMD FSR from Decky's Quick Access Menu.",
     "image": "https://opengraph.githubassets.com/1/N3ruk/Sharp-Filter-Selector"
   }
 }

@@ -2,6 +2,11 @@
 
 **English** | [Español](CHANGELOG_es.md)
 
+## 2.8.3-1 — 2026-10-21
+
+- Clarify in the installer that the optional Sharp Filter Selector Decky plugin links QAM Sharp to SGSR when Gamescope supports it; Gamescope alone does not make QAM select SGSR. The plugin also selects NIS or forces FSR.
+- Clarify the plugin description and bilingual documentation. No SGSR rendering logic changed.
+
 ## 2.8.2-1 — 2026-10-19
 
 - Add a default-off installation prompt to install and activate UGM-ICONS for the UGM desktop user. Preserve an existing local theme and later user selections; restore the prior choice on opt-out/removal where appropriate. Icon files remain to protect user changes.

@@ -7,6 +7,14 @@ Loader, Sharp Filter Selector and UGM Downsampling Sharpener. If Decky is
 already present, either plugin can be selected independently. These questions
 run during installation or reconfiguration, not when browsing the source.
 
+**Sharp Filter Selector also enables SGSR from QAM.** When Sharp is selected
+and the active Gamescope supports SGSR, the plugin translates Steam's FSR
+selection into Gamescope's SGSR filter. Gamescope runs the algorithm, but
+installing Gamescope alone does not link that QAM choice to SGSR. The plugin
+also lets you choose NIS or force FSR. With HDR input, Gamescope uses FSR
+instead of SGSR. UGM leaves an existing plugin version untouched, so this
+behavior depends on that version having SGSR integration.
+
 The two plugin payloads under [`integrations/decky/`](../../integrations/decky/)
 contain only `plugin.json`, `package.json`, `main.py`, `dist/index.js` and the
 BSD-3-Clause license for Sharp Filter Selector. They derive from the tested

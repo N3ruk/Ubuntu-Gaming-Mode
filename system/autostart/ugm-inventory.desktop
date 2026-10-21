@@ -2,7 +2,7 @@
 Type=Application
 Name=UGM hardware inventory
 Comment=Refresh UGM hardware inventory after desktop login
-Exec=/usr/bin/ugm-inventory --refresh --quiet --context desktop --runtime-version 2.8.2-1
+Exec=/usr/bin/ugm-inventory --refresh --quiet --context desktop --runtime-version 2.8.3-1
 OnlyShowIn=GNOME;
 NoDisplay=true
 X-GNOME-Autostart-Delay=60

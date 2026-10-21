@@ -2,13 +2,13 @@
 
 **English** | [Español](../es/ugm-2.8/README.md) · [Documentation index](../README.md)
 
-The current package is `2.8.2-1`. This page describes the 2.8 changes from
+The current package is `2.8.3-1`. This page describes the 2.8 changes from
 2.5.0-5; the component pages distinguish tests from hardware observations.
 
 | Area | Change | Details |
 | --- | --- | --- |
 | Gamescope | Patch 0010: selective downsampling sharpening, filter 0.4; optional plugin control 0.2.0 | [Downsampling](downsampling.md) |
-| Installer / Decky | Independent, default-off prompts for Decky Loader, Sharp Filter Selector and UGM Downsampling Sharpener; existing plugins are respected | [Decky](decky.md) |
+| Installer / Decky | Independent, default-off prompts for Decky Loader and both plugins; Sharp Filter Selector links QAM Sharp to SGSR on compatible Gamescope; existing plugins are respected | [Decky](decky.md) |
 | Bluetooth / USB wake | Default-deny USB wake on fresh installations that enable Bluetooth wake; individual controller authorization; 2.5 upgrade policy retained | [USB wake](usb-wake.md) |
 | VRS | Shared 32/64-bit AMD/NVIDIA core, conservative compatibility policy, lower CPU overhead, GPL support and immutable staging | [VRS](vrs.md) |
 | Desktop icons (2.8.2-1) | Optional UGM-ICONS theme, installed and selected for the configured desktop user after a default-off prompt | [Installation](../installation.md) |
@@ -38,7 +38,7 @@ preserved during that import.
 - For 2.8.2-1, 84 automated tests and an isolated icon-theme activation and
   rollback test passed.
 - The current release `.deb` and `SHA256SUMS` are available on
-  [GitHub](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.2-1).
+  [GitHub](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.3-1).
   `dist/` is a local build-output directory, not source tracked in Git.
 
 [Changelog](../../CHANGELOG.md) · [Install](../installation.md) · [Source](../../SOURCE.md)

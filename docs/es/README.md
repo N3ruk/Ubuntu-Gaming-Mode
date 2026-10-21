@@ -2,12 +2,12 @@
 
 [English](../README.md) | **Español** · [Inicio del proyecto](../../README_es.md)
 
-Este índice separa las **guías vigentes de 2.8.2-1** de los **registros
+Este índice separa las **guías vigentes de 2.8.3-1** de los **registros
 históricos de cada versión**. Empieza por la instalación y consulta las páginas
 de funciones para detalles y pruebas. Los resultados de hardware solo cubren
 los sistemas y ensayos indicados en cada documento.
 
-## Instalar y usar 2.8.2-1
+## Instalar y usar 2.8.3-1
 
 - [Instalar, verificar y configurar](instalacion.md)
 - [Desinstalar y restaurar el estado original](desinstalacion-y-rollback.md)

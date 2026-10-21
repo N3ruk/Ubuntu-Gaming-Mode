@@ -178,13 +178,17 @@ Template: ubuntu-gaming-mode/decky-sharp-filter-selector
 Type: boolean
 Default: false
 Description: Install the Sharp Filter Selector Decky plugin?
- Adds FSR/NIS/SGSR controls to the Quick Access Menu. Requires Decky Loader,
- already installed or selected above. Existing plugins and settings are not
+ This plugin links the Quick Access Menu's Sharp setting to SGSR when the
+ active Gamescope supports it; Gamescope alone does not make QAM select SGSR.
+ It also lets you select NIS or force FSR. Requires Decky Loader, already
+ installed or selected above. Existing plugins and settings are not
  overwritten. Disabled by default.
 Description-es.UTF-8: ¿Instalar el plugin Sharp Filter Selector de Decky?
- Añade controles FSR/NIS/SGSR al menú de acceso rápido. Requiere Decky Loader,
- ya instalado o seleccionado arriba. No sobrescribe plugins ni ajustes.
- Desactivado por defecto.
+ Este plugin enlaza la opción «Nitidez» del QAM con SGSR cuando Gamescope lo
+ admite; instalar Gamescope por sí solo no hace que el QAM seleccione SGSR.
+ También permite elegir NIS o forzar FSR. Requiere Decky Loader, ya instalado
+ o seleccionado arriba. No sobrescribe plugins ni ajustes. Desactivado por
+ defecto.
 
 Template: ubuntu-gaming-mode/decky-downsampling-sharpener
 Type: boolean

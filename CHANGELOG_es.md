@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 2.8.3-1 — 2026-10-21
+
+- Aclarado en el instalador que el plugin opcional Sharp Filter Selector de Decky enlaza «Nitidez» de QAM con SGSR cuando Gamescope lo admite; Gamescope por sí solo no hace que QAM seleccione SGSR. El plugin también permite elegir NIS o forzar FSR.
+- Aclaradas la descripción del plugin y la documentación bilingüe. No cambia la lógica de renderizado SGSR.
+
 ## 2.8.2-1 — 2026-10-19
 
 - Pregunta opcional durante la instalación para instalar y activar UGM-ICONS en el escritorio del usuario de UGM. Conserva un tema local preexistente y respeta cambios posteriores de selección; al desactivar o desinstalar, restaura la selección previa cuando corresponde. Los archivos se conservan para proteger cambios del usuario.

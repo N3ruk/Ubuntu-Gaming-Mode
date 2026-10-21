@@ -2,7 +2,7 @@
 
 [English](SOURCE.md) | **Español**
 
-Este árbol contiene las fuentes de **Ubuntu Gaming Mode 2.8.2-1**. Conserva el registro
+Este árbol contiene las fuentes de **Ubuntu Gaming Mode 2.8.3-1**. Conserva el registro
 histórico de Gamescope 3.16.30 de 2.5 y añade el parche 0010 para 2.8.
 
 ## Estructura

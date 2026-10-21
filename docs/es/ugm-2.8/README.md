@@ -2,7 +2,7 @@
 
 [English](../../ugm-2.8/README.md) | **Español** · [Índice](../README.md)
 
-Actualizado: 2026-10-19. **Paquete actual: 2.8.2-1.**
+Actualizado: 2026-10-21. **Paquete actual: 2.8.3-1.**
 Este índice documenta las novedades frente a 2.5.0-5 y enlaza sus evidencias.
 
 ## Cambios frente a 2.5
@@ -10,7 +10,7 @@ Este índice documenta las novedades frente a 2.5.0-5 y enlaza sus evidencias.
 | Área | Cambio | Documentación |
 |---|---|---|
 | Gamescope | Parche 0010: downsampling con nitidez selectiva, filtro 0.4; control opcional mediante plugin 0.2.0. | [Downsampling](downsampling.md) |
-| Instalador / Decky | Preguntas independientes, desactivadas por defecto, para Decky Loader, Sharp Filter Selector y UGM Downsampling Sharpener; respeta plugins existentes. | [Decky](decky.md) |
+| Instalador / Decky | Preguntas independientes y desactivadas por defecto para Decky Loader y ambos plugins; Sharp Filter Selector enlaza «Nitidez» de QAM con SGSR en Gamescope compatible; respeta plugins existentes. | [Decky](decky.md) |
 | Despertar Bluetooth / USB | Denegación USB por defecto en instalaciones nuevas que activen despertar Bluetooth; autorización individual de mandos y conservación de la política al actualizar desde 2.5. | [Despertar USB](despertar-usb.md) |
 | VRS | Núcleo compartido AMD/NVIDIA 32/64 bits, correcciones de seguridad/compatibilidad, menor coste CPU, soporte GPL y staging inmutable. | [Cambios VRS](vrs.md) |
 | Iconos de escritorio (2.8.2-1) | Tema UGM-ICONS opcional, instalado y seleccionado para el usuario configurado tras una pregunta desactivada por defecto. | [Instalación](../instalacion.md) |
@@ -42,7 +42,7 @@ ajustes y metadatos de empaquetado al importar VRS.
   y del equipo.
 - Para 2.8.2-1 pasaron 84 pruebas automatizadas y una prueba aislada de
   activación y restauración del tema.
-- El `.deb` y `SHA256SUMS` actuales están en la [release publicada](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.2-1).
+- El `.deb` y `SHA256SUMS` actuales están en la [release publicada](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.3-1).
   `dist/` es un directorio local de build ignorado por Git.
 
 [Historial completo](../../../CHANGELOG_es.md) ·
