@@ -2,7 +2,7 @@ ubuntu-gaming-mode (2.8.3-1) unstable; urgency=medium
 
   * Clarify that the optional Sharp Filter Selector Decky plugin links QAM
     Sharp to SGSR on supported Gamescope builds; it also selects NIS or forces
-    FSR. Update the bilingual Debconf prompt and bundled plugin description.
+    FSR. Correct the installer notice and bundled plugin description.
   * Align package and runtime identity with 2.8.3-1.
 
  -- N3ruk <csz_11@hotmail.com>  Wed, 21 Oct 2026 09:45:00 +0200
