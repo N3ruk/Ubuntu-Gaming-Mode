@@ -1,3 +1,11 @@
+ubuntu-gaming-mode (2.8.3-2) unstable; urgency=medium
+
+  * Correct the package changelog wording: the installer notice is in Spanish,
+    not bilingual. The installer notice itself and runtime behavior are unchanged.
+  * Align package and runtime identity with 2.8.3-2.
+
+ -- N3ruk <csz_11@hotmail.com>  Wed, 21 Oct 2026 10:04:58 +0200
+
 ubuntu-gaming-mode (2.8.3-1) unstable; urgency=medium
 
   * Clarify that the optional Sharp Filter Selector Decky plugin links QAM

@@ -2,6 +2,10 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 2.8.3-2 — 2026-10-21
+
+- Corregida la redacción del changelog del paquete Debian: el aviso del instalador está en español, no es bilingüe. Sin cambios en el funcionamiento.
+
 ## 2.8.3-1 — 2026-10-21
 
 - Aclarado en el instalador que el plugin opcional Sharp Filter Selector de Decky enlaza «Nitidez» de QAM con SGSR cuando Gamescope lo admite; Gamescope por sí solo no hace que QAM seleccione SGSR. El plugin también permite elegir NIS o forzar FSR.

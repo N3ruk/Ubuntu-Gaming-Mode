@@ -4,7 +4,7 @@
 
 Ubuntu Gaming Mode (UGM) adds a dedicated Gamescope DRM/KMS + Steam Gamepad UI
 session to Ubuntu Desktop. You can switch between the normal desktop and Gaming
-Mode without replacing Ubuntu. The current stable package is **2.8.3-1** for
+Mode without replacing Ubuntu. The current stable package is **2.8.3-2** for
 **Ubuntu 26.04 amd64**.
 
 ## Start here
@@ -17,7 +17,7 @@ Mode without replacing Ubuntu. The current stable package is **2.8.3-1** for
 ```bash
 # From the directory containing both downloaded files:
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.3-1_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.3-2_amd64.deb
 sudo ubuntu-gaming-mode-doctor
 ```
 

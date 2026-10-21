@@ -2,7 +2,7 @@
 
 [English](../../ugm-2.8/README.md) | **Español** · [Índice](../README.md)
 
-Actualizado: 2026-10-21. **Paquete actual: 2.8.3-1.**
+Actualizado: 2026-10-21. **Paquete actual: 2.8.3-2.**
 Este índice documenta las novedades frente a 2.5.0-5 y enlaza sus evidencias.
 
 ## Cambios frente a 2.5
@@ -42,7 +42,7 @@ ajustes y metadatos de empaquetado al importar VRS.
   y del equipo.
 - Para 2.8.2-1 pasaron 84 pruebas automatizadas y una prueba aislada de
   activación y restauración del tema.
-- El `.deb` y `SHA256SUMS` actuales están en la [release publicada](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.3-1).
+- El `.deb` y `SHA256SUMS` actuales están en la [release publicada](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.3-2).
   `dist/` es un directorio local de build ignorado por Git.
 
 [Historial completo](../../../CHANGELOG_es.md) ·

@@ -695,9 +695,9 @@ if [ -x "$CAPABILITY_READER" ]; then
     # La caché del inventario pertenece al usuario de la sesión de escritorio.
     # Doctor suele ejecutarse con sudo: leer como root consultaría otra caché.
     if [ "$(id -u)" -eq 0 ] && id "${UGM_USER:-__missing__}" >/dev/null 2>&1; then
-        CAPABILITY_JSON="$(runuser -u "$UGM_USER" -- env -u XDG_CACHE_HOME "$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.3-1 2>/dev/null)" || CAPABILITY_JSON=""
+        CAPABILITY_JSON="$(runuser -u "$UGM_USER" -- env -u XDG_CACHE_HOME "$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.3-2 2>/dev/null)" || CAPABILITY_JSON=""
     else
-        CAPABILITY_JSON="$("$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.3-1 2>/dev/null)" || CAPABILITY_JSON=""
+        CAPABILITY_JSON="$("$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.3-2 2>/dev/null)" || CAPABILITY_JSON=""
     fi
     if [ -n "$CAPABILITY_JSON" ]; then
         CAPABILITY_REPORT="$(printf '%s' "$CAPABILITY_JSON" | python3 -c '

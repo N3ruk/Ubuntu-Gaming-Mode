@@ -2,7 +2,7 @@
 
 **English** | [Español](../es/ugm-2.8/README.md) · [Documentation index](../README.md)
 
-The current package is `2.8.3-1`. This page describes the 2.8 changes from
+The current package is `2.8.3-2`. This page describes the 2.8 changes from
 2.5.0-5; the component pages distinguish tests from hardware observations.
 
 | Area | Change | Details |
@@ -38,7 +38,7 @@ preserved during that import.
 - For 2.8.2-1, 84 automated tests and an isolated icon-theme activation and
   rollback test passed.
 - The current release `.deb` and `SHA256SUMS` are available on
-  [GitHub](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.3-1).
+  [GitHub](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.3-2).
   `dist/` is a local build-output directory, not source tracked in Git.
 
 [Changelog](../../CHANGELOG.md) · [Install](../installation.md) · [Source](../../SOURCE.md)

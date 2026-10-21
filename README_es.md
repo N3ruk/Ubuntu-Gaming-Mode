@@ -5,7 +5,7 @@
 Ubuntu Gaming Mode (UGM) añade a Ubuntu Desktop una sesión dedicada con
 Gamescope DRM/KMS y Steam Gamepad UI. Permite alternar entre el escritorio
 habitual y Gaming Mode sin sustituir Ubuntu. El paquete estable actual es
-**2.8.3-1** para **Ubuntu 26.04 amd64**.
+**2.8.3-2** para **Ubuntu 26.04 amd64**.
 
 ## Por dónde empezar
 
@@ -17,7 +17,7 @@ habitual y Gaming Mode sin sustituir Ubuntu. El paquete estable actual es
 ```bash
 # Desde el directorio donde hayas descargado ambos archivos:
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.3-1_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.3-2_amd64.deb
 sudo ubuntu-gaming-mode-doctor
 ```
 

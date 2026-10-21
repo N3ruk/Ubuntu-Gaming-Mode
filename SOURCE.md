@@ -2,7 +2,7 @@
 
 **English** | [Español](SOURCE_es.md)
 
-This tree contains the **Ubuntu Gaming Mode 2.8.3-1** sources. This tree retains the historical
+This tree contains the **Ubuntu Gaming Mode 2.8.3-2** sources. This tree retains the historical
 2.5 Gamescope 3.16.30 record and adds patch 0010 for 2.8.
 
 ## Layout
