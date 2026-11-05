@@ -16,10 +16,20 @@ db_subst ubuntu-gaming-mode/system-gamescope-command \
 db_input high ubuntu-gaming-mode/console-suspend-button || true
 db_input high ubuntu-gaming-mode/system-gamescope-command || true
 db_input high ubuntu-gaming-mode/desktop-icon-theme || true
-# Opciones independientes: Decky puede estar instalado previamente.
+# Decky y el maestro son opcionales; ya no se ofrecen módulos separados.
 db_input high ubuntu-gaming-mode/decky-loader || true
-db_input high ubuntu-gaming-mode/decky-sharp-filter-selector || true
-db_input high ubuntu-gaming-mode/decky-downsampling-sharpener || true
+# Migrar la selección anterior una sola vez; no volver a activar un rechazo.
+db_fget ubuntu-gaming-mode/decky-options seen || true
+if [ "${RET:-false}" != true ]; then
+    for key in decky-sharp-filter-selector decky-downsampling-sharpener decky-video-output; do
+        RET=false
+        db_get ubuntu-gaming-mode/$key || true
+        if [ "${RET:-false}" = true ]; then
+            db_set ubuntu-gaming-mode/decky-options true || true
+        fi
+    done
+fi
+db_input high ubuntu-gaming-mode/decky-options || true
 # Preguntar solo si el kernel enumera un adaptador Bluetooth USB.
 # La BIOS y la prueba física no son detectables desde debconf.
 for hci in /sys/class/bluetooth/hci[0-9]*; do

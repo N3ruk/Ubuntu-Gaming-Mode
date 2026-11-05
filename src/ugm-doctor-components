@@ -1,0 +1,254 @@
+#!/usr/bin/python3
+"""Read-only diagnostics for the prepared UGM 2.8.5 components.
+
+Never import user plugins, run hook modules, contact CDP or change services.
+"""
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import pwd
+import subprocess
+import sys
+
+HOOKS = {
+    'steam-youtube-pause-hook': ('cdp.mjs', 'frontend.mjs', 'runtime.mjs', 'supervisor.mjs', 'session.mjs', 'service.mjs', 'contract.json'),
+    'steam-client-update-hook': ('cdp.mjs', 'frontend.mjs', 'backend.mjs', 'compatibility.mjs', 'service.mjs'),
+}
+OPTIONS_FILES = ('manifest.json', 'plugin.json', 'package.json', 'main.py', 'backend.py',
+                 'worker.py', 'modules.json', 'dist/index.js', 'LICENSE', 'NOTICE.md',
+                 'modules/sharp/main.py', 'modules/downsampling/main.py',
+                 'modules/nonsteam/main.py', 'modules/video/main.py',
+                 'modules/video/dist/ugm-active-display')
+LEGACY = ('sharp-filter-selector', 'ugm-downsampling-sharpener', 'ugm-video-output', 'ugm-non-steam')
+
+
+def options_files(payload):
+    manifest = read_json(payload/'manifest.json')
+    names = manifest['sha256']
+    if not isinstance(names, dict) or not set(OPTIONS_FILES) - {'manifest.json'} <= names.keys():
+        raise ValueError('manifiesto incompleto')
+    if any(Path(n).is_absolute() or '..' in Path(n).parts for n in names):
+        raise ValueError('ruta no válida')
+    return tuple(sorted(set(OPTIONS_FILES) | set(names)))
+
+
+SESSION = 'gamescope-session-plus@steam.service'
+
+
+def command(argv):
+    try:
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=8, check=False)
+        return result.stdout.strip() if result.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def read_json(path):
+    with path.open('r', encoding='utf-8') as stream:
+        data = stream.read(65537)
+    if len(data) > 65536:
+        raise ValueError('JSON demasiado grande')
+    value = json.loads(data)
+    if not isinstance(value, dict):
+        raise ValueError('JSON no es un objeto')
+    return value
+
+
+def unit_state(run, prefix, unit):
+    output = run([*prefix, 'systemctl', '--user', 'show', unit,
+                  '--property=LoadState,ActiveState,FragmentPath,DropInPaths,UnitFileState'])
+    return dict(line.split('=', 1) for line in output.splitlines() if '=' in line) if output else None
+
+
+def diagnose(emit, account=None, *, runtime=Path('/usr/lib/ubuntu-gaming-mode'),
+             units=Path('/usr/lib/systemd/user'),
+             options=Path('/usr/share/ubuntu-gaming-mode/decky-plugins/ugm-options'),
+             md5file=Path('/var/lib/dpkg/info/ubuntu-gaming-mode.md5sums'), run=command, now=None):
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    required = [runtime/'ugm-steam-hooks', runtime/'ugm-doctor-components']
+    required += [runtime/'steam-hooks'/hook/name for hook, names in HOOKS.items() for name in names]
+    required += [units/f'ugm-{hook}.service' for hook in HOOKS]
+    try:
+        plugin_files = options_files(options)
+    except (OSError, ValueError, KeyError, TypeError):
+        emit('FAIL', 'manifiesto UGM Options ausente o inválido')
+        plugin_files = OPTIONS_FILES
+    required += [options/name for name in plugin_files]
+    missing = [p for p in required if not p.is_file()]
+    for path in missing:
+        emit('FAIL', f'falta componente 2.8.5: {path}')
+    if not missing:
+        emit('OK', 'payload de YouTube, actualizador y UGM Options completo')
+    for path in (runtime/'ugm-steam-hooks', runtime/'ugm-doctor-components', options/'modules/video/dist/ugm-active-display'):
+        if path.is_file() and not os.access(path, os.X_OK):
+            emit('FAIL', f'componente no ejecutable: {path}')
+
+    # Verify only component files listed by dpkg; never run user-controlled code.
+    try:
+        checksums = {}
+        for line in md5file.read_text().splitlines():
+            digest, name = line.split(maxsplit=1)
+            checksums[name.lstrip('*')] = digest
+        absent = changed = 0
+        for path in required:
+            if not path.is_file():
+                continue
+            expected = checksums.get(str(path).lstrip('/'))
+            if expected is None:
+                absent += 1
+                continue
+            with path.open('rb') as stream:
+                digest = hashlib.md5()
+                for chunk in iter(lambda: stream.read(131072), b''):
+                    digest.update(chunk)
+                actual = digest.hexdigest()
+            if actual != expected:
+                changed += 1
+                emit('FAIL', f'integridad del componente no coincide con dpkg: {path}')
+        if absent:
+            emit('WARN', f'{absent} componentes sin huella dpkg; integridad no verificada')
+        elif not changed and not missing:
+            emit('OK', 'integridad de componentes coincide con el manifiesto dpkg')
+    except (OSError, ValueError):
+        emit('WARN', 'no se pudo comprobar el manifiesto de integridad dpkg')
+
+    version = run(['/usr/bin/node', '--version'])
+    try:
+        major = int((version or '').lstrip('v').split('.')[0])
+    except ValueError:
+        major = 0
+    emit('OK' if major >= 22 else 'FAIL', 'Node.js >=22 disponible en /usr/bin/node' if major >= 22 else 'falta Node.js >=22 en /usr/bin/node')
+
+    for hook in HOOKS:
+        path = units/f'ugm-{hook}.service'
+        try:
+            lines = path.read_text().splitlines()
+            expected = (f'ExecStart=/usr/bin/node {runtime}/steam-hooks/{hook}/service.mjs',
+                        f'PartOf={SESSION}', f'After={SESSION}')
+            good = all(line in lines for line in expected) and not any(line.startswith('WantedBy=') for line in lines)
+            emit('OK' if good else 'FAIL', f'{hook}: unidad canónica ligada a UGM' if good else f'{hook}: unidad fuera del contrato de sesión')
+        except OSError:
+            pass  # Missing payload already reported.
+    try:
+        text = (units/'gamescope-session-plus@.service').read_text()
+        good = all(f'{runtime}/ugm-steam-hooks {action} %i' in text for action in ('prepare', 'start', 'stop'))
+        emit('OK' if good else 'FAIL', 'ciclo prepare/start/stop de hooks integrado en sesión' if good else 'sesión no integra el ciclo de los hooks')
+    except OSError:
+        emit('FAIL', 'falta la unidad de sesión para comprobar el ciclo de hooks')
+
+    if account is None:
+        emit('WARN', 'sin usuario/UID válido: estado de sesión, hooks y plugin no comprobado')
+        return
+    home = Path(account.pw_dir)
+    prefix = ['runuser', '-u', account.pw_name, '--', 'env', f'HOME={home}',
+              f'XDG_RUNTIME_DIR=/run/user/{account.pw_uid}',
+              f'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{account.pw_uid}/bus']
+    session = unit_state(run, prefix, SESSION)
+    gaming = session is not None and session.get('ActiveState') == 'active'
+    if session is None:
+        emit('INFO', 'gestor de usuario no accesible; estado vivo no comprobado')
+    else:
+        emit('INFO', 'sesión UGM activa' if gaming else 'fuera de sesión UGM activa; hooks detenidos es normal')
+    for hook in HOOKS:
+        unit = f'ugm-{hook}.service'
+        override = home/'.config/systemd/user'/unit
+        if os.path.lexists(override):
+            emit('WARN', f'{hook}: unidad local/antigua o máscara conservada; revisar migración')
+        state = unit_state(run, prefix, unit) if session is not None else None
+        if state is not None:
+            if state.get('LoadState') != 'loaded':
+                emit('FAIL', f'{hook}: unidad ausente, enmascarada o no cargable')
+            if state.get('FragmentPath') != str(units/unit) or state.get('DropInPaths'):
+                emit('WARN', f'{hook}: unidad efectiva personalizada o con drop-ins')
+            if state.get('UnitFileState', '').startswith('enabled'):
+                emit('WARN', f'{hook}: habilitado fuera del arranque acotado a UGM')
+            active = state.get('ActiveState')
+            if active == 'failed' or (gaming and active not in ('active', 'activating')):
+                emit('FAIL', f'{hook}: servicio no operativo durante UGM o en estado failed')
+            elif not gaming and active in ('active', 'activating'):
+                emit('WARN', f'{hook}: servicio activo fuera de sesión UGM')
+            else:
+                emit('OK', f'{hook}: estado de servicio coherente con la sesión')
+        # Default locations of packaged units; custom environment/drop-ins warned above.
+        status = home/'.local/state/ubuntu-gaming-mode'/hook/'status.json'
+        if gaming:
+            try:
+                value = read_json(status)
+                timestamp = value['time']
+                if not isinstance(timestamp, str):
+                    raise ValueError('Fecha inválida')
+                observed = datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                age = (now-observed).total_seconds()
+                if not 0 <= age <= 30:
+                    emit('WARN', f'{hook}: estado histórico o reloj incoherente, no confirma el hook actual')
+                elif value.get('state') == 'attached' and isinstance(value.get('hook'), dict):
+                    data = value['hook']
+                    valid = data.get('active') is True if hook == 'steam-youtube-pause-hook' else data.get('installedBuild') == 1792618285 and data.get('version') == '2'
+                    emit('OK' if valid else 'WARN', f'{hook}: hook adjunto y contrato de estado válido' if valid else f'{hook}: adjunto sin confirmación de contrato esperado')
+                    if hook == 'steam-client-update-hook' and data.get('lastError'):
+                        emit('WARN', 'actualizador: última operación informa error; revisar logs del servicio')
+                else:
+                    emit('WARN', f'{hook}: esperando conexión/contexto o cliente incompatible; no confirmado')
+            except (OSError, ValueError, KeyError, TypeError):
+                emit('WARN', f'{hook}: estado reciente no disponible o ilegible')
+    marker = home/'.local/share/Steam/.cef-enable-remote-debugging'
+    if gaming:
+        emit('OK' if marker.is_file() else 'WARN', 'marcador CDP presente (no demuestra conexión)' if marker.is_file() else 'falta marcador CDP; no se confirma arranque de los hooks')
+    else:
+        emit('INFO', 'sin consultar estados históricos como prueba de hooks activos; marcador CDP previo puede conservarse')
+
+    target = home/'homebrew/plugins/ugm-options'
+    if not os.path.lexists(target):
+        emit('INFO', 'UGM Options no instalado: opción independiente, estado válido')
+    elif target.is_symlink() or not target.is_dir():
+        emit('WARN', 'UGM Options: ruta personalizada/no verificable, conservada')
+    else:
+        for name in plugin_files:
+            if not (target/name).is_file():
+                emit('FAIL', f'UGM Options instalado incompleto: {name}')
+        if (target/'modules/video/dist/ugm-active-display').is_file() and not os.access(target/'modules/video/dist/ugm-active-display', os.X_OK):
+            emit('FAIL', 'lector de salida activa del plugin no ejecutable')
+        try:
+            good = read_json(target/'plugin.json').get('name') == 'UGM Options' and read_json(target/'package.json').get('version') == '1.0.0'
+            emit('OK' if good else 'WARN', 'UGM Options 1.0.0 identificado' if good else 'UGM Options: metadatos distintos de la versión preparada')
+            different = any((target/name).read_bytes() != (options/name).read_bytes() for name in plugin_files if (target/name).is_file() and (options/name).is_file())
+            if different:
+                emit('WARN', 'UGM Options instalado distinto del payload; copia existente conservada')
+        except (OSError, ValueError):
+            emit('WARN', 'UGM Options: metadatos o archivos no legibles')
+        loader = home/'homebrew/services/PluginLoader'
+        if not loader.is_file() or not os.access(loader, os.X_OK):
+            emit('WARN', 'UGM Options presente, pero Decky Loader falta o no es ejecutable')
+        loader_state = run(['systemctl', 'show', 'plugin_loader.service', '--property=ActiveState', '--value'])
+        if gaming and loader_state != 'active':
+            emit('WARN', 'Decky Loader no confirmado activo en Gaming Mode')
+        for slug in LEGACY:
+            if os.path.lexists(target.parent/slug):
+                emit('WARN', f'UGM Options y {slug} presentes: módulo bloqueado; reconfigurar para migrar')
+        if (target.parent/'output-manager').exists():
+            emit('WARN', 'UGM Options y Output Manager presentes: posible doble controlador')
+    emit('INFO', 'diagnóstico solo lectura: no valida pausa con mando, actualización real ni cambio físico de pantalla')
+
+
+def main():
+    counts = {'OK': 0, 'WARN': 0, 'FAIL': 0, 'INFO': 0}
+    def emit(level, message):
+        counts[level] += 1
+        print(f'[{level}] {message}')
+    account = None
+    if len(sys.argv) == 3:
+        try:
+            candidate = pwd.getpwnam(sys.argv[1])
+            if candidate.pw_uid == int(sys.argv[2]) and candidate.pw_uid != 0:
+                account = candidate
+        except (KeyError, ValueError):
+            pass
+    diagnose(emit, account)
+    print('UGM_COMPONENT_COUNTS={OK},{WARN},{FAIL}'.format(**counts))
+    return 1 if counts['FAIL'] else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

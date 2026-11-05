@@ -1,0 +1,17 @@
+{
+  "name": "UGM Video Output",
+  "author": "N3ruk",
+  "flags": [
+    "root"
+  ],
+  "api_version": 1,
+  "publish": {
+    "tags": [
+      "utility",
+      "display",
+      "video",
+      "dock"
+    ],
+    "description": "Select the Gaming Mode display in Ubuntu Gaming Mode, with monitor brand and label."
+  }
+}

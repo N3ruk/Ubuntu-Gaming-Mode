@@ -5,7 +5,12 @@
 Ubuntu Gaming Mode (UGM) añade a Ubuntu Desktop una sesión dedicada con
 Gamescope DRM/KMS y Steam Gamepad UI. Permite alternar entre el escritorio
 habitual y Gaming Mode sin sustituir Ubuntu. El paquete estable actual es
-**2.8.3-2** para **Ubuntu 26.04 amd64**.
+**2.8.5-1** para **Ubuntu 26.04 amd64**.
+
+La **2.8.5** incorpora los arreglos de YouTube con mando y del botón de
+actualización de Steam, además de **UGM Options**: una entrada Decky con Sharp
+Filter, Downsampling, Video Output y Non-Steam, y migración de plugins anteriores.
+[Funciones, compatibilidad y límites](docs/es/ugm-2.8.5/README.md).
 
 ## Por dónde empezar
 
@@ -17,12 +22,12 @@ habitual y Gaming Mode sin sustituir Ubuntu. El paquete estable actual es
 ```bash
 # Desde el directorio donde hayas descargado ambos archivos:
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.3-2_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.5-1_amd64.deb
 sudo ubuntu-gaming-mode-doctor
 ```
 
 No utilices un fichero de checksums de otra versión. La instalación o
-reconfiguración ofrece funciones opcionales: Decky Loader, ambos plugins,
+reconfiguración ofrece funciones opcionales: Decky Loader, UGM Options,
 despertar por mando Bluetooth y las capas VRS experimentales no se activan
 todas automáticamente.
 
@@ -30,8 +35,8 @@ todas automáticamente.
 
 - Runtime dedicado Gamescope 3.16.30 GBM con nitidez selectiva al reducir
   resolución (parche 0010), controlable opcionalmente con un plugin Decky.
-- Integración opcional de Decky Loader, Sharp Filter Selector y UGM Downsampling
-  Sharpener, con preguntas independientes y una corrección de permisos en 2.8.0-2.
+- Integración opcional de Decky Loader y UGM Options, con preguntas independientes
+  y desactivadas por defecto para Loader y el plugin unificado.
 - Opción de despertar por mando Bluetooth, con política USB de denegación por
   defecto **solo en instalaciones nuevas de 2.8 que la activen**. Las
   actualizaciones desde 2.5 conservan su política anterior.

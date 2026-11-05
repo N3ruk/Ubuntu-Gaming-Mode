@@ -1,0 +1,7 @@
+node_modules/
+release/
+.test-build/
+__pycache__/
+.ui-test-build/
+
+*.map

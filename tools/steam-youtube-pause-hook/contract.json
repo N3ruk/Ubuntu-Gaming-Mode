@@ -1,0 +1,14 @@
+{
+  "build": 1792618285,
+  "module": 39039,
+  "export": "N1",
+  "methods": {
+    "shouldComponentUpdate": "shouldComponentUpdate(m,T){if(!this.m_player)return!1;const L=this.props;return L.autoplay!=m.autoplay||L.controls!=m.controls||L.showInfo!=m.showInfo||L.video!=m.video?(this.CreatePlayer(m),!1):((L.width!=m.width||L.height!=m.height)&&this.m_bPlayerReady&&m.width&&m.height&&this.m_player.setSize(m.width,m.height),L.forcePause!=m.forcePause)}",
+    "componentDidUpdate": "componentDidUpdate(m){m.forcePause!=this.props.forcePause&&(this.props.forcePause?this.m_player?.pauseVideo():this.m_player?.playVideo())}",
+    "CreatePlayer": "function () { [native code] }",
+    "DestroyPlayer": "DestroyPlayer(){if(this.m_player)try{this.m_player.stopVideo&&this.m_player.stopVideo(),this.m_player.destroy&&this.m_player.destroy()}catch{}finally{this.m_player=null}}",
+    "OnPlayerReady": "function () { [native code] }",
+    "componentWillUnmount": "componentWillUnmount(){this.DestroyPlayer(),g(this.OnYoutubeScriptsReady)}"
+  },
+  "factorySHA256": "2c1c2154487c2f6a0b4035b527bcb56c4355bc33ee9aa8450deb0de9729933fe"
+}

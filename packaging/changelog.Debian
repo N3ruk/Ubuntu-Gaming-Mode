@@ -1,3 +1,15 @@
+ubuntu-gaming-mode (2.8.5-1) unstable; urgency=medium
+
+  * Package independent YouTube controller and Steam client-update fixes with
+    build/hash guards, Node.js >=22 and UGM-scoped user service lifecycle.
+  * Add optional UGM Options: retain Sharp/Downsampling panels and include
+    Video Output and Non-Steam with separated worker privileges.
+  * Migrate legacy standalone plugins transactionally, preserving settings
+    and unrelated plugins; describe each function in bilingual prompts.
+  * Extend read-only Doctor to packaged hooks, master and migration conflicts.
+
+ -- N3ruk <csz_11@hotmail.com>  Thu, 05 Nov 2026 18:00:00 +0100
+
 ubuntu-gaming-mode (2.8.3-2) unstable; urgency=medium
 
   * Correct the package changelog wording: the installer notice is in Spanish,

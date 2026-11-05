@@ -1,0 +1,13 @@
+[Unit]
+Description=UGM Steam YouTube controller pause fix
+PartOf=gamescope-session-plus@steam.service
+After=gamescope-session-plus@steam.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node /usr/lib/ubuntu-gaming-mode/steam-hooks/steam-youtube-pause-hook/service.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=50
+NoNewPrivileges=yes
+UMask=0077

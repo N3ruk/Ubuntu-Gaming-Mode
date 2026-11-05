@@ -67,3 +67,21 @@ el checksum anterior.
   descargados.
 - No publiques capturas locales, directorios de build, datos de usuario ni
   credenciales.
+
+## Ensamblado 2.8.5
+
+La condición de build está en `packaging/release-2.8.5.json`; construcción y
+publicación autorizadas el 2026-11-05. La receta recompila el lector de vídeo de
+solo lectura y ensambla UGM Options desde sus cuatro módulos versionados. El
+árbol maestro generado no es una segunda fuente de verdad. Los bundles frontend
+de Video Output y Non-Steam se versionan con fuentes TypeScript y lockfiles.
+Requisitos nativos: compilador C, pkg-config, wayland-scanner y cabeceras Wayland.
+Los hooks requieren Node.js >=22. Comprobaciones adicionales:
+
+```sh
+bash integrations/decky/ugm-video-output/native/build.sh
+python3 integrations/decky/ugm-options/build.py
+node --test tools/steam-youtube-pause-hook/*.test.mjs tools/steam-client-update-hook/*.test.mjs
+python3 -m unittest discover -s integrations/decky/ugm-options/tests
+(cd integrations/decky/ugm-options && npm ci --ignore-scripts && npm test)
+```

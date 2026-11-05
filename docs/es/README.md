@@ -2,12 +2,12 @@
 
 [English](../README.md) | **Español** · [Inicio del proyecto](../../README_es.md)
 
-Este índice separa las **guías vigentes de 2.8.3-2** de los **registros
+Este índice separa las **guías vigentes de 2.8.5-1** de los **registros
 históricos de cada versión**. Empieza por la instalación y consulta las páginas
 de funciones para detalles y pruebas. Los resultados de hardware solo cubren
 los sistemas y ensayos indicados en cada documento.
 
-## Instalar y usar 2.8.3-2
+## Instalar y usar 2.8.5-1
 
 - [Instalar, verificar y configurar](instalacion.md)
 - [Desinstalar y restaurar el estado original](desinstalacion-y-rollback.md)
@@ -17,6 +17,10 @@ los sistemas y ensayos indicados en cada documento.
   [Decky](ugm-2.8/decky.md),
   [despertar Bluetooth/USB](ugm-2.8/despertar-usb.md),
   [VRS](ugm-2.8/vrs.md)
+
+## Novedades de 2.8.5
+
+- [YouTube, actualizador, UGM Options, migración y límites](ugm-2.8.5/README.md).
 
 ## Comprender y construir
 

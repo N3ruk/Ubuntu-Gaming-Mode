@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "status": "development-unverified-in-UGM",
+  "upstream": {
+    "url": "https://github.com/danielcamilo1/decky-add-non-steam-games",
+    "commit": "7f77800b715f5b17efc6a394c9edeb8be6a58841",
+    "version": "1.7.13",
+    "license": "BSD-3-Clause"
+  },
+  "compatibility_patch": {
+    "url": "https://github.com/danielcamilo1/decky-add-non-steam-games/pull/1",
+    "commit": "edbe170bb0880b11dc36d15666e1a4f7611a0c6b",
+    "author": "ReemX",
+    "retained_file": "src/compatTools.ts",
+    "sha256": "52275a56c1d4cd2af0ce16970f825637031067c9811679a8ce16cf03d4878ceb"
+  },
+  "adaptation": "UGM catalog and shortcut sequencing rewritten; UI and backend replaced. No Steam restart/artwork/collections."
+}

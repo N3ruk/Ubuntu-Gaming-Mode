@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/N3ruk/SteamOS-ASUS-ROG-ALLY",
+  "commit": "5a8e403801425ac1477582386a9c83795e725679",
+  "path": "components/video-output-ally",
+  "version": "1.0",
+  "adaptation": "UGM Video Output 1.0",
+  "gamescope_protocol": {
+    "repository": "https://github.com/ValveSoftware/gamescope",
+    "commit": "ad2763da1c48860f649abfe842a087188dcb6e20",
+    "path": "protocol/gamescope-control.xml"
+  }
+}

@@ -4,7 +4,7 @@
 
 ## Requisitos
 
-El paquete publicado `2.8.3-2` está destinado a **Ubuntu 26.04 amd64**.
+El paquete publicado `2.8.5-1` está destinado a **Ubuntu 26.04 amd64**.
 Instálalo desde una terminal interactiva del escritorio con APT, que resuelve
 las dependencias. Las funciones de hardware (HDR, VRR, VRS y despertar
 Bluetooth) dependen de la GPU, el controlador, el monitor y el firmware;
@@ -12,19 +12,25 @@ consulta [problemas conocidos](problemas-conocidos.md).
 
 ## Descargar y verificar
 
-Descarga `ubuntu-gaming-mode_2.8.3-2_amd64.deb` y `SHA256SUMS` de la
-[misma release de GitHub](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.3-2).
+Descarga `ubuntu-gaming-mode_2.8.5-1_amd64.deb` y `SHA256SUMS` de la
+[misma release de GitHub](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.5-1).
 Desde el directorio de descarga:
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.3-2_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.5-1_amd64.deb
 ```
 
 El comando de checksum debe mostrar `OK`. Deja abierta la terminal para las
 preguntas Debconf. El instalador guarda el estado original para rollback,
 configura la sesión y ejecuta Doctor; no reinicia GDM ni cierra el escritorio
 actual. Una actualización conserva la línea base original.
+
+## Compatibilidad con Steam
+
+Node.js >=22 es una dependencia obligatoria de APT. Los hooks empaquetados solo
+se ejecutan en la sesión UGM y admiten la build fijada **1792618285** de Steam.
+Rechazan builds/huellas desconocidas; consulta [compatibilidad 2.8.5](ugm-2.8.5/README.md).
 
 ## Opciones de instalación
 
@@ -37,7 +43,9 @@ proteger posibles modificaciones. Se puede repetir con
 `sudo dpkg-reconfigure ubuntu-gaming-mode`.
 
 Debconf ofrece opciones independientes, desactivadas por defecto, para Decky
-Loader y sus dos plugins; respeta una instalación previa de Decky. Instalar
+Loader y UGM Options; respeta una instalación previa de Decky. Al aceptar el
+maestro migra los plugins independientes detectados, conservando ajustes y otros
+plugins. Instalar
 Decky requiere red y un fallo en ese paso opcional no cancela UGM. Consulta
 [la integración Decky](ugm-2.8/decky.md).
 

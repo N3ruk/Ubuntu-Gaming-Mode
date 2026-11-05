@@ -4,8 +4,13 @@
 
 Ubuntu Gaming Mode (UGM) adds a dedicated Gamescope DRM/KMS + Steam Gamepad UI
 session to Ubuntu Desktop. You can switch between the normal desktop and Gaming
-Mode without replacing Ubuntu. The current stable package is **2.8.3-2** for
+Mode without replacing Ubuntu. The current stable package is **2.8.5-1** for
 **Ubuntu 26.04 amd64**.
+
+**2.8.5** includes the YouTube controller and Steam update-button fixes, plus
+**UGM Options**: one Decky entry for Sharp Filter, Downsampling, Video Output and
+Non-Steam, with migration from standalone plugins.
+[Features, compatibility and limits](docs/ugm-2.8.5/README.md).
 
 ## Start here
 
@@ -17,20 +22,20 @@ Mode without replacing Ubuntu. The current stable package is **2.8.3-2** for
 ```bash
 # From the directory containing both downloaded files:
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.3-2_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.5-1_amd64.deb
 sudo ubuntu-gaming-mode-doctor
 ```
 
 Do not use a checksum file from another release. Installation/reconfiguration
-offers optional features; Decky Loader, both Decky plugins, Bluetooth controller
+offers optional features; Decky Loader, UGM Options, Bluetooth controller
 wake and experimental VRS layers are not all enabled automatically.
 
 ## What 2.8 includes
 
 - Dedicated Gamescope 3.16.30 GBM runtime with selective downsampling
   sharpening (patch 0010), optionally controlled by a Decky plugin.
-- Optional Decky Loader, Sharp Filter Selector and UGM Downsampling Sharpener
-  integration, with separate prompts and a permissions fix in 2.8.0-2.
+- Optional Decky Loader and UGM Options integration, with separate default-off
+  prompts for Loader and the unified plugin.
 - Bluetooth-controller wake option, including a default-deny USB wake policy
   **only for fresh 2.8 installations that enable it**. Upgrades from 2.5 retain
   their previous policy.

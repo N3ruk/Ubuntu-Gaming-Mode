@@ -11,7 +11,7 @@ MANAGED="$STATE_ROOT/managed-state"
 LEGACY="$STATE_ROOT/preinstall"
 LEGACY_MANAGED="$STATE_ROOT/managed.sha256"
 
-PKG_VERSION="2.8.3-2"
+PKG_VERSION="2.8.5-1"
 
 CONFIG="/etc/ubuntu-gaming-mode/session.conf"
 
@@ -454,6 +454,15 @@ rm -f "$STATE_ROOT/last-package-adoption-backup"
 systemctl daemon-reload || true
 reload_user_systemd
 
+# Migrate only exact checkout-generated hook units. Do not start/restart Steam.
+if [ -S "/run/user/${UGM_UID}/bus" ]; then
+    runuser -u "$UGM_USER" -- env XDG_RUNTIME_DIR="/run/user/${UGM_UID}" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${UGM_UID}/bus" \
+        /usr/lib/ubuntu-gaming-mode/ugm-steam-hooks migrate steam ||
+        warn "No se migraron las unidades locales de los hooks; se conservan. Consulte el diario antes de entrar en UGM."
+fi
+log "Incluidos los arreglos independientes de YouTube con mando y del botón de actualizar Steam; se activarán al entrar en UGM."
+
 db_get ubuntu-gaming-mode/console-suspend-button || true
 
 if [ "${RET:-false}" = "true" ]; then
@@ -592,17 +601,12 @@ db_get ubuntu-gaming-mode/decky-loader || true
 decky_loader_arg=0
 [ "${RET:-false}" = true ] && decky_loader_arg=1
 RET=false
-db_get ubuntu-gaming-mode/decky-sharp-filter-selector || true
-decky_sharp_arg=0
-[ "${RET:-false}" = true ] && decky_sharp_arg=1
-RET=false
-db_get ubuntu-gaming-mode/decky-downsampling-sharpener || true
-decky_downsampling_arg=0
-[ "${RET:-false}" = true ] && decky_downsampling_arg=1
-if [ "$decky_loader_arg" = 1 ] || [ "$decky_sharp_arg" = 1 ] ||
-   [ "$decky_downsampling_arg" = 1 ]; then
+db_get ubuntu-gaming-mode/decky-options || true
+decky_options_arg=0
+[ "${RET:-false}" = true ] && decky_options_arg=1
+if [ "$decky_loader_arg" = 1 ] || [ "$decky_options_arg" = 1 ]; then
     /usr/lib/ubuntu-gaming-mode/ugm-decky-integration \
-        "$UGM_USER" "$decky_loader_arg" "$decky_sharp_arg" "$decky_downsampling_arg" ||
+        "$UGM_USER" "$decky_loader_arg" "$decky_options_arg" ||
         warn "La integración opcional Decky no se completó; reintentar con dpkg-reconfigure ubuntu-gaming-mode si se desea."
 fi
 

@@ -2,7 +2,7 @@
 
 [English](SOURCE.md) | **Español**
 
-Este árbol contiene las fuentes de **Ubuntu Gaming Mode 2.8.3-2**. Conserva el registro
+Este árbol contiene las fuentes de **Ubuntu Gaming Mode 2.8.5-1**. Conserva el registro
 histórico de Gamescope 3.16.30 de 2.5 y añade el parche 0010 para 2.8.
 
 ## Estructura
@@ -14,9 +14,10 @@ histórico de Gamescope 3.16.30 de 2.5 y añade el parche 0010 para 2.8.
 - `gamescope/versions/3.16.30-gbm/`: patches, procedencia y validación.
 - `tests/`: pruebas de las integraciones opcionales.
 - `docs/`: instalación, rollback, arquitectura y rendimiento.
+- `tools/steam-*-hook/`: fuentes y pruebas de los hooks de Steam acotados por compatibilidad.
 - `prototypes/vrs-common/`, `prototypes/nvidia-vrs/` y `prototypes/amd-vrs/`:
   fuentes, build y pruebas de las capas VRS. Los `.so` generados no se guardan en Git.
-- `integrations/decky/`: payload mínimo de los dos plugins opcionales.
+- `integrations/decky/`: fuentes y payload de UGM Options y sus cuatro motores.
 - `integrations/icon-theme/`: archivo fuente UGM-ICONS y su procedencia.
 - `docs/ugm-2.8/` y `docs/es/ugm-2.8/`: documentación bilingüe y límites de las novedades.
 - `system/icons/`: iconos PNG de UGM y de la app Bluetooth, ambos versionados.

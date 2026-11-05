@@ -71,3 +71,26 @@ El tema opcional UGM-ICONS procede del paquete proporcionado por N3ruk para
 esta versión. Su archivo `COPYING` declara GPL-3.0; se conserva junto con
 `AUTHORS` en el paquete y dentro del archivo del tema. Los iconos derivados de
 terceros mantienen los derechos que les correspondan.
+
+## UGM Video Output (2.8.5)
+
+[UGM Video Output](integrations/decky/ugm-video-output/README.md) adapta Video
+Output ALLY for DOCKs de N3ruk, derivado de Output Manager de joeatethebeans.
+Se conservan avisos BSD-3-Clause en LICENSE y NOTICE.md del componente.
+ORIGIN.json fija la procedencia; licenses/ incluye las licencias de dependencias
+del frontend y del protocolo gamescope_control de Valve (MIT).
+
+## UGM Options (2.8.5)
+
+UGM Options agrupa los cuatro motores y paneles originales en modules/, conservando
+licencias y créditos. Las carpetas fuente independientes siguen siendo entradas
+del ensamblado; el instalador ofrece solo el maestro. Ver
+[integrations/decky/ugm-options/NOTICE.md](integrations/decky/ugm-options/NOTICE.md).
+
+## Non-Steam (2.8.5)
+
+[UGM Non-Steam](integrations/decky/ugm-non-steam/README_ES.md) adapta Add Non-Steam
+Games de Daniel Vergara / Steam Deck Homebrew, incluido el trabajo de ReemX sobre
+herramientas de compatibilidad. Conserva avisos BSD-3-Clause y procedencia fijada en
+LICENSE, NOTICE.md y ORIGIN.json. Se distribuye dentro de UGM Options, no como
+segundo plugin instalado.

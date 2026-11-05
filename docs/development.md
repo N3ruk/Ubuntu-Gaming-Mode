@@ -63,3 +63,21 @@ requires a new package and checksum; do not silently reuse the old checksum.
   is an immutable snapshot in practice; documentation-only changes on `main`
   do not change previously downloaded packages.
 - Do not commit local captures, build directories, user data or credentials.
+
+## 2.8.5 assembly
+
+The release gate is `packaging/release-2.8.5.json`. Build/publication was authorized
+on 2026-11-05. The recipe rebuilds the native read-only video reader and assembles
+UGM Options from its four versioned module inputs; the generated master tree is
+not a second source of truth. Frontend bundles are versioned alongside TypeScript
+sources/lockfiles for Video Output and Non-Steam. Native build prerequisites:
+C compiler, pkg-config, wayland-scanner and libwayland development headers.
+Node.js >=22 is required for the hooks. For additional component checks, run:
+
+```sh
+bash integrations/decky/ugm-video-output/native/build.sh
+python3 integrations/decky/ugm-options/build.py
+node --test tools/steam-youtube-pause-hook/*.test.mjs tools/steam-client-update-hook/*.test.mjs
+python3 -m unittest discover -s integrations/decky/ugm-options/tests
+(cd integrations/decky/ugm-options && npm ci --ignore-scripts && npm test)
+```

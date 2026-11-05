@@ -10,6 +10,16 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 VERSION="$(sed -n 's/^Version:[[:space:]]*//p' "$ROOT/packaging/DEBIAN/control" | head -n1)"
 ARCH="$(sed -n 's/^Architecture:[[:space:]]*//p' "$ROOT/packaging/DEBIAN/control" | head -n1)"
 
+# Explicit release gate, checked before staging. Authorized on 2026-11-05.
+if [[ "$VERSION" == 2.8.5-* ]]; then
+    python3 - "$ROOT/packaging/release-2.8.5.json" "$VERSION" <<'PYRELEASE'
+import json, sys
+release = json.load(open(sys.argv[1], encoding='utf-8'))
+if release['version'] != sys.argv[2] or release.get('build_enabled') is not True:
+    sys.exit('UGM 2.8.5: build disabled in packaging/release-2.8.5.json.')
+PYRELEASE
+fi
+
 # Las nuevas preguntas y payloads pertenecen a 2.8. Impedir republicar
 # accidentalmente una 2.5 con el mismo número pero contenido diferente.
 case "$VERSION" in
@@ -52,17 +62,13 @@ install -m 0755 "$ROOT/src/ubuntu-gaming-mode-doctor"     "$WORK/usr/lib/ubuntu-
 install -m 0755 "$ROOT/src/ugm-capabilities"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-capabilities"
 install -m 0755 "$ROOT/src/ugm-display-options"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-display-options"
 install -m 0755 "$ROOT/src/ugm-decky-integration" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-decky-integration"
-for plugin in sharp-filter-selector ugm-downsampling-sharpener; do
-    source_dir="$ROOT/integrations/decky/$plugin"
-    target_dir="$WORK/usr/share/ubuntu-gaming-mode/decky-plugins/$plugin"
-    install -d -m 0755 "$target_dir/dist"
-    for file in plugin.json package.json main.py dist/index.js; do
-        install -m 0644 "$source_dir/$file" "$target_dir/$file"
-    done
-    if [[ -f "$source_dir/LICENSE" ]]; then
-        install -m 0644 "$source_dir/LICENSE" "$target_dir/LICENSE"
-    fi
-done
+"$ROOT/packaging/install-steam-hooks.sh" "$ROOT" "$WORK"
+# Build the native reader and assemble the master from versioned module inputs.
+bash "$ROOT/integrations/decky/ugm-video-output/native/build.sh"
+python3 "$ROOT/integrations/decky/ugm-options/build.py"
+# Solo el maestro es descubrible por Decky; los motores viajan anidados.
+python3 "$ROOT/packaging/install-decky-plugin.py" "$ROOT" "$WORK"
+
 install -m 0755 "$ROOT/src/ugm-bt-wake"     "$WORK/usr/lib/ubuntu-gaming-mode/ugm-bt-wake"
 install -m 0755 "$ROOT/src/ugm-bt-wake-app" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-bt-wake-app"
 install -m 0644 "$ROOT/system/systemd/ugm-bt-wake-apply.service" "$WORK/usr/lib/systemd/system/ugm-bt-wake-apply.service"
@@ -158,7 +164,7 @@ done
 
 for f in "$WORK/usr/lib/ubuntu-gaming-mode/"*; do
     [[ -f "$f" ]] || continue
-    [[ "$f" == */ugm-vrs-activate || "$f" == */gamescope || "$f" == */ugm-powerbuttond || "$f" == */ugm-steam-shortpowerpress || "$f" == */ugm-bt-wake || "$f" == */ugm-bt-wake-app || "$f" == */ugm-capabilities || "$f" == */ugm-display-options || "$f" == */ugm-vrs-select || "$f" == */ugm-vrs-stage || "$f" == */ugm-decky-integration || "$f" == */ugm-icon-theme ]] && continue
+    [[ "$f" == */ugm-vrs-activate || "$f" == */gamescope || "$f" == */ugm-powerbuttond || "$f" == */ugm-steam-shortpowerpress || "$f" == */ugm-bt-wake || "$f" == */ugm-bt-wake-app || "$f" == */ugm-capabilities || "$f" == */ugm-display-options || "$f" == */ugm-vrs-select || "$f" == */ugm-vrs-stage || "$f" == */ugm-decky-integration || "$f" == */ugm-icon-theme || "$f" == */ugm-steam-hooks || "$f" == */ugm-doctor-components ]] && continue
     bash -n "$f"
 done
 
@@ -229,14 +235,20 @@ compile(Path(sys.argv[1]).read_text(encoding="utf-8"), sys.argv[1], "exec")
 for plugin in Path(sys.argv[2]).iterdir():
     for name in ("plugin.json", "package.json"):
         json.loads((plugin / name).read_text(encoding="utf-8"))
-    compile((plugin / "main.py").read_text(encoding="utf-8"), str(plugin / "main.py"), "exec")
+    for module in plugin.rglob("*.py"):
+        compile(module.read_text(encoding="utf-8"), str(module), "exec")
 PY
 
-python3 - "$WORK/usr/lib/ubuntu-gaming-mode/ugm-icon-theme" <<'PYICONS'
+python3 - "$WORK/usr/lib/ubuntu-gaming-mode/ugm-icon-theme" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-steam-hooks" "$WORK/usr/lib/ubuntu-gaming-mode/ugm-doctor-components" <<'PYHELPERS'
 from pathlib import Path
 import sys
-compile(Path(sys.argv[1]).read_text(encoding='utf-8'), sys.argv[1], 'exec')
-PYICONS
+for name in sys.argv[1:]:
+    compile(Path(name).read_text(encoding='utf-8'), name, 'exec')
+PYHELPERS
+
+for module in "$WORK/usr/lib/ubuntu-gaming-mode/steam-hooks/"*/*.mjs; do
+    node --check "$module"
+done
 
 EXPECTED_GAMESCOPE_SHA_1_0_0_3="e43f0737287b2812d0c34a43c638131b3656058e1666d55228ad8acfe59d616c"
 EXPECTED_GAMESCOPE_SHA_2_0_0_1="5ddf50c78c7e2cf6bb9bc6485ccf7f5791da2d11b378bedaefd13abfc59ed256"

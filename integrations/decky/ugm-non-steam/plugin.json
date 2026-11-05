@@ -1,0 +1,13 @@
+{
+  "name": "UGM Añadir contenido Non-Steam",
+  "author": "N3ruk",
+  "flags": [],
+  "api_version": 1,
+  "publish": {
+    "tags": [
+      "library",
+      "utility"
+    ],
+    "description": "Add installed applications and executable files to Steam from Ubuntu Gaming Mode."
+  }
+}

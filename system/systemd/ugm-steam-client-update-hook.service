@@ -1,0 +1,13 @@
+[Unit]
+Description=UGM Steam client-only update fix
+PartOf=gamescope-session-plus@steam.service
+After=gamescope-session-plus@steam.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node /usr/lib/ubuntu-gaming-mode/steam-hooks/steam-client-update-hook/service.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=25
+NoNewPrivileges=yes
+UMask=0077

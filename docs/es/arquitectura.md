@@ -33,7 +33,7 @@ Juego
 
 De esta forma GNOME/Mutter queda fuera de la ruta final de presentación del juego.
 
-Para NIS, el flujo de UGM utiliza el plugin de Decky Loader [Sharp Filter Selector](https://github.com/N3ruk/Sharp-Filter-Selector) para desbloquear y seleccionar el filtro dentro de Gaming Mode.
+Para NIS, UGM usa el panel Sharp Filter de [UGM Options](ugm-2.8.5/README.md), conservando el motor original Sharp Filter Selector.
 
 ## Runtime canónico de Gamescope
 
@@ -43,7 +43,7 @@ UGM utiliza su propio binario validado de Gamescope:
 /usr/lib/ubuntu-gaming-mode/gamescope
 ```
 
-El paquete publicado **2.8.0-2** utiliza la base 3.16.30 GBM y añade el
+El paquete **2.8.5-1** utiliza la base 3.16.30 GBM y añade el
 **parche 0010** de nitidez selectiva al reducir resolución. El SHA256 esperado
 del binario Gamescope, fijado en la receta del paquete, es:
 
@@ -111,3 +111,11 @@ Solo la operación específica necesaria para rearmar el autologin se expone med
 También comprueba que `session.conf` sea legible por el usuario UGM configurado,
 los hashes del runtime empaquetado, la integración opcional del botón físico y
 el enlace global opcional de Gamescope.
+
+## Límites de servicios y plugin en 2.8.5
+
+La sesión Steam gestionada prepara el marcador CDP propio antes de iniciar Steam,
+arranca los dos hooks de usuario independientes y los detiene al salir. Rechaza
+contratos Steam desconocidos. Decky es opcional y tiene ciclo independiente; UGM
+Options separa workers y solo Video Output conserva root.
+[Compatibilidad y migración](ugm-2.8.5/README.md).

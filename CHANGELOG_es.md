@@ -2,6 +2,16 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 2.8.5-1 — 2026-11-05
+
+- Corregir pausa/reanudación de YouTube con mando sin perder la posición; empaquetar su hook independiente con reconexión y comprobaciones de build/hash de Steam.
+- Corregir el botón de actualización del cliente Steam conservando los controles de Gaming Mode. Consultar el manifiesto oficial de la rama y limitar la aplicación al cliente; identificar una versión informada `0` solo mediante huellas fijadas.
+- Añadir **UGM Options 1.0.0** opcional: una entrada Decky que conserva los paneles Sharp Filter y Downsampling y añade selección de pantalla con **Video Output** e importación de aplicaciones/ejecutables con **Non-Steam**.
+- Migrar los plugins independientes detectados al aceptar UGM Options, conservando ajustes y otros plugins, con rollback transaccional. Explicar cada función en las preguntas del instalador en inglés/español.
+- Empaquetar ambos hooks sin depender de Decky, exigir Node.js >=22, acotar los servicios a sesiones UGM y limpiar solo marcadores CDP propios. Ampliar el Doctor de solo lectura a hooks, compatibilidad y conflictos de migración.
+
+[Uso, compatibilidad y límites de verificación](docs/es/ugm-2.8.5/README.md).
+
 ## 2.8.3-2 — 2026-10-21
 
 - Corregida la redacción del changelog del paquete Debian: el aviso del instalador está en español, no es bilingüe. Sin cambios en el funcionamiento.

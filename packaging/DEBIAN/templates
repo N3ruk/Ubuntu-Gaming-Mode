@@ -174,30 +174,27 @@ Description-es.UTF-8: ¿Instalar Decky Loader para el usuario Gaming Mode de UGM
  fijado por SHA256. Requiere conexión. No sustituye un Decky existente. Si
  falla, UGM continúa; reintente con «dpkg-reconfigure ubuntu-gaming-mode».
 
-Template: ubuntu-gaming-mode/decky-sharp-filter-selector
+Template: ubuntu-gaming-mode/decky-options
 Type: boolean
 Default: false
-Description: Install the Sharp Filter Selector Decky plugin?
- This plugin links the Quick Access Menu's Sharp setting to SGSR when the
- active Gamescope supports it; Gamescope alone does not make QAM select SGSR.
- It also lets you select NIS or force FSR. Requires Decky Loader, already
- installed or selected above. Existing plugins and settings are not
- overwritten. Disabled by default.
-Description-es.UTF-8: ¿Instalar el plugin Sharp Filter Selector de Decky?
- Este plugin enlaza la opción «Nitidez» del QAM con SGSR cuando Gamescope lo
- admite; instalar Gamescope por sí solo no hace que el QAM seleccione SGSR.
- También permite elegir NIS o forzar FSR. Requiere Decky Loader, ya instalado
- o seleccionado arriba. No sobrescribe plugins ni ajustes. Desactivado por
- defecto.
-
-Template: ubuntu-gaming-mode/decky-downsampling-sharpener
-Type: boolean
-Default: false
-Description: Install the UGM Downsampling Sharpener Decky plugin?
- Offers downsampling sharpening controls when Gamescope includes patch 0010.
- Requires Decky Loader, already installed or selected above. Existing plugins
- and settings are not overwritten. Disabled by default.
-Description-es.UTF-8: ¿Instalar el plugin UGM Downsampling Sharpener de Decky?
- Ofrece la nitidez de downsampling cuando Gamescope incluye el parche 0010.
- Requiere Decky Loader, ya instalado o seleccionado arriba. No sobrescribe
- plugins ni ajustes. Desactivado por defecto.
+Description: Install UGM Options, the unified UGM Decky plugin?
+ Sharp Filter: restores NIS/FSR options and enables QAM sharpening with SGSR.
+ Downsampling: uses the UGM Gamescope patch for adjustable sharpening when
+ internal rendering resolution exceeds the monitor resolution.
+ Video Output: selects and configures the display output.
+ Non-Steam: adds external applications and games to Steam.
+ Requires Decky Loader, already installed or selected above. When accepted,
+ detected standalone versions of these four plugins are automatically retired
+ outside Decky's plugin folder, preserving their settings and other plugins.
+ Decky briefly stops during migration. Disabled by default on new installs.
+Description-es.UTF-8: ¿Instalar UGM Options, el plugin unificado de UGM para Decky?
+ Sharp Filter: recupera NIS/FSR y habilita la nitidez del QAM con SGSR.
+ Downsampling: aprovecha el parche de Gamescope UGM para activar nitidez
+ regulable cuando la resolución interna supera la del monitor.
+ Video Output: permite seleccionar y configurar la salida de pantalla.
+ Non-Steam: permite añadir aplicaciones y juegos externos a Steam.
+ Requiere Decky Loader, ya instalado o seleccionado arriba. Al aceptar,
+ retira automáticamente las versiones independientes detectadas de estos
+ cuatro plugins fuera de la carpeta de carga, conservando sus ajustes y los
+ demás plugins. Decky se detiene brevemente durante la migración.
+ Desactivado por defecto en instalaciones nuevas.

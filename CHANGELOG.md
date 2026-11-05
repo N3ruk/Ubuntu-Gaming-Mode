@@ -2,6 +2,16 @@
 
 **English** | [Español](CHANGELOG_es.md)
 
+## 2.8.5-1 — 2026-11-05
+
+- Fix YouTube controller pause/resume without losing playback position; package its independent, reconnecting hook with Steam build/hash guards.
+- Fix the Steam client update button while preserving Gaming Mode controls. Query the official branch manifest and restrict application to the client; identify a reported version `0` only through pinned client hashes.
+- Add optional **UGM Options 1.0.0**, one Decky entry retaining the existing Sharp Filter and Downsampling panels, plus display selection with **Video Output** and application/executable import with **Non-Steam**.
+- Migrate detected standalone plugins when UGM Options is accepted, preserving settings and unrelated plugins, with transactional rollback. Explain each module in the English/Spanish installer prompts.
+- Package the two hooks independently of Decky, require Node.js >=22, scope services to UGM sessions and clean up only UGM-owned CDP markers. Extend the read-only Doctor to hooks, compatibility and plugin migration conflicts.
+
+[Usage, compatibility and verification limits](docs/ugm-2.8.5/README.md).
+
 ## 2.8.3-2 — 2026-10-21
 
 - Correct the Debian package changelog wording: the installer prompt is in Spanish, not bilingual. No runtime behavior changes.

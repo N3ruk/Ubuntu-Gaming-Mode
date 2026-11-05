@@ -1,0 +1,7 @@
+/dist/
+/release/
+/modules/
+/manifest.json
+__pycache__/
+/node_modules/
+/test-results/

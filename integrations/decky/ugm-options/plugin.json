@@ -1,0 +1,16 @@
+{
+  "name": "UGM Options",
+  "author": "N3ruk",
+  "flags": [
+    "root"
+  ],
+  "api_version": 1,
+  "publish": {
+    "tags": [
+      "utility",
+      "gamescope",
+      "library"
+    ],
+    "description": "One expandable UGM container for Sharp Filter, Downsampling, Video Output and Non-Steam."
+  }
+}

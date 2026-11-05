@@ -1,0 +1,94 @@
+[
+  {
+    "id": "sharp",
+    "label": "Sharp Filter",
+    "slug": "sharp-filter-selector",
+    "privileged": false,
+    "methods": [
+      "get_capabilities",
+      "get_status",
+      "set_nis_enabled",
+      "set_fsr_override",
+      "set_nis_sharpness"
+    ],
+    "files": [
+      "main.py",
+      "dist/index.js",
+      "plugin.json",
+      "package.json",
+      "LICENSE"
+    ]
+  },
+  {
+    "id": "downsampling",
+    "label": "Downsampling",
+    "slug": "ugm-downsampling-sharpener",
+    "privileged": false,
+    "methods": [
+      "get_status",
+      "set_enabled",
+      "set_strength"
+    ],
+    "files": [
+      "main.py",
+      "dist/index.js",
+      "plugin.json",
+      "package.json"
+    ]
+  },
+  {
+    "id": "video",
+    "label": "Video Output",
+    "slug": "ugm-video-output",
+    "privileged": true,
+    "methods": [
+      "get_state",
+      "switch_connector",
+      "get_config",
+      "set_config",
+      "video_probe"
+    ],
+    "files": [
+      "main.py",
+      "video_runtime.py",
+      "video_selector.py",
+      "video_startup.py",
+      "display_names.py",
+      "settings_store.py",
+      "ugm_session.py",
+      "dist/index.js",
+      "dist/ugm-active-display",
+      "plugin.json",
+      "package.json",
+      "LICENSE",
+      "NOTICE.md",
+      "ORIGIN.json"
+    ]
+  },
+  {
+    "id": "nonsteam",
+    "label": "Non-Steam",
+    "slug": "ugm-non-steam",
+    "privileged": false,
+    "methods": [
+      "get_context",
+      "list_applications",
+      "browse",
+      "inspect_path",
+      "make_executable",
+      "validate_draft",
+      "get_saved_shortcuts"
+    ],
+    "files": [
+      "main.py",
+      "catalog.py",
+      "shortcuts.py",
+      "dist/index.js",
+      "plugin.json",
+      "package.json",
+      "LICENSE",
+      "NOTICE.md",
+      "ORIGIN.json"
+    ]
+  }
+]

@@ -10,3 +10,11 @@ __pycache__/
 # Local downsampling experiments and machine-specific historical helpers.
 /prototypes/downsampling-sharpener/validation/
 /prototypes/downsampling-sharpener/tools/historical/
+
+# Private machine evidence and diagnostic captures; publish curated guides only.
+/.cache/
+/tools/youtube-observer/
+/docs/es/ugm-2.8.5/*
+!/docs/es/ugm-2.8.5/README.md
+!/docs/es/ugm-2.8.5/PREPARACION-BUILD.md
+/integrations/decky/ugm-video-output/dist/ugm-active-display

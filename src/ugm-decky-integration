@@ -1,8 +1,10 @@
 #!/usr/bin/python3
-"""Optional Decky + bundled UGM plugin setup; never replaces existing plugins."""
+"""Optional Decky setup and transactional migration to UGM Options."""
 from __future__ import annotations
 
 import hashlib
+import json
+import fcntl
 import os
 from pathlib import Path
 import pwd
@@ -11,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import uuid
 
 SCRIPT_COMMIT = "9b4e29d2a33b969da11114cce18422a87425f60e"
 SCRIPT_SHA256 = "2403ddbfec8ab320c33729bcb1c8176d74952de71f731ba0c71ded711058be2d"
@@ -19,8 +22,42 @@ SCRIPT_URL = (
     + SCRIPT_COMMIT + "/cli/install_release.sh"
 )
 PAYLOAD = Path("/usr/share/ubuntu-gaming-mode/decky-plugins")
-NAMES = ("sharp-filter-selector", "ugm-downsampling-sharpener")
-FILES = ("plugin.json", "package.json", "main.py", "dist/index.js")
+NAMES = ("ugm-options",)
+LEGACY = {
+    "sharp-filter-selector": "Sharp Filter Selector",
+    "ugm-downsampling-sharpener": "UGM Downsampling Sharpener",
+    "ugm-video-output": "UGM Video Output",
+    "ugm-non-steam": "UGM Añadir contenido Non-Steam",
+}
+EXECUTABLES = {"modules/video/dist/ugm-active-display"}
+
+
+def payload_files(name: str) -> tuple[str, ...]:
+    if name != "ugm-options":
+        raise ValueError("Only UGM Options is distributed")
+    source = PAYLOAD / name
+    if not safe_dir(source):
+        raise ValueError("Unsafe master payload")
+    manifest = json.loads((source / "manifest.json").read_text())
+    hashes = manifest["sha256"]
+    required = {"main.py", "backend.py", "worker.py", "modules.json", "plugin.json",
+                "package.json", "dist/index.js", "LICENSE", "NOTICE.md"}
+    if not required <= hashes.keys():
+        raise ValueError("Incomplete master manifest")
+    for entry, digest in hashes.items():
+        relative = Path(entry)
+        if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+            raise ValueError("Invalid manifest path")
+        path = source
+        for part in relative.parts:
+            path = path / part
+            if path.is_symlink():
+                raise ValueError("Symlink in payload")
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            raise ValueError("Payload hash mismatch: " + entry)
+    if json.loads((source / "plugin.json").read_text()).get("name") != "UGM Options":
+        raise ValueError("Unexpected master identity")
+    return tuple(sorted(hashes)) + ("manifest.json",)
 
 
 def say(message: str) -> None:
@@ -94,74 +131,145 @@ def prepare_loader_permissions(home: Path) -> bool:
     return True
 
 
-def reload_loader() -> bool:
-    """Load the new plugins; preserve an intentionally stopped service."""
+def service(action: str) -> bool:
     try:
-        result = subprocess.run(
-            ["systemctl", "try-restart", "plugin_loader.service"],
-            timeout=60, check=False,
-        )
-        if result.returncode == 0:
-            return True
-        say(f"No se pudo reiniciar Decky: código {result.returncode}.")
-    except (OSError, subprocess.TimeoutExpired) as error:
-        say(f"No se pudo reiniciar Decky: {error}")
-    return False
+        result = subprocess.run(["systemctl", action, "plugin_loader.service"],
+                                timeout=60, check=False, capture_output=True)
+        return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def loader_state() -> str:
+    result = subprocess.run(["systemctl", "show", "plugin_loader.service",
+                             "--property=ActiveState", "--value"],
+                            timeout=10, check=False, capture_output=True, text=True)
+    if result.returncode or result.stdout.strip() not in ("active", "inactive", "failed"):
+        raise RuntimeError("Decky service state is not stable/available")
+    return result.stdout.strip()
+
+
+def legacy_plugins(plugins: Path) -> list[Path]:
+    found = []
+    for path in plugins.iterdir():
+        if path.name == "ugm-options":
+            continue
+        if path.is_symlink():
+            if path.name in LEGACY:
+                raise ValueError("Legacy plugin is a symlink: " + path.name)
+            continue
+        if not path.is_dir():
+            continue
+        try:
+            name = json.loads((path / "plugin.json").read_text()).get("name")
+        except (OSError, ValueError):
+            name = None
+        if path.name in LEGACY and name != LEGACY[path.name]:
+            raise ValueError("Unrecognized legacy directory: " + path.name)
+        if path.name in LEGACY or name in LEGACY.values():
+            found.append(path)
+    return sorted(found)
 
 
 def install_plugin(home: Path, name: str, uid: int, gid: int) -> bool:
-    root = home / "homebrew"
-    plugins = root / "plugins"
-    for parent in (root, plugins):
-        if parent.exists() and not safe_dir(parent):
-            say(f"Ruta no segura: {parent}; se omite {name}.")
-            return False
-        if not parent.exists():
-            parent.mkdir(mode=0o755)
-            parent.chmod(0o755)
-            os.chown(parent, uid, gid)
-    target = plugins / name
-    if target.exists() or target.is_symlink():
-        say(f"{name} ya existe; se conserva sin sobrescribir.")
-        return True
-    source = PAYLOAD / name
-    if any(not (source / entry).is_file() for entry in FILES):
-        say(f"Payload de {name} incompleto; se omite.")
-        return False
-    staging = Path(tempfile.mkdtemp(prefix=f".{name}.", dir=plugins))
+    """Stage outside plugins, stop Loader, migrate and publish with rollback.
+
+    Removed code is archived outside Decky's discovery tree. Settings never move.
+    All master code is root-owned because its broker runs privileged.
+    """
+    staging = archive = None
+    moved = []
+    published = False
+    was_active = False
+    stopped = False
+    target = home / "homebrew/plugins/ugm-options"
     try:
-        staging.chmod(0o755)
-        (staging / "dist").mkdir()
-        (staging / "dist").chmod(0o755)
-        for entry in FILES:
-            dest = staging / entry
-            shutil.copy2(source / entry, dest)
-            dest.chmod(0o644)
-        license_file = source / "LICENSE"
-        if license_file.is_file():
-            shutil.copy2(license_file, staging / "LICENSE")
-            (staging / "LICENSE").chmod(0o644)
-        for directory, dirs, files in os.walk(staging):
-            os.chown(directory, uid, gid)
-            for filename in files:
-                os.chown(Path(directory) / filename, uid, gid)
-        if target.exists() or target.is_symlink():
-            say(f"{name} apareció durante la instalación; se conserva.")
+        files = payload_files(name)  # Must validate *before* touching old plugins.
+        root = home / "homebrew"
+        plugins = root / "plugins"
+        for parent in (root, plugins):
+            if os.path.lexists(parent) and not safe_dir(parent):
+                raise ValueError("Unsafe directory: " + str(parent))
+            if not parent.exists():
+                parent.mkdir(mode=0o755)
+                parent.chmod(0o755)
+                os.chown(parent, uid, gid)
+        # Never overwrite a custom or linked master.
+        if os.path.lexists(target):
+            if not safe_dir(target):
+                raise ValueError("Unsafe existing master")
+            if json.loads((target / "plugin.json").read_text()).get("name") != "UGM Options":
+                raise ValueError("Existing master identity is unknown")
+            known = json.loads((target / "manifest.json").read_text())["sha256"]
+            if any(not (target / n).is_file() or (target / n).is_symlink() or
+                   hashlib.sha256((target / n).read_bytes()).hexdigest() != d
+                   for n, d in known.items()):
+                raise ValueError("Existing master modified; preserved for manual review")
+        old = legacy_plugins(plugins)
+        # Root-owned private transaction/archive outside plugins: no watcher staging.
+        state = root / "ugm-options-migration"
+        if os.path.lexists(state) and (not safe_dir(state) or state.stat().st_uid != os.geteuid()):
+            raise ValueError("Unsafe migration state directory")
+        state.mkdir(mode=0o700, exist_ok=True)
+        state.chmod(0o700)
+        with (state / "lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            staging = Path(tempfile.mkdtemp(prefix="stage-", dir=state))
+            staging.chmod(0o755)
+            source = PAYLOAD / name
+            for entry in files:
+                dest = staging / entry
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source / entry, dest)
+                dest.chmod(0o755 if entry in EXECUTABLES else 0o644)
+            for directory, _, _ in os.walk(staging):
+                Path(directory).chmod(0o755)
+            # Check copied bytes again, before the service is stopped.
+            if any((staging / entry).read_bytes() != (source / entry).read_bytes() for entry in files):
+                raise ValueError("Staged payload changed")
+            was_active = loader_state() == "active"
+            stopped = True  # A failed/timeout stop may still have stopped Decky.
+            if not service("stop"):
+                raise RuntimeError("Cannot confirm Decky stop; no plugins moved")
+            archive = state / ("retired-" + uuid.uuid4().hex)
+            archive.mkdir(mode=0o700)
+            for path in [*old, *([target] if target.exists() else [])]:
+                retired = archive / path.name
+                path.rename(retired)
+                moved.append((retired, path))
+            staging.rename(target)
+            staging = None
+            published = True
+            if was_active and not service("start"):
+                raise RuntimeError("Decky failed to restart")
+            (archive / "migration.json").write_text(json.dumps({
+                "installed": "ugm-options", "retired": [p.name for _, p in moved],
+                "settings_preserved": True, "loader_was_active": was_active}, indent=2))
+            say("UGM Options instalado; retirados: " + (", ".join(p.name for p in old) or "ninguno"))
+            say("Ajustes conservados; código anterior fuera de plugins/: " + str(archive))
             return True
-        staging.rename(target)
-        say(f"{name} instalado; se cargará al reiniciar Decky o Gaming Mode.")
-        return True
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.TimeoutExpired) as error:
+        say("No se completó la migración: " + str(error))
+        if stopped:
+            if published:
+                service("stop")
+                target.rename(archive / "failed-master")
+            for retired, original in reversed(moved):
+                retired.rename(original)
+            if was_active and not service("start"):
+                say("No se pudo restaurar el servicio Decky; requiere revisión.")
+        return False
     finally:
-        if staging.exists():
+        if staging is not None and staging.exists():
             shutil.rmtree(staging)
 
 
 def main() -> int:
-    if len(sys.argv) != 5 or os.geteuid() != 0:
-        print("uso: ugm-decky-integration USUARIO LOADER SHARP DOWNSAMPLING (0/1, root)", file=sys.stderr)
+    if len(sys.argv) != 4 or os.geteuid() != 0:
+        print("uso: ugm-decky-integration USUARIO LOADER OPTIONS (0/1, root)", file=sys.stderr)
         return 2
-    username, *flags = sys.argv[1:]
-    if any(flag not in ("0", "1") for flag in flags):
+    username, loader, options = sys.argv[1:]
+    if loader not in ("0", "1") or options not in ("0", "1"):
         return 2
     try:
         account = pwd.getpwnam(username)
@@ -172,21 +280,16 @@ def main() -> int:
     if account.pw_uid == 0 or not home.is_absolute() or not safe_dir(home):
         say("Directorio personal o usuario UGM no válido.")
         return 1
-    if flags == ["0", "0", "0"]:
+    if loader == options == "0":
         return 0
-    if flags[0] == "1" and not install_loader(home, username):
+    if loader == "1" and not install_loader(home, username):
         return 1
-    if not loader_present(home):
-        say("Se eligieron plugins, pero Decky Loader no está instalado; no se copian.")
+    if not loader_present(home) or not prepare_loader_permissions(home):
+        say("Decky Loader no disponible; no se retiran plugins anteriores.")
         return 1
-    if not prepare_loader_permissions(home):
-        return 1
-    results = [
-        install_plugin(home, name, account.pw_uid, account.pw_gid)
-        for name, flag in zip(NAMES, flags[1:]) if flag == "1"
-    ]
-    reloaded = reload_loader()
-    return 0 if all(results) and reloaded else 1
+    if options == "1":
+        return 0 if install_plugin(home, "ugm-options", account.pw_uid, account.pw_gid) else 1
+    return 0
 
 
 if __name__ == "__main__":

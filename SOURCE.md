@@ -2,7 +2,7 @@
 
 **English** | [Español](SOURCE_es.md)
 
-This tree contains the **Ubuntu Gaming Mode 2.8.3-2** sources. This tree retains the historical
+This tree contains the **Ubuntu Gaming Mode 2.8.5-1** sources. This tree retains the historical
 2.5 Gamescope 3.16.30 record and adds patch 0010 for 2.8.
 
 ## Layout
@@ -15,10 +15,11 @@ This tree contains the **Ubuntu Gaming Mode 2.8.3-2** sources. This tree retains
 - `tests/`: tests for optional integrations.
 - `integrations/icon-theme/`: bundled UGM-ICONS source archive and provenance.
 - `docs/`: installation, rollback, architecture and performance.
+- `tools/steam-*-hook/`: compatibility-gated Steam hook sources and tests.
 - `prototypes/vrs-common/`, `prototypes/nvidia-vrs/` and
   `prototypes/amd-vrs/`: source, builds and tests for bundled VRS layers.
   Generated `.so` files are not tracked.
-- `integrations/decky/`: minimal payload for the two optional plugins.
+- `integrations/decky/`: UGM Options sources/payload and its four module inputs.
 - `docs/ugm-2.8/` and `docs/es/ugm-2.8/`: bilingual feature documentation and limitations.
 - `system/icons/`: tracked PNG icons for UGM and the Bluetooth app.
 

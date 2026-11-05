@@ -695,9 +695,9 @@ if [ -x "$CAPABILITY_READER" ]; then
     # La caché del inventario pertenece al usuario de la sesión de escritorio.
     # Doctor suele ejecutarse con sudo: leer como root consultaría otra caché.
     if [ "$(id -u)" -eq 0 ] && id "${UGM_USER:-__missing__}" >/dev/null 2>&1; then
-        CAPABILITY_JSON="$(runuser -u "$UGM_USER" -- env -u XDG_CACHE_HOME "$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.3-2 2>/dev/null)" || CAPABILITY_JSON=""
+        CAPABILITY_JSON="$(runuser -u "$UGM_USER" -- env -u XDG_CACHE_HOME "$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.5-1 2>/dev/null)" || CAPABILITY_JSON=""
     else
-        CAPABILITY_JSON="$("$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.3-2 2>/dev/null)" || CAPABILITY_JSON=""
+        CAPABILITY_JSON="$("$CAPABILITY_READER" --cached --context desktop --runtime-version 2.8.5-1 2>/dev/null)" || CAPABILITY_JSON=""
     fi
     if [ -n "$CAPABILITY_JSON" ]; then
         CAPABILITY_REPORT="$(printf '%s' "$CAPABILITY_JSON" | python3 -c '
@@ -753,6 +753,31 @@ section "STEAM"
 command -v steam >/dev/null 2>&1 &&
     ok "Steam disponible en PATH" ||
     warn "Steam no está disponible en PATH"
+
+# ============================================================
+# COMPONENTES 2.8.5 (solo lectura; no conecta a CDP ni ejecuta plugins)
+# ============================================================
+
+section "YOUTUBE, ACTUALIZADOR Y UGM OPTIONS"
+if [ -x "$RUNTIME/ugm-doctor-components" ]; then
+    COMPONENT_REPORT="$("$RUNTIME/ugm-doctor-components" "${UGM_USER:-}" "${UGM_UID:-}")"
+    COMPONENT_RC=$?
+    COMPONENT_COUNTS="$(printf '%s\n' "$COMPONENT_REPORT" | sed -n 's/^UGM_COMPONENT_COUNTS=//p')"
+    printf '%s\n' "$COMPONENT_REPORT" | sed '/^UGM_COMPONENT_COUNTS=/d'
+    if [[ "$COMPONENT_COUNTS" =~ ^([0-9]+),([0-9]+),([0-9]+)$ ]] &&
+       { [ "$COMPONENT_RC" -eq 0 ] || [ "$COMPONENT_RC" -eq 1 ]; }; then
+        OK=$((OK + BASH_REMATCH[1]))
+        WARN=$((WARN + BASH_REMATCH[2]))
+        FAIL=$((FAIL + BASH_REMATCH[3]))
+        if [ "$COMPONENT_RC" -eq 1 ] && [ "${BASH_REMATCH[3]}" -eq 0 ]; then
+            fail "diagnóstico de componentes terminó con error sin contabilizar"
+        fi
+    else
+        fail "diagnóstico de componentes interrumpido o resultado ilegible"
+    fi
+else
+    fail "falta helper ejecutable $RUNTIME/ugm-doctor-components"
+fi
 
 # ============================================================
 # REFERENCIAS ANTIGUAS

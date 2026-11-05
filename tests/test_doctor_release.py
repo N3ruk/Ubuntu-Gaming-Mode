@@ -14,7 +14,7 @@ class DoctorReleaseTests(unittest.TestCase):
         for name in ('preinst', 'postinst'):
             self.assertIn(f'PKG_VERSION="{version}"', (ROOT/'packaging/DEBIAN'/name).read_text())
         for name in ('src/ubuntu-gaming-mode-doctor', 'system/gamescope-session/steam', 'system/autostart/ugm-inventory.desktop'):
-            versions = re.findall(r'--runtime-version ([\w.-]+)', (ROOT/name).read_text())
+            versions = re.findall(r'--runtime-version ([\w.+~:-]+)', (ROOT/name).read_text())
             self.assertTrue(versions)
             self.assertEqual(set(versions), {version})
 

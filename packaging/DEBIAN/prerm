@@ -55,6 +55,19 @@ case "$ACTION" in
         ;;
 esac
 
+# Stop the packaged hooks before removing their payload; retain user-owned CDP.
+if [ -r "$CONFIG" ]; then
+    . "$CONFIG"
+    if [ -n "${UGM_USER:-}" ] && id "$UGM_USER" >/dev/null 2>&1; then
+        hooks_action=cleanup
+        [ ! -S "/run/user/${UGM_UID}/bus" ] || hooks_action=remove
+        runuser -u "$UGM_USER" -- env XDG_RUNTIME_DIR="/run/user/${UGM_UID}" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${UGM_UID}/bus" \
+            /usr/lib/ubuntu-gaming-mode/ugm-steam-hooks "$hooks_action" steam ||
+            echo "ubuntu-gaming-mode: WARN: retirada de hooks incompleta; consulte el diario del usuario" >&2
+    fi
+fi
+
 # Antes de retirar los helpers, restaurar la elección de iconos solo si
 # permanece activa la selección realizada por UGM.
 if [ -r "$CONFIG" ]; then

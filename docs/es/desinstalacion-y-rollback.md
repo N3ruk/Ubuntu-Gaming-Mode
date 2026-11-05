@@ -56,3 +56,11 @@ Para ejecutar un diagnóstico antes de eliminar el paquete:
 ```bash
 sudo ubuntu-gaming-mode-doctor
 ```
+
+## Hooks de Steam y Decky (2.8.5)
+
+La retirada detiene los hooks empaquetados y limpia solo un marcador CDP propio
+sin cambios; conserva marcadores previos o modificados. No cierra una interfaz
+de depuración ya abierta por Steam. El purge no borra Decky, código de plugins
+del usuario, ajustes ni carpetas retiradas de `~/homebrew/ugm-options-migration/`.
+[Detalle de migración](ugm-2.8.5/README.md).

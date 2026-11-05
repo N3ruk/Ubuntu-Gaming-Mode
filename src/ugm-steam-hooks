@@ -1,0 +1,146 @@
+#!/usr/bin/python3
+"""Package lifecycle for the two independent, compatibility-gated Steam hooks."""
+import argparse
+import json
+import os
+from pathlib import Path
+import shlex
+import stat
+import subprocess
+import sys
+
+HOOKS = ('steam-youtube-pause-hook', 'steam-client-update-hook')
+PAYLOAD = Path(__file__).resolve().parent / 'steam-hooks'
+
+
+def systemctl(*args):
+    subprocess.run(['systemctl', '--user', *args], check=True)
+
+
+def unit_arg(value):
+    return '"' + value.replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%').replace('$', '$$') + '"'
+
+
+def config_dir():
+    return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'systemd/user'
+
+
+def state_file():
+    return Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'ubuntu-gaming-mode/steam-hooks/marker.json'
+
+
+def marker_file():
+    # Same native Steam root as the validated updater backend (symlinks work).
+    return Path.home() / '.local/share/Steam/.cef-enable-remote-debugging'
+
+
+def legacy_units():
+    """Preflight both units; only exact output of our checkout installers is owned."""
+    found = []
+    for hook in HOOKS:
+        unit = config_dir() / f'ugm-{hook}.service'
+        if not os.path.lexists(unit):
+            continue
+        if unit.is_symlink() or not unit.is_file():
+            raise RuntimeError(f'Unidad local personalizada/enmascarada conservada: {unit}')
+        text = unit.read_text()
+        command = next((line[10:] for line in text.splitlines() if line.startswith('ExecStart=')), '')
+        args = shlex.split(command)
+        if len(args) != 2 or Path(args[0]).name not in ('node', 'nodejs') or not args[1].endswith(f'/tools/{hook}/service.mjs'):
+            raise RuntimeError(f'Unidad local no reconocida, conservada: {unit}')
+        template = (PAYLOAD / hook / f'ugm-{hook}.service.in').read_text()
+        expected = template.replace('@NODE@', unit_arg(args[0])).replace('@SERVICE@', unit_arg(args[1]))
+        if text != expected:
+            raise RuntimeError(f'Unidad local modificada, conservada: {unit}')
+        found.append(unit)
+    return found
+
+
+def migrate():
+    units = legacy_units()
+    if not units:
+        return
+    # Remove the resident wrapper before changing ownership to packaged units.
+    systemctl('stop', *(unit.name for unit in units))
+    for unit in units:
+        link = unit.parent / 'default.target.wants' / unit.name
+        if link.is_symlink() and link.resolve() == unit.resolve():
+            link.unlink()
+        unit.unlink()
+    systemctl('daemon-reload')
+
+
+def signature(path):
+    info = path.lstat()
+    return {'device': info.st_dev, 'inode': info.st_ino, 'size': info.st_size,
+            'mtime_ns': info.st_mtime_ns, 'ctime_ns': info.st_ctime_ns}
+
+
+def prepare():
+    migrate()
+    marker = marker_file()
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        # A pre-existing marker belongs to the user/Decky, not this package.
+        return
+    os.close(fd)
+    state = state_file()
+    state.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = state.with_suffix('.tmp')
+    temporary.write_text(json.dumps(signature(marker)) + '\n')
+    temporary.chmod(0o600)
+    temporary.replace(state)
+
+
+def cleanup_marker():
+    state = state_file()
+    if not state.exists():
+        return
+    marker = marker_file()
+    saved = json.loads(state.read_text())
+    if os.path.lexists(marker) and stat.S_ISREG(marker.lstat().st_mode) and signature(marker) == saved and saved['size'] == 0:
+        marker.unlink()
+    state.unlink()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action', choices=('prepare', 'start', 'stop', 'remove', 'migrate', 'cleanup'))
+    parser.add_argument('instance')
+    args = parser.parse_args()
+    if args.instance != 'steam':
+        return
+    if args.action == 'prepare':
+        prepare()
+    elif args.action == 'migrate':
+        migrate()
+    elif args.action == 'start':
+        # Do not start an old/custom override after a failed preparation.
+        if legacy_units():
+            raise RuntimeError('Las unidades del checkout todavía no se han migrado')
+        if not marker_file().exists():
+            raise RuntimeError('Falta el marcador CDP; no se arrancarán los hooks')
+        systemctl('--no-block', 'start', *(f'ugm-{hook}.service' for hook in HOOKS))
+    elif args.action == 'stop':
+        # Nonblocking avoids ordering deadlocks with PartOf/After during teardown.
+        try:
+            systemctl('--no-block', 'stop', *(f'ugm-{hook}.service' for hook in HOOKS))
+        finally:
+            cleanup_marker()
+    elif args.action == 'cleanup':
+        cleanup_marker()
+    elif args.action == 'remove':
+        try:
+            systemctl('stop', *(f'ugm-{hook}.service' for hook in HOOKS))
+        finally:
+            cleanup_marker()
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+        print(f'ugm-steam-hooks: {error}', file=sys.stderr)
+        sys.exit(1)

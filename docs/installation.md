@@ -4,26 +4,32 @@
 
 ## Requirements
 
-The published `2.8.3-2` package targets **Ubuntu 26.04 amd64**. Install it from
+The published `2.8.5-1` package targets **Ubuntu 26.04 amd64**. Install it from
 an interactive desktop terminal with APT, which resolves package dependencies.
 Hardware-specific features (HDR, VRR, VRS and Bluetooth wake) depend on the
 GPU, driver, monitor and firmware; see [known issues](known-issues.md).
 
 ## Download and verify
 
-Download `ubuntu-gaming-mode_2.8.3-2_amd64.deb` and `SHA256SUMS` from the
-[same GitHub release](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.3-2).
+Download `ubuntu-gaming-mode_2.8.5-1_amd64.deb` and `SHA256SUMS` from the
+[same GitHub release](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.5-1).
 In the download directory:
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.3-2_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.5-1_amd64.deb
 ```
 
 The checksum command should report `OK`. Keep the terminal open for Debconf
 prompts. The installer records the original state for rollback, configures the
 session and runs Doctor; it does not restart GDM or log out the current desktop.
 An upgrade preserves the original baseline.
+
+## Steam compatibility
+
+Node.js >=22 is a required APT dependency. The packaged hooks run only in the
+managed UGM session and support the pinned Steam build **1792618285**. Unknown
+builds/hashes are rejected; see [2.8.5 compatibility](ugm-2.8.5/README.md).
 
 ## Optional choices
 
@@ -35,8 +41,9 @@ selection only if UGM-ICONS is still selected; files are retained to protect
 user modifications. The choice can be revisited with
 `sudo dpkg-reconfigure ubuntu-gaming-mode`.
 
-Debconf offers separate, default-off choices for Decky Loader and its two
-plugins; an existing Decky installation is respected. Installing Decky requires
+Debconf offers separate, default-off choices for Decky Loader and UGM Options;
+an existing Decky installation is respected. Accepting UGM Options migrates
+detected standalone plugins while preserving settings and unrelated plugins. Installing Decky requires
 network access, and failure of that optional step does not abort UGM. See
 [Decky integration](ugm-2.8/decky.md).
 

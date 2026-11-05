@@ -56,3 +56,11 @@ For diagnostics before removal:
 ```bash
 sudo ubuntu-gaming-mode-doctor
 ```
+
+## Steam hooks and Decky (2.8.5)
+
+Removal stops packaged hooks and cleans up only an unchanged CDP marker owned
+by UGM; a pre-existing or modified marker is preserved. This does not close a
+debugging interface already opened by Steam. Decky, user-installed plugin code,
+settings and retired standalone folders under `~/homebrew/ugm-options-migration/`
+are not deleted by purging UGM. [Migration details](ugm-2.8.5/README.md).

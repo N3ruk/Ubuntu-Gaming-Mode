@@ -1,0 +1,18 @@
+{
+  "version": "2.8.5-1",
+  "status": "release",
+  "build_enabled": true,
+  "components": [
+    "steam-youtube-pause-hook",
+    "steam-client-update-hook",
+    "ugm-options"
+  ],
+  "previous_development_deb": "2.8.5~dev1-1 (video plugin only; not the prepared release)",
+  "pending": [
+    "Installed DEB session lifecycle on a real desktop",
+    "Controller navigation and physical output switching in UGM",
+    "Non-Steam launches and persistence across Steam sessions",
+    "Full newer Steam client update when available"
+  ],
+  "authorized_on": "2026-11-05"
+}
