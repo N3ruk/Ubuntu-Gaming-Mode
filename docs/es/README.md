@@ -1,5 +1,9 @@
 # Documentación
 
+<p align="center">
+  <a href="../../README_es.md"><img src="../assets/ugm-logo.png" alt="Logotipo de UGM — pingüino gamer cyberpunk" width="160" height="160"></a>
+</p>
+
 [English](../README.md) | **Español** · [Inicio del proyecto](../../README_es.md)
 
 Este índice separa las **guías vigentes de 2.8.5-1** de los **registros

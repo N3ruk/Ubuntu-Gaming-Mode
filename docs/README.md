@@ -1,5 +1,9 @@
 # Documentation
 
+<p align="center">
+  <a href="../README.md"><img src="assets/ugm-logo.png" alt="UGM logo — cyberpunk gamer penguin" width="160" height="160"></a>
+</p>
+
 **English** | [Español](es/README.md) · [Project home](../README.md)
 
 This index separates **current 2.8.5-1 guidance** from **version-specific

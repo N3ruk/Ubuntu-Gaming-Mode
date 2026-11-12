@@ -1,5 +1,9 @@
 # Ubuntu Gaming Mode
 
+<p align="center">
+  <a href="docs/assets/ugm-logo.png"><img src="docs/assets/ugm-logo.png" alt="UGM logo — cyberpunk gamer penguin" width="280" height="280"></a>
+</p>
+
 **English** | [Español](README_es.md)
 
 Ubuntu Gaming Mode (UGM) adds a dedicated Gamescope DRM/KMS + Steam Gamepad UI

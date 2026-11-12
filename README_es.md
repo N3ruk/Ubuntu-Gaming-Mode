@@ -1,5 +1,9 @@
 # Ubuntu Gaming Mode
 
+<p align="center">
+  <a href="docs/assets/ugm-logo.png"><img src="docs/assets/ugm-logo.png" alt="Logotipo de UGM — pingüino gamer cyberpunk" width="280" height="280"></a>
+</p>
+
 [English](README.md) | **Español**
 
 Ubuntu Gaming Mode (UGM) añade a Ubuntu Desktop una sesión dedicada con
