@@ -6,12 +6,12 @@
 
 **English** | [Español](es/README.md) · [Project home](../README.md)
 
-This index separates **current 2.8.5-1 guidance** from **version-specific
+This index separates **current 2.8.6-1 guidance** from **version-specific
 historical records**. Start with installation; use the feature pages for
 implementation details and evidence. Hardware results are bounded to the
 systems and tests stated in each page.
 
-## Install and use 2.8.5-1
+## Install and use 2.8.6-1
 
 - [Install, verify and configure](installation.md)
 - [Uninstall and restore the original state](uninstall-and-rollback.md)
@@ -22,7 +22,11 @@ systems and tests stated in each page.
   [Bluetooth/USB wake](ugm-2.8/usb-wake.md),
   [VRS](ugm-2.8/vrs.md)
 
-## New in 2.8.5
+## New in 2.8.6
+
+- [Changes since 2.8.5](ugm-2.8.6/README.md).
+
+## Features introduced in 2.8.5
 
 - [YouTube, updater, UGM Options, migration and limits](ugm-2.8.5/README.md).
 

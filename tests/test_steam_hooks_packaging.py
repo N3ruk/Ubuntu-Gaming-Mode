@@ -160,8 +160,8 @@ class SteamHooksPackagingTests(unittest.TestCase):
                 self.assertFalse(helper.marker_file().exists())
 
     def test_authorized_release_manifest_and_dependency_are_explicit(self):
-        release = json.loads((ROOT/'packaging/release-2.8.5.json').read_text())
-        self.assertEqual(release['version'], '2.8.5-1')
+        release = json.loads((ROOT/'packaging/release-2.8.6.json').read_text())
+        self.assertEqual(release['version'], '2.8.6-1')
         self.assertIs(release['build_enabled'], True)
         self.assertEqual(release['status'], 'release')
         self.assertEqual(set(release['components']), {*HOOKS, 'ugm-options'})

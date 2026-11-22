@@ -97,3 +97,22 @@ class EnvironmentTests(unittest.TestCase):
             access.command.return_value = 'GAMESCOPE_XWAYLAND_SERVER_ID(CARDINAL) = 0'
             self.assertEqual(access.connect_environment(Path('/run/user/1234'), {'DISPLAY': ':7', 'GAMESCOPE_WAYLAND_DISPLAY': 'gamescope-0'}), 'DP-2')
         self.assertNotIn('XAUTHORITY', access.env)
+
+
+class UbuntuCommandTests(unittest.TestCase):
+    def test_command_drops_credentials_natively_without_runuser_or_shell(self):
+        import video_selector as selector
+        access = Access.__new__(Access)
+        access.user = 'testuser'
+        access.account = Mock(pw_uid=2345, pw_gid=2346)
+        access.env = {'PATH': '/usr/bin:/usr/sbin', 'DISPLAY': ':7'}
+        with patch.object(selector.os, 'getgrouplist', return_value=[2346, 44]), \
+             patch.object(selector.subprocess, 'run', return_value=Mock(returncode=0, stdout='ok')) as run:
+            self.assertEqual(access.command(['/usr/bin/xprop', '-root', 'TEST']), 'ok')
+        args, kwargs = run.call_args
+        self.assertEqual(args[0], ['/usr/bin/xprop', '-root', 'TEST'])
+        self.assertEqual(kwargs['user'], 2345)
+        self.assertEqual(kwargs['group'], 2346)
+        self.assertEqual(kwargs['extra_groups'], [2346, 44])
+        self.assertEqual(kwargs['env'], access.env)
+        self.assertNotIn('shell', kwargs)

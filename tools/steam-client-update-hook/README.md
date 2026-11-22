@@ -1,8 +1,12 @@
 # UGM Steam client update hook
 
-Runtime source included in **UGM 2.8.5-1**, independent of Decky and the other hook.
-Requires Node.js >=22 and native Steam build **1792618285**, with pinned hashes
-and API contracts. Unknown clients are rejected. No Steam files are patched.
+Runtime source included in **UGM 2.8.6-1**, independent of Decky and the other hook.
+Requires Node.js >=22 and native Steam builds **1792618285** or **1794536281**, with pinned hashes
+and per-build API contracts. Unknown clients are rejected. No Steam files are patched.
+
+The newer steamrt64 profile uses `GetRecheckUpdateTypes` and the separate
+apply/recheck/callback arguments. Only CLIENT=1 is applied; OS/BIOS recheck lists
+remain empty. Both runtime and version-zero fallback retain full-file pin checks.
 
 Queries the official branch manifest and calls Steam's native client-only update path. A reported build 0 is identified only through pinned file hashes.
 

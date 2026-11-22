@@ -64,10 +64,10 @@ requires a new package and checksum; do not silently reuse the old checksum.
   do not change previously downloaded packages.
 - Do not commit local captures, build directories, user data or credentials.
 
-## 2.8.5 assembly
+## 2.8.6 assembly
 
-The release gate is `packaging/release-2.8.5.json`. Build/publication was authorized
-on 2026-11-05. The recipe rebuilds the native read-only video reader and assembles
+The release gate is `packaging/release-2.8.6.json`. It controls the package version
+and build availability. The recipe rebuilds the native read-only video reader and assembles
 UGM Options from its four versioned module inputs; the generated master tree is
 not a second source of truth. Frontend bundles are versioned alongside TypeScript
 sources/lockfiles for Video Output and Non-Steam. Native build prerequisites:

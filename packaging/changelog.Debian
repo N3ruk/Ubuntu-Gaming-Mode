@@ -1,3 +1,12 @@
+ubuntu-gaming-mode (2.8.6-1) unstable; urgency=medium
+
+  * Support the newer Steam client updater API and pinned client build 1794536281.
+  * Fix Video Output subprocess credentials on Ubuntu.
+  * Avoid Bluetooth wake service retries for saved controllers absent from BlueZ.
+  * Update the Return to Gaming Mode launcher icon.
+
+ -- N3ruk <csz_11@hotmail.com>  Sun, 22 Nov 2026 12:00:00 +0100
+
 ubuntu-gaming-mode (2.8.5-1) unstable; urgency=medium
 
   * Package independent YouTube controller and Steam client-update fixes with

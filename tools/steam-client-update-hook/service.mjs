@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { connect, targets } from './cdp.mjs';
 import { installHook } from './frontend.mjs';
-import { checkClient, SUPPORTED_BUILD } from './backend.mjs';
-import { verifyPinnedBuild } from './compatibility.mjs';
+import { checkClient } from './backend.mjs';
+import { verifyKnownBuild } from './compatibility.mjs';
 const bridgeName = '__ugmClientUpdateRequest';
 const stateDir = path.join(process.env.HOME, '.local/state/ubuntu-gaming-mode/steam-client-update-hook');
 await fs.mkdir(stateDir, { recursive: true, mode: 0o700 });
@@ -36,7 +36,8 @@ async function detach() {
   finally { client.close(); }
 }
 async function attach(target) {
-  const verifiedBuild = await verifyPinnedBuild();
+  const profile = await verifyKnownBuild();
+  const verifiedBuild = profile.build;
   const client = await connect(target);
   let requestActive = false;
   client.onEvent(async event => {
@@ -44,7 +45,7 @@ async function attach(target) {
     let request, reply;
     try {
       request = JSON.parse(event.params.payload);
-      if (!Number.isSafeInteger(request.id) || request.id <= 0 || request.op !== 'check' || request.installed !== SUPPORTED_BUILD) throw Error('Petición UGM inválida');
+      if (!Number.isSafeInteger(request.id) || request.id <= 0 || request.op !== 'check' || request.installed !== verifiedBuild) throw Error('Petición UGM inválida');
       if (requestActive) throw Error('Ya hay una consulta del cliente en curso');
       requestActive = true;
       try {
@@ -63,7 +64,7 @@ async function attach(target) {
   try {
     await client.call('Runtime.enable');
     await client.call('Runtime.addBinding', { name: bridgeName });
-    const result = await client.evaluate(`(${installHook.toString()})(${JSON.stringify({ bridgeName, build: SUPPORTED_BUILD, verifiedBuild })})`);
+    const result = await client.evaluate(`(${installHook.toString()})(${JSON.stringify({ bridgeName, build: verifiedBuild, verifiedBuild, applyContract: profile.applyContract })})`);
     active = { client, targetId: target.id };
     await status({ state: 'attached', targetId: target.id, hook: result });
   } catch (error) { client.close(); throw error; }

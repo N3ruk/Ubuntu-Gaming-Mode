@@ -417,7 +417,9 @@ def apply():
     for path, saved in state["controllers"].items():
         item = live.get(path)
         if item is None:
-            failures.append(f"Mando no disponible: {path}")
+            # BlueZ need not export saved/offline or removed devices at boot.
+            # The watcher restores the saved choice when a device reappears.
+            # Keep its record, but do not restart the boot oneshot forever.
             continue
         desired = saved.get("desired")
         if not isinstance(desired, bool):

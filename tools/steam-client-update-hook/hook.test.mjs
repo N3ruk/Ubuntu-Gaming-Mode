@@ -43,7 +43,7 @@ test('Backend rejects branch race', async t => {
     return new Response(manifest(build));
   } }), /rama ha cambiado/);
 });
-function runtime({ available = false, failure = false, reportedBuild = build, verifiedBuild = null, clientResult = 1, nativeResult = 1, applyThrows = false, deferState = false } = {}) {
+function runtime({ available = false, failure = false, reportedBuild = build, verifiedBuild = null, clientResult = 1, nativeResult = 1, applyThrows = false, deferState = false, applyContract = 'legacy' } = {}) {
   const calls = { nativeCheck: 0, nativeApply: [], requests: 0, restarts: 0 };
   const originalState = {state:2,supports_os_updates:true,update_check_results:[{type:1,eresult:1,available:false},{type:2,eresult:2},{type:3,eresult:2}],update_apply_results:[]};
   class Updater {
@@ -66,6 +66,16 @@ function runtime({ available = false, failure = false, reportedBuild = build, ve
       return {result:nativeResult,message:nativeResult===1?'':'native result'};
     }
   }
+  if (applyContract === 'recheck') {
+    delete Updater.prototype.GetRecheckAndInstallUpdateTypes;
+    Updater.prototype.GetRecheckUpdateTypes = function() { return [1,2]; };
+    const legacy = Updater.prototype.ApplyUpdate;
+    Updater.prototype.ApplyUpdate = async function(types, rechecks, callback) {
+      /* ce.add_apply_types(et); ce.add_recheck_types(et); SteamClient.Updates?.ApplyUpdates( */
+      calls.rechecks = Array.from(rechecks);
+      return legacy.call(this, types, callback);
+    };
+  }
   const u = new Updater();
   const window = {UpdateStore:{m_updater:u}};
   window.bridge = text => {
@@ -74,7 +84,7 @@ function runtime({ available = false, failure = false, reportedBuild = build, ve
     queueMicrotask(()=>window.__UGMClientUpdateHook.resolve(id, failure ? {ok:false,error:'offline'} : {ok:true,result:{installed:build,latest:available?build+1:build,available,checked:100}}));
   };
   const context = vm.createContext({window,SteamClient:{System:{GetSystemInfo:async()=>({nSteamVersion:reportedBuild})}},setTimeout,clearTimeout,console});
-  return { u, window, calls, originalState, install:()=>vm.runInContext(`(${installHook.toString()})({bridgeName:'bridge',build:${build},verifiedBuild:${JSON.stringify(verifiedBuild)}})`,context) };
+  return { u, window, calls, originalState, install:()=>vm.runInContext(`(${installHook.toString()})({bridgeName:'bridge',build:${build},verifiedBuild:${JSON.stringify(verifiedBuild)},applyContract:${JSON.stringify(applyContract)}})`,context) };
 }
 test('Hook bypasses combined checker, coalesces and filters only updater state', async () => {
   const r=runtime();await r.install();
@@ -175,4 +185,21 @@ test('Spoofed/forced updater and changed method contract remain rejected', async
   const r=runtime({reportedBuild:0,verifiedBuild:build});
   r.u.ApplyUpdate=async()=>({result:1});
   await assert.rejects(r.install(),/no compatibles/);
+});
+
+test('New native API receives client-only apply, empty recheck list, and third-position callback', async () => {
+  const r=runtime({available:true,applyContract:'recheck',clientResult:2});await r.install();let errors=[];
+  await r.u.ApplyUpdate([1,2,3],[2,3],e=>errors.push(e));
+  assert.deepEqual(r.calls.rechecks,[]);
+  assert.deepEqual(Array.from(r.u.GetRecheckUpdateTypes()),[]);
+  assert.deepEqual(r.calls.nativeApply.map(x=>Array.from(x)),[[1]]);
+  assert.equal(errors.length,1);assert.equal(errors[0].eResult,2);
+  assert.equal(r.calls.nativeCheck,0);assert.equal(r.calls.restarts,0);
+});
+test('New native API also accepts a legacy caller callback, without treating it as a recheck list', async () => {
+  const r=runtime({available:true,applyContract:'recheck'});await r.install();let errors=[];
+  await r.u.ApplyUpdate([2,3],e=>errors.push(e));
+  assert.deepEqual(r.calls.rechecks,[]);
+  assert.deepEqual(Array.from(r.u.GetRecheckUpdateTypes()),[]);
+  assert.deepEqual(r.calls.nativeApply.map(x=>Array.from(x)),[[1]]);assert.equal(errors.length,0);
 });

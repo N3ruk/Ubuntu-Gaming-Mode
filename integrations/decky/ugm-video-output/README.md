@@ -22,6 +22,8 @@ libwayland-client and Decky Loader. UGM ships the read-only native helper under
 `dist/ugm-active-display`; SteamOS gamescopectl and gamescope-environment are not
 required. The compositor binary and startup wrapper are not modified by this
 adaptation. The session owner's UID is discovered, not assumed to be 1000.
+Child display commands drop supplementary groups, GID and UID through Python's
+subprocess credentials; no distribution-specific `runuser` path is required.
 
 The original engine validates EDID + connector ID, checks its transient user.slice
 scope/freezer and suspension epoch, serializes selection, nudges the compositor

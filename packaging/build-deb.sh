@@ -10,13 +10,13 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 VERSION="$(sed -n 's/^Version:[[:space:]]*//p' "$ROOT/packaging/DEBIAN/control" | head -n1)"
 ARCH="$(sed -n 's/^Architecture:[[:space:]]*//p' "$ROOT/packaging/DEBIAN/control" | head -n1)"
 
-# Explicit release gate, checked before staging. Authorized on 2026-11-05.
-if [[ "$VERSION" == 2.8.5-* ]]; then
-    python3 - "$ROOT/packaging/release-2.8.5.json" "$VERSION" <<'PYRELEASE'
+# Explicit release gate, checked before staging.
+if [[ "$VERSION" == 2.8.6-* ]]; then
+    python3 - "$ROOT/packaging/release-2.8.6.json" "$VERSION" <<'PYRELEASE'
 import json, sys
 release = json.load(open(sys.argv[1], encoding='utf-8'))
 if release['version'] != sys.argv[2] or release.get('build_enabled') is not True:
-    sys.exit('UGM 2.8.5: build disabled in packaging/release-2.8.5.json.')
+    sys.exit('UGM 2.8.6: build disabled in packaging/release-2.8.6.json.')
 PYRELEASE
 fi
 

@@ -4,20 +4,20 @@
 
 ## Requirements
 
-The published `2.8.5-1` package targets **Ubuntu 26.04 amd64**. Install it from
+The published `2.8.6-1` package targets **Ubuntu 26.04 amd64**. Install it from
 an interactive desktop terminal with APT, which resolves package dependencies.
 Hardware-specific features (HDR, VRR, VRS and Bluetooth wake) depend on the
 GPU, driver, monitor and firmware; see [known issues](known-issues.md).
 
 ## Download and verify
 
-Download `ubuntu-gaming-mode_2.8.5-1_amd64.deb` and `SHA256SUMS` from the
-[same GitHub release](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.5-1).
+Download `ubuntu-gaming-mode_2.8.6-1_amd64.deb` and `SHA256SUMS` from the
+[same GitHub release](https://github.com/N3ruk/Ubuntu-Gaming-Mode/releases/tag/v2.8.6).
 In the download directory:
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo apt install ./ubuntu-gaming-mode_2.8.5-1_amd64.deb
+sudo apt install ./ubuntu-gaming-mode_2.8.6-1_amd64.deb
 ```
 
 The checksum command should report `OK`. Keep the terminal open for Debconf
@@ -28,8 +28,9 @@ An upgrade preserves the original baseline.
 ## Steam compatibility
 
 Node.js >=22 is a required APT dependency. The packaged hooks run only in the
-managed UGM session and support the pinned Steam build **1792618285**. Unknown
-builds/hashes are rejected; see [2.8.5 compatibility](ugm-2.8.5/README.md).
+managed UGM session. The updater supports Steam builds **1792618285** and
+**1794536281**; the unchanged YouTube hook retains its **1792618285** profile.
+Unknown builds/hashes are rejected. See [2.8.6 changes](ugm-2.8.6/README.md).
 
 ## Optional choices
 

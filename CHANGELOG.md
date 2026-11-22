@@ -2,6 +2,13 @@
 
 **English** | [Español](CHANGELOG_es.md)
 
+## 2.8.6-1 — 2026-11-22
+
+- Support Steam client build **1794536281**, including its updated native updater API, while retaining support for **1792618285**.
+- Fix Video Output commands on Ubuntu by using native Python subprocess credentials instead of a fixed `runuser` path.
+- Skip saved Bluetooth controllers that are temporarily absent, avoiding repeated service failures while retaining their wake preferences.
+- Replace the **Return to Gaming Mode** launcher icon with the cyberpunk UGM gamer-penguin logo.
+
 ## 2.8.5-1 — 2026-11-05
 
 - Fix YouTube controller pause/resume without losing playback position; package its independent, reconnecting hook with Steam build/hash guards.

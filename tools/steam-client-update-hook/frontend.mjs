@@ -1,5 +1,5 @@
 // Runs only inside Steam's SharedJSContext. No DOM patches or native API replacement.
-export async function installHook({ bridgeName, build, verifiedBuild = null, version = '2' }) {
+export async function installHook({ bridgeName, build, verifiedBuild = null, version = '3', applyContract = 'legacy' }) {
   if (window.__UGMClientUpdateHook) {
     if (window.__UGMClientUpdateHook.version !== version) throw Error('Ya hay otro hook UGM cargado');
     return window.__UGMClientUpdateHook.status();
@@ -12,12 +12,18 @@ export async function installHook({ bridgeName, build, verifiedBuild = null, ver
   const pinnedFallback = reportedBuild === 0 && verifiedBuild === build;
   if (reportedBuild !== build && !pinnedFallback) throw Error('Build de Steam no compatible');
   const buildSource = pinnedFallback ? 'pinned-client-files' : 'runtime';
-  const names = ['CheckForUpdates', 'CheckForUpdatesBatched', 'SetUpdateState', 'GetAvailableTypes', 'GetRecheckAndInstallUpdateTypes', 'ApplyUpdate'];
+  const recheckName = applyContract === 'recheck' ? 'GetRecheckUpdateTypes' : 'GetRecheckAndInstallUpdateTypes';
+  const names = ['CheckForUpdates', 'CheckForUpdatesBatched', 'SetUpdateState', 'GetAvailableTypes', recheckName, 'ApplyUpdate'];
   const descriptors = Object.fromEntries(names.map(k => [k, Object.getOwnPropertyDescriptor(u, k)]));
   const original = Object.fromEntries(names.map(k => [k, u[k]]));
   if (names.some(k => typeof original[k] !== 'function' || descriptors[k]?.configurable === false)) throw Error('Contrato del actualizador cambiado');
+  const applySource = original.ApplyUpdate.toString();
+  const applyCompatible = applyContract === 'legacy'
+    ? applySource.includes('pe.add_apply_types(Ve)')
+    : applyContract === 'recheck' && applySource.includes('.add_apply_types(') &&
+      applySource.includes('.add_recheck_types(') && applySource.includes('SteamClient.Updates?.ApplyUpdates(');
   if (!original.CheckForUpdates.toString().includes('SteamClient.Updates?.CheckForUpdates()') ||
-      !original.ApplyUpdate.toString().includes('pe.add_apply_types(Ve)')) throw Error('Métodos del actualizador no compatibles');
+      !applyCompatible) throw Error('Métodos del actualizador no compatibles');
   let nativeState = u.m_updateState;
   let mode = false, applying = false, inflight = null, removed = false;
   let last = null, lastError = null, checks = 0, applications = 0, sequence = 0;
@@ -81,8 +87,10 @@ export async function installHook({ bridgeName, build, verifiedBuild = null, ver
       if (projected.state === 6 || ([2, 4].includes(projected.state) && clientApply.some(r => r.eresult !== 1))) applying = false;
     },
     GetAvailableTypes() { return mode ? (u.m_updateState.update_check_results || []).filter(r => r.type === 1 && r.available).map(() => 1) : original.GetAvailableTypes.call(u); },
-    GetRecheckAndInstallUpdateTypes() { return [1]; },
-    async ApplyUpdate(_types, callback) {
+    [recheckName]() { return applyContract === 'recheck' ? [] : [1]; },
+    async ApplyUpdate(_types, recheckOrCallback, newCallback) {
+      const callback = typeof recheckOrCallback === 'function' ? recheckOrCallback
+        : typeof newCallback === 'function' ? newCallback : undefined;
       if (applying) return { result: 10, message: 'El cliente ya está aplicando una actualización' };
       const checked = await check(callback);
       if (checked.result !== 1) return checked;
@@ -91,7 +99,9 @@ export async function installHook({ bridgeName, build, verifiedBuild = null, ver
       publish({ ...idleState(last), state: 5 });
       try {
         // Steam's own protobuf serializer and downloader. Only CLIENT=1 is passed.
-        const result = await original.ApplyUpdate.call(u, [1], callback);
+        const result = await (applyContract === 'recheck'
+          ? original.ApplyUpdate.call(u, [1], [], callback)
+          : original.ApplyUpdate.call(u, [1], callback));
         if (result?.result !== 1) { applying = false; lastError = result?.message || 'Steam no pudo aplicar la actualización del cliente'; publish(idleState(last)); }
         return result;
       } catch (error) {
@@ -109,7 +119,7 @@ export async function installHook({ bridgeName, build, verifiedBuild = null, ver
       clearTimeout(item.timer); pending.delete(id);
       reply.ok ? item.resolve(reply.result) : item.reject(Error(reply.error || 'Error de consulta del cliente Steam'));
     },
-    status: () => ({ version, reportedBuild, installedBuild: build, buildSource, mode, applying, checks, applications, last, lastError }),
+    status: () => ({ version, applyContract, reportedBuild, installedBuild: build, buildSource, mode, applying, checks, applications, last, lastError }),
     remove() {
       if (applying) throw Error('No desactivar mientras Steam aplica una actualización');
       removed = true;

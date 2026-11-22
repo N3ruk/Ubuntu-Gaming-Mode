@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 2.8.6-1 — 2026-11-22
+
+- Añadir compatibilidad con el cliente Steam **1794536281** y su nueva API nativa de actualización, conservando el soporte de **1792618285**.
+- Corregir las órdenes de Video Output en Ubuntu mediante credenciales nativas de subproceso Python, sin depender de una ruta fija de `runuser`.
+- Omitir mandos Bluetooth guardados temporalmente ausentes para evitar fallos repetidos del servicio, conservando sus preferencias de despertar.
+- Cambiar el icono del lanzador **Volver a Gaming Mode** por el logotipo UGM del pingüino gamer cyberpunk.
+
 ## 2.8.5-1 — 2026-11-05
 
 - Corregir pausa/reanudación de YouTube con mando sin perder la posición; empaquetar su hook independiente con reconexión y comprobaciones de build/hash de Steam.

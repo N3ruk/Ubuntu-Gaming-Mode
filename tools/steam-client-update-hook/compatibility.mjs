@@ -20,3 +20,26 @@ export async function verifyPinnedBuild(root = STEAM_ROOT, pins = PINNED_FILES) 
   }
   return SUPPORTED_BUILD;
 }
+
+// 2026-11-22: steamrt64 moved the active native client and added a separate
+// recheck-types argument to ApplyUpdate. Keep the previously verified client.
+export const BUILD_PROFILES = Object.freeze([
+  { build: SUPPORTED_BUILD, applyContract: 'legacy', pins: PINNED_FILES },
+  { build: 1794536281, applyContract: 'recheck', pins: Object.freeze({
+    'steamui/sp.js': '4b818cd371388e06c66fe8c0bb592b7dfd4a6fb55eb56844d1b360b64aec3046',
+    'steamrt64/steamclient.so': 'dab8df0daa27ffa6594ef5d6bc8cf707f37990220628f1f249fb30f4d88ade91',
+    'steamrt64/steam': 'bfe832f9f5883d3114425a53b7a170f11784508641a0ae407f237848fa33c387',
+  }) },
+]);
+
+export async function verifyKnownBuild(root = STEAM_ROOT, profiles = BUILD_PROFILES) {
+  for (const profile of profiles) {
+    try {
+      await verifyPinnedBuild(root, profile.pins);
+      return { build: profile.build, applyContract: profile.applyContract };
+    } catch (error) {
+      if (error.code !== 'ENOENT' && !error.message.startsWith('Steam ha cambiado:')) throw error;
+    }
+  }
+  throw Error('Steam ha cambiado: ningún perfil UI/cliente nativo verificado coincide');
+}

@@ -1,6 +1,6 @@
 # UGM YouTube controller hook
 
-Runtime source included in **UGM 2.8.5-1**, independent of Decky and the other hook.
+Runtime source included in **UGM 2.8.6-1**, independent of Decky and the other hook.
 Requires Node.js >=22 and native Steam build **1792618285**, with pinned hashes
 and API contracts. Unknown clients are rejected. No Steam files are patched.
 

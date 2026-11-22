@@ -68,10 +68,10 @@ el checksum anterior.
 - No publiques capturas locales, directorios de build, datos de usuario ni
   credenciales.
 
-## Ensamblado 2.8.5
+## Ensamblado 2.8.6
 
-La condición de build está en `packaging/release-2.8.5.json`; construcción y
-publicación autorizadas el 2026-11-05. La receta recompila el lector de vídeo de
+La condición de build está en `packaging/release-2.8.6.json`; controla la versión
+del paquete y la disponibilidad de construcción. La receta recompila el lector de vídeo de
 solo lectura y ensambla UGM Options desde sus cuatro módulos versionados. El
 árbol maestro generado no es una segunda fuente de verdad. Los bundles frontend
 de Video Output y Non-Steam se versionan con fuentes TypeScript y lockfiles.

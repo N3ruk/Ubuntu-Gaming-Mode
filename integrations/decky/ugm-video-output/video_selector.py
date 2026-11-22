@@ -134,7 +134,8 @@ class Access:
         uid = request['uid']
         if not isinstance(uid, int) or uid <= 0:
             raise ValueError('A non-root session user is required')
-        self.user = pwd.getpwuid(uid).pw_name
+        self.account = pwd.getpwuid(uid)
+        self.user = self.account.pw_name
         self.env = {'PATH': '/usr/bin:/usr/sbin', 'LC_ALL': 'C', 'XDG_RUNTIME_DIR': f'/run/user/{uid}'}
 
     def nodes(self):
@@ -169,9 +170,11 @@ class Access:
         return self.active()
 
     def command(self, args):
-        result = subprocess.run(['/usr/bin/runuser', '-u', self.user, '--', '/usr/bin/env', '-i',
-            *[k+'='+v for k, v in self.env.items()], *args], capture_output=True, text=True, timeout=1.5,
-            env={'PATH': '/usr/bin:/usr/sbin', 'LC_ALL': 'C'})
+        # Python performs setgroups/setgid/setuid in the child, before exec.
+        # Ubuntu ships runuser under /usr/sbin, not the old /usr/bin path.
+        result = subprocess.run(args, capture_output=True, text=True, timeout=1.5,
+            env=self.env, user=self.account.pw_uid, group=self.account.pw_gid,
+            extra_groups=os.getgrouplist(self.user, self.account.pw_gid))
         if result.returncode:
             raise RuntimeError(result.stderr.strip()[:300] or 'Gamescope command failed')
         return result.stdout

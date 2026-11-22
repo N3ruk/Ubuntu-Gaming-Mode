@@ -1,0 +1,10 @@
+{
+  "version": "2.8.6-1",
+  "status": "release",
+  "build_enabled": true,
+  "components": [
+    "steam-youtube-pause-hook",
+    "steam-client-update-hook",
+    "ugm-options"
+  ]
+}

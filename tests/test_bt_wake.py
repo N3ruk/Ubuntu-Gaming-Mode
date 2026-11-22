@@ -291,3 +291,19 @@ class UsbPolicyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OfflineBootTests(unittest.TestCase):
+    def test_apply_preserves_absent_controller_without_retry_failure(self):
+        saved = {'original': False, 'desired': True, 'last': False}
+        state = {'controllers': {'/org/bluez/hci0/dev_AA': saved}, 'bus': {}, 'known': []}
+        with patch.object(backend, 'deny_usb'), patch.object(backend, 'prepare'), \
+             patch.object(backend, 'load_state', return_value=state), \
+             patch.object(backend, 'bluez_objects', return_value=(object(), {})), \
+             patch.object(backend, 'devices', return_value=[]), \
+             patch.object(backend, 'save_state') as save, patch.object(backend, 'set_bluez') as change:
+            backend.apply()
+        save.assert_called_once_with(state)
+        change.assert_not_called()
+        self.assertTrue(saved['desired'])
+        self.assertFalse(saved['last'])
